@@ -4,6 +4,19 @@
     "text": "감정을 구운 빵집",
     "background": "bakery_bg.png",
     "character": "girl.png",
-    "next_id": "choice_1"
+    "next_id": "scene_01"
+  },
+  {
+    "id": "scene_01",
+    "text": "어느 날, 감정을 굽는 빵집에 한 소녀가 찾아왔어요. 빵집 주인이 말했죠.",
+    "background": "bakery_bg.png",
+    "character": "girl.png",
+    "next_id": "scene_02"
+  },
+  {
+    "id": "scene_02",
+    "text": "여긴 감정을 굽는 빵집이란다. 씨발련아, 빵 냄새 좋지?",
+    "background": "bakery_bg.png",
+    "character": "girl_smile.png"
   }
 ]
