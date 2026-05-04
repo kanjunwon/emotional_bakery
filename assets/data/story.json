@@ -1,0 +1,9 @@
+[
+  {
+    "id": "start",
+    "text": "감정을 구운 빵집",
+    "background": "bakery_bg.png",
+    "character": "girl.png",
+    "next_id": "choice_1"
+  }
+]
