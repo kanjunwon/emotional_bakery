@@ -1,11 +1,29 @@
 // 메인페이지
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/models/scene_model.dart';
 import 'package:emotional_bakery/services/story_loader.dart';
+import 'screens/main_screen.dart';
+import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Flutter 엔진 초기화
+  // 가로 화면 고정
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   runApp(const EmotionalBakery());
+}
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  // 마우스 드래그도 인식하도록 스크롤 행동 커스터마이징
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse, // 마우스 드래그 기기 추가
+  };
 }
 
 class EmotionalBakery extends StatelessWidget {
@@ -15,8 +33,10 @@ class EmotionalBakery extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // 디버그 배너 제거
+      // 커스텀 스크롤 동작
+      scrollBehavior: MyCustomScrollBehavior(),
       theme: ThemeData(fontFamily: 'NanumGothic'), // 폰트
-      home: const GameScreen(),
+      home: const MainScreen(), // 시작은 메인화면
     );
   }
 }

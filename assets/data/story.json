@@ -1,7 +1,7 @@
 [
   {
     "id": "start",
-    "text": "감정을 구운 빵집",
+    "text": "감정을 굽는 빵집",
     "background": "bakery_bg_main",
     "character": "girl_grey_front",
     "next_id": "scene_01"
