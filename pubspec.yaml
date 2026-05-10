@@ -29,3 +29,8 @@ flutter:
     - assets/images/
     - assets/sounds/
     - assets/data/
+
+#  fonts:
+#    - family: 머시기 머시기
+#     fonts:
+#       - asset: assets/fonts/머시기.ttf
