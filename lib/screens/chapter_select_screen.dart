@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'game_play_screen.dart';
 
 class ChapterSelectScreen extends StatefulWidget {
   const ChapterSelectScreen({super.key});
@@ -8,14 +9,14 @@ class ChapterSelectScreen extends StatefulWidget {
 }
 
 class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
-  // 스크롤 위치를 감지하기 위한 컨트롤러
+  // 스크롤 위치 감지용 컨트롤러
   final ScrollController _scrollController = ScrollController();
   double _scrollProgress = 0.0;
 
   @override
   void initState() {
     super.initState();
-    // 스크롤 할 때마다 하단 바 위치를 계산해서 업데이트함
+    // 스크롤 발생 시 하단 바 위치 계산
     _scrollController.addListener(() {
       setState(() {
         if (_scrollController.hasClients) {
@@ -38,7 +39,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. 배경 (약간 어둡게 처리된 마을/빵집 배경)
+          // 배경 레이어
           Positioned.fill(
             child: Opacity(
               opacity: 0.5,
@@ -49,7 +50,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
             ),
           ),
 
-          // 2. 챕터 리스트 (가로 스크롤)
+          // 챕터 리스트 (가로 스크롤)
           Positioned(
             top: rH(40),
             bottom: rH(60),
@@ -58,11 +59,8 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
             child: ListView(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
-              // 🔥 핵심 1: BouncingScrollPhysics 추가 (아이폰처럼 끝에서 튕기는 찰진 손맛 추가)
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(
-                horizontal: rW(80),
-              ), // 양옆 여백을 줘서 중앙에 오게 함
+              physics: const BouncingScrollPhysics(), // 끝에서 튕기는 스크롤 효과
+              padding: EdgeInsets.symmetric(horizontal: rW(80)), // 양옆 여백
               children: [
                 _buildChapterCard(
                   "Prolog",
@@ -96,7 +94,6 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   rW,
                   rH,
                 ),
-                // 🔥 핵심 2: 테스트를 위해 더미 챕터 한두 개 더 넣어봐. 안 밀리면 이게 부족한 거야.
                 _buildChapterCard(
                   "Chapter 4",
                   "준비 중인 이야기",
@@ -117,7 +114,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
             ),
           ),
 
-          // 3. 하단 스크롤 진행 바 (Progress Bar)
+          // 3. 하단 스크롤 진행 바
           Positioned(
             bottom: rH(30),
             left: rW(100),
@@ -132,15 +129,15 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
-                // 현재 위치 표시 줄 (움직이는 놈)
+                // 현재 위치 표시 줄 (움직이는 바)
                 FractionallySizedBox(
-                  widthFactor: 0.3, // 바의 전체 길이 중 30% 차지
+                  widthFactor: 0.3,
                   child: Transform.translate(
                     offset: Offset((rW(874 - 200) * 0.7) * _scrollProgress, 0),
                     child: Container(
                       height: rH(6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5C18B), // 여친님이 쓴 그 베이지색
+                        color: const Color(0xFFE5C18B), // 베이지색 포인트 컬러
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -154,7 +151,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
     );
   }
 
-  // 🖼️ 챕터 카드 위젯
+  // 챕터 카드 위젯
   Widget _buildChapterCard(
     String title,
     String subTitle,
@@ -185,8 +182,13 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
           GestureDetector(
             onTap: () {
               if (isUnlocked) {
-                print("$title 시작!");
-                // 여기서 실제 게임 화면(GameScreen)으로 이동하면 됨!
+                // 진짜 게임 화면으로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GamePlayScreen(),
+                  ),
+                );
               } else {
                 print("잠겨있음!");
               }
@@ -199,7 +201,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 image: DecorationImage(
                   image: AssetImage('assets/images/$imgName'),
                   fit: BoxFit.cover,
-                  // 🔥 핵심: 잠겨있으면 흑백, 풀렸으면 컬러!
+                  // 잠겨있으면 흑백, 풀렸으면 컬러 처리
                   colorFilter: isUnlocked
                       ? null
                       : const ColorFilter.matrix([
