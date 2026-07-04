@@ -1,5 +1,3 @@
-// lib/screens/choice_screen.dart
-
 import 'package:flutter/material.dart';
 import 'chapter_select_screen.dart';
 

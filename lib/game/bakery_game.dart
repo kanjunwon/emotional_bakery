@@ -1,5 +1,3 @@
-// lib/game/bakery_game.dart
-
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/experimental.dart';
@@ -17,7 +15,7 @@ class BakeryGame extends FlameGame {
     super.onLoad();
 
     // 배경 레이어
-    final bgSprite = await loadSprite('bakery_interior_long.png');
+    final bgSprite = await loadSprite('bakery_bg_main.png');
     final background = SpriteComponent(
       sprite: bgSprite,
       size: Vector2(mapWidth, size.y),

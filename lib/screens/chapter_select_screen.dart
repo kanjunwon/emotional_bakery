@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'game_play_screen.dart';
+import 'tutorial_screen.dart';
 
 class ChapterSelectScreen extends StatefulWidget {
   const ChapterSelectScreen({super.key});
@@ -65,7 +66,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 _buildChapterCard(
                   "Prolog",
                   "감정을 잃은 사람들",
-                  "prolog.png",
+                  "ch_prolog.png",
                   true,
                   rW,
                   rH,
