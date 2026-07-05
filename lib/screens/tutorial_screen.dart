@@ -1,6 +1,7 @@
 // lib/screens/tutorial_screen.dart
 
 import 'package:flutter/material.dart';
+import 'dart:async'; // 연속 이동 (화살표 꾹 누르기)
 
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
@@ -13,9 +14,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
   int _tutorialStep = 0;
 
   // 월드 맵 전체 가로 길이 (전체 단일 이미지 가로 스케일 기준)
-  final double _mapWidth = 1748.0;
-  double _playerX = 150.0; // 캐릭터 시작 위치 (뒷골목 구역)
+  final double _mapWidth = 1352;
+  double _playerX = 150; // 캐릭터 시작 위치 (뒷골목 구역)
+  bool _isPlayerInitialized = false;
   String? _interactionText;
+
+  // 연속 이동 타이머 및 캐릭터 상태 관리 변수
+  Timer? _moveTimer;
+  String _currentAction = 'idle';
+  bool _isLookingLeft = true; // 왼쪽인지 확인 여부
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +31,14 @@ class _TutorialScreenState extends State<TutorialScreen> {
     double rW(double px) => (px / 874) * w;
     double rH(double px) => (px / 402) * h;
 
+    if (!_isPlayerInitialized) {
+      _playerX = rW(445);
+      _isPlayerInitialized = true;
+    }
+
     // 캐릭터가 화면 중심을 넘어설 때 배경을 반대 방향으로 밀어주는 카메라 오프셋 계산
     double screenWidth = w;
-    double cameraX = (_playerX - screenWidth / 2).clamp(
+    double cameraX = (_playerX - rW(80)).clamp(
       0.0,
       rW(_mapWidth) - screenWidth,
     );
@@ -60,19 +72,18 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 height: h,
                 child: Stack(
                   children: [
-                    // [AI 수정]: 기존 분할 배경 제거 후, 단일 와이드 통이미지(KakaoTalk_20260705_071927741.jpg) 배경으로 변경
                     Positioned(
                       left: 0,
-                      top: 0,
+                      bottom: 0,
                       width: rW(_mapWidth),
-                      height: h,
+                      height: rH(699),
                       child: Image.asset(
                         'assets/images/tutorial_bg_full.png',
                         fit: BoxFit.fill,
                       ),
                     ),
 
-                    // [AI 추가]: 1번 집 상호작용 구역 (노가다용 피그마 좌표 입력란)
+                    // 1번 집 상호작용 구역
                     Positioned(
                       left: rW(50),
                       top: rH(60),
@@ -82,7 +93,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText = "노인네 한 분이 살고 계시는 쓸쓸한 집이다.";
+                              _interactionText =
+                                  "클로에의 집이다. \n 지금은 아무도 없는 거 같다.";
                             });
                           }
                         },
@@ -90,7 +102,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       ),
                     ),
 
-                    // [AI 추가]: 2번 집 상호작용 구역 (노가다용 피그마 좌표 입력란)
+                    // 2번 집 상호작용 구역
                     Positioned(
                       left: rW(200),
                       top: rH(60),
@@ -101,7 +113,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                           if (_tutorialStep == 2) {
                             setState(() {
                               _interactionText =
-                                  "아이들의 웃음소리가 들리던 곳이었지만, 지금은 고요하다.";
+                                  "피터의 집이다. \n 예전에 한 번 들어가 본 적이 있다.";
                             });
                           }
                         },
@@ -109,7 +121,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       ),
                     ),
 
-                    // [AI 추가]: 3번 집 상호작용 구역 (노가다용 피그마 좌표 입력란)
+                    // 3번 집 상호작용 구역
                     Positioned(
                       left: rW(400),
                       top: rH(80),
@@ -119,7 +131,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText = "문고리에 먼지가 뽀얗게 쌓여있어.";
+                              _interactionText =
+                                  "소피아의 집이다. \n 소피아는 나에게 항상 친절하다.";
                             });
                           }
                         },
@@ -127,7 +140,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       ),
                     ),
 
-                    // [AI 추가]: 4번 집 상호작용 구역 (노가다용 피그마 좌표 입력란)
+                    // 4번 집 상호작용 구역
                     Positioned(
                       left: rW(600),
                       top: rH(50),
@@ -137,7 +150,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText = "창문 너머로 무채색의 가구들이 덩그러니 놓여있다.";
+                              _interactionText = "알렉스 씨의 집이다. \n 들어가면 혼날 거 같다.";
                             });
                           }
                         },
@@ -147,19 +160,19 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
                     // 우측 목적지 (빛나는 빵집 건물) 터치 이벤트 구역 (메인 거리 끝자락)
                     Positioned(
-                      left: rW(1400),
+                      left: rW(1000),
                       top: rH(40),
                       width: rW(220),
                       height: rH(260),
                       child: GestureDetector(
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
-                            if (_playerX >= rW(1300)) {
+                            if (_playerX >= rW(950)) {
                               Navigator.pop(context);
                             } else {
                               setState(() {
                                 _interactionText =
-                                    "빵집이 저기 멀리 보여. 화살표를 눌러 오른쪽으로 더 이동하자.";
+                                    "아직 빵집에 들어가기엔 \n 거리가 먼 거 같다.";
                               });
                             }
                           }
@@ -173,11 +186,17 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       duration: const Duration(milliseconds: 100),
                       left: _playerX,
                       bottom: rH(50),
-                      child: Image.asset(
-                        'assets/images/chaeon_idle.png',
-                        width: rW(70),
-                        height: rH(100),
-                        fit: BoxFit.contain,
+                      child: Transform.flip(
+                        flipX: _isLookingLeft, // true일 때 이미지 반전
+                        child: Image.asset(
+                          // 오른쪽 에셋 2개만 가지고 walk와 idle을 스위칭함
+                          _currentAction == 'walk'
+                              ? 'assets/images/chaeon_walk_right.gif'
+                              : 'assets/images/chaeon_idle_right.gif',
+                          width: rW(172),
+                          height: rH(172),
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ],
@@ -194,28 +213,65 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 bottom: rH(20),
                 child: Row(
                   children: [
+                    // 왼쪽 이동 버튼
                     _buildDpadButton(
                       imagePath: 'assets/images/btn_left.png',
-                      onPressed: () {
+                      onTapDown: () {
                         if (_tutorialStep == 2) {
+                          _moveTimer?.cancel();
                           setState(() {
-                            if (_playerX > rW(30)) _playerX -= rW(25);
+                            _currentAction = 'walk';
+                            _isLookingLeft = true;
                           });
+                          _moveTimer = Timer.periodic(
+                            const Duration(milliseconds: 40),
+                            (timer) {
+                              setState(() {
+                                if (_playerX > rW(30)) _playerX -= rW(12);
+                              });
+                            },
+                          );
                         }
+                      },
+                      onTapUp: () {
+                        _moveTimer?.cancel();
+                        setState(() {
+                          _currentAction = 'idle';
+                          _isLookingLeft = true;
+                        });
                       },
                       rW: rW,
                       rH: rH,
                     ),
                     SizedBox(width: rW(15)),
+                    // 오른쪽 이동 버튼
                     _buildDpadButton(
                       imagePath: 'assets/images/btn_right.png',
-                      onPressed: () {
+                      onTapDown: () {
                         if (_tutorialStep == 2) {
+                          _moveTimer?.cancel();
                           setState(() {
-                            if (_playerX < rW(_mapWidth - 100))
-                              _playerX += rW(25);
+                            _currentAction = 'walk';
+                            _isLookingLeft = false;
                           });
+                          _moveTimer = Timer.periodic(
+                            const Duration(milliseconds: 40),
+                            (timer) {
+                              setState(() {
+                                if (_playerX < rW(_mapWidth - 100))
+                                  _playerX += rW(12);
+                              });
+                            },
+                          );
                         }
+                      },
+                      onTapUp: () {
+                        _moveTimer?.cancel();
+                        // 손을 떼면 idle 상태로 돌아가되 오른쪽 방향 유지
+                        setState(() {
+                          _currentAction = 'idle';
+                          _isLookingLeft = false;
+                        });
                       },
                       rW: rW,
                       rH: rH,
@@ -286,12 +342,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
   // 가상 패드 버튼 빌더
   Widget _buildDpadButton({
     required String imagePath,
-    required VoidCallback onPressed,
+    required VoidCallback onTapDown, // onPressed 대신 누를 때 이벤트 수렴
+    required VoidCallback onTapUp, // 손을 뗄 때 이벤트 수렴
     required double Function(double) rW,
     required double Function(double) rH,
   }) {
     return GestureDetector(
-      onTapDown: (_) => onPressed(),
+      onTapDown: (_) => onTapDown(),
+      onTapUp: (_) => onTapUp(),
+      onTapCancel: () => onTapUp(), // 버튼 밖으로 손가락이 미끄러져 나가도 멈추도록 예외 처리
       child: Container(
         width: rW(55),
         height: rH(55),

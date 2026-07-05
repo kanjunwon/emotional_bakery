@@ -14,6 +14,9 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
   final ScrollController _scrollController = ScrollController();
   double _scrollProgress = 0.0;
 
+  // 챕터 1의 동적 해금 상태를 관리할 상태 변수 선언
+  bool _isChapter1Unlocked = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,7 +78,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   "Chapter 1",
                   "색을 잃은 아이",
                   "ch1.png",
-                  false,
+                  _isChapter1Unlocked, // 하드코딩 false를 동적 상태 변수로 변경
                   rW,
                   rH,
                 ),
@@ -181,15 +184,32 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
           ),
           SizedBox(height: rH(15)),
           GestureDetector(
-            onTap: () {
+            onTap: () async {
               if (isUnlocked) {
-                // 진짜 게임 화면으로 이동
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const GamePlayScreen(),
-                  ),
-                );
+                if (title == "Prolog") {
+                  // 게임 화면으로 이동
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GamePlayScreen(),
+                    ),
+                  );
+
+                  // 프롤로그가 성공적으로 끝나고 true를 반환받으면 챕터 1 락을 해제함
+                  if (result == true) {
+                    setState(() {
+                      _isChapter1Unlocked = true;
+                    });
+                  }
+                } else if (title == "Chapter 1") {
+                  // 해금된 챕터 1 클릭 시 튜토리얼 스크린으로 라우팅
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TutorialScreen(),
+                    ),
+                  );
+                }
               } else {
                 print("잠겨있음!");
               }
@@ -227,12 +247,6 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                           1,
                           0,
                         ]),
-                ),
-                border: Border.all(
-                  color: isUnlocked
-                      ? const Color(0xFFE5C18B)
-                      : Colors.transparent,
-                  width: 3,
                 ),
               ),
             ),
