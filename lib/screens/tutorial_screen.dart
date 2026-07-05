@@ -94,7 +94,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                           if (_tutorialStep == 2) {
                             setState(() {
                               _interactionText =
-                                  "클로에의 집이다. \n 지금은 아무도 없는 거 같다.";
+                                  "클로에의 집이다. \n 지금은 아무도 없는 거 같다. ⌵";
                             });
                           }
                         },
@@ -113,7 +113,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                           if (_tutorialStep == 2) {
                             setState(() {
                               _interactionText =
-                                  "피터의 집이다. \n 예전에 한 번 들어가 본 적이 있다.";
+                                  "피터의 집이다. \n 예전에 한 번 들어가 본 적이 있다. ⏷";
                             });
                           }
                         },
@@ -132,7 +132,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                           if (_tutorialStep == 2) {
                             setState(() {
                               _interactionText =
-                                  "소피아의 집이다. \n 소피아는 나에게 항상 친절하다.";
+                                  "소피아의 집이다. \n 소피아는 나에게 항상 친절하다. ▼"; // 이 삼각형으로 결정. but, 폰트 크기 줄이기.
                             });
                           }
                         },
@@ -150,7 +150,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText = "알렉스 씨의 집이다. \n 들어가면 혼날 거 같다.";
+                              _interactionText =
+                                  "알렉스 씨의 집이다. \n 들어가면 혼날 거 같다. ▾";
                             });
                           }
                         },
@@ -368,18 +369,27 @@ class _TutorialScreenState extends State<TutorialScreen> {
   }) {
     return Align(
       alignment: const Alignment(0, 0.2),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: rW(45), vertical: rH(20)),
-        constraints: BoxConstraints(minWidth: rW(400), maxWidth: rW(550)),
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/tutorial_dialogue_box.png'),
-            fit: BoxFit.fill,
-            // 말풍선 이미지 크기가 텍스트 길이에 맞춰 늘어날 때 늘어날 중심 구역 픽셀 지정 (상하좌우 슬라이스 마진 설정)
-            centerSlice: Rect.fromLTRB(40, 25, 260, 65),
+      child: IntrinsicWidth(
+        // [AI 추가]: 자식 위젯(Text)의 실제 본연의 너비에 맞춰 Container 크기를 타이트하게 줄여주는 위젯
+        child: Container(
+          // [AI 수정]: 말풍선이 작아졌을 때 글자가 미어터지지 않도록 패딩 수치 최적화
+          padding: EdgeInsets.symmetric(horizontal: rW(50), vertical: rH(23)),
+          constraints: BoxConstraints(
+            minWidth: rW(
+              180,
+            ), // [AI 수정]: 짧은 문장일 때 대사창이 이쁘게 작아질 수 있도록 최소 너비 제한을 대폭 낮춤
+            maxWidth: rW(500),
           ),
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/tutorial_dialogue_box.png'),
+              fit: BoxFit.fill,
+              // [AI 수정]: 원본 해상도(287x68) 테두리를 완벽히 보호하면서, 크기가 작아져도 도트 비율이 유지되도록 9패치 좌표 활성화
+              // centerSlice: Rect.fromLTRB(30, 15, 257, 53),
+            ),
+          ),
+          child: textWidget,
         ),
-        child: textWidget,
       ),
     );
   }
