@@ -1,7 +1,7 @@
 // lib/core/widgets/dialogue_overlay.dart
 
 import 'package:flutter/material.dart';
-import '../../game/bakery_game.dart';
+import 'package:emotional_bakery/features/chapter1/bakery_game.dart';
 
 class DialogueOverlay extends StatefulWidget {
   final BakeryGame game;

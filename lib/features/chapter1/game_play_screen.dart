@@ -2,8 +2,8 @@
 
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../../game/bakery_game.dart';
-import '../../core/widgets/dialogue_overlay.dart';
+import 'package:emotional_bakery/features/chapter1/bakery_game.dart';
+import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 
 class GamePlayScreen extends StatefulWidget {
   const GamePlayScreen({super.key});

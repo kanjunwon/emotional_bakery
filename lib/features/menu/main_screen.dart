@@ -1,7 +1,7 @@
 // lib/features/menu/main_screen.dart
 
 import 'package:flutter/material.dart';
-import '../../screens/choice_screen.dart'; // 다음 화면
+import 'package:emotional_bakery/features/menu/choice_screen.dart'; // 다음 화면
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});

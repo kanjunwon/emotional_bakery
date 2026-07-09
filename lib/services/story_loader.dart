@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import '../models/scene_model.dart';
+import '../core/models/scene_model.dart';
 
 class StoryLoader {
   // JSON 파일을 읽어서 Scene 리스트로 반환하는 함수

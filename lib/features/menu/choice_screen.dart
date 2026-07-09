@@ -1,5 +1,7 @@
+// lib/features/menu/choice_screen.dart
+
 import 'package:flutter/material.dart';
-import '../features/menu/chapter_select_screen.dart';
+import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 class ChoiceScreen extends StatefulWidget {
   const ChoiceScreen({super.key});
