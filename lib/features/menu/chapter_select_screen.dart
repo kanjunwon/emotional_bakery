@@ -1,6 +1,8 @@
+// lib/features/menu/chapter_select_screen.dart
+
 import 'package:flutter/material.dart';
-import 'game_play_screen.dart';
-import 'tutorial_screen.dart';
+import '../chapter1/game_play_screen.dart';
+import '../prologue/tutorial_screen.dart';
 
 class ChapterSelectScreen extends StatefulWidget {
   const ChapterSelectScreen({super.key});

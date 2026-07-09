@@ -1,9 +1,9 @@
-// lib/screens/game_play_screen.dart
+// lib/features/chapter1/game_play_screen.dart
 
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../game/bakery_game.dart';
-import '../game/dialogue_overlay.dart';
+import '../../game/bakery_game.dart';
+import '../../core/widgets/dialogue_overlay.dart';
 
 class GamePlayScreen extends StatefulWidget {
   const GamePlayScreen({super.key});

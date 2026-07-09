@@ -1,9 +1,11 @@
+// lib/features/chapter1/bakery_game.dart
+
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/experimental.dart';
 import 'package:flutter/material.dart';
-import 'chaeon.dart';
-import 'lillian.dart';
+import '../../features/chapter1/chaeon.dart';
+import '../../features/chapter1/lillian.dart';
 
 class BakeryGame extends FlameGame {
   late Chaeon chaeon;
@@ -15,6 +17,7 @@ class BakeryGame extends FlameGame {
     super.onLoad();
 
     // 배경 레이어
+    // [AI 팁]: 튜토리얼 빵집 문을 열고 들어오면 로드될 대망의 챕터 1 메인 빵집 내부 배경 에셋!
     final bgSprite = await loadSprite('bakery_bg_main.png');
     final background = SpriteComponent(
       sprite: bgSprite,

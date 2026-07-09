@@ -1,4 +1,4 @@
-// lib/models/scene_model.dart
+// lib/core/models/scene_model.dart
 
 class Scene {
   final String id;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chapter_select_screen.dart';
+import '../features/menu/chapter_select_screen.dart';
 
 class ChoiceScreen extends StatefulWidget {
   const ChoiceScreen({super.key});

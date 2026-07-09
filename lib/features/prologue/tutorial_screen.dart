@@ -1,4 +1,4 @@
-// lib/screens/tutorial_screen.dart
+// lib/features/prologue/tutorial_screen.dart
 
 import 'package:flutter/material.dart';
 import 'dart:async'; // 연속 이동 (화살표 꾹 누르기)
@@ -62,9 +62,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           color: Colors.black,
           child: Stack(
             children: [
-              // --------------------------------------------------------
               // 1층: 카메라 오프셋의 영향을 받는 인게임 월드 레이어 (배경, 오브젝트, 캐릭터)
-              // --------------------------------------------------------
               Positioned(
                 left: -cameraX,
                 top: 0,
@@ -93,8 +91,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText =
-                                  "클로에의 집이다. \n 지금은 아무도 없는 거 같다. ⌵";
+                              _interactionText = "클로에의 집이다.\n지금은 아무도 없는 거 같다.";
                             });
                           }
                         },
@@ -113,7 +110,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                           if (_tutorialStep == 2) {
                             setState(() {
                               _interactionText =
-                                  "피터의 집이다. \n 예전에 한 번 들어가 본 적이 있다. ⏷";
+                                  "피터의 집이다.\n예전에 한 번 들어가 본 적이 있다.";
                             });
                           }
                         },
@@ -131,8 +128,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText =
-                                  "소피아의 집이다. \n 소피아는 나에게 항상 친절하다. ▼"; // 이 삼각형으로 결정. but, 폰트 크기 줄이기.
+                              _interactionText = "소피아의 집이다.\n소피아는 나에게 항상 친절하다.";
                             });
                           }
                         },
@@ -150,8 +146,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             setState(() {
-                              _interactionText =
-                                  "알렉스 씨의 집이다. \n 들어가면 혼날 거 같다. ▾";
+                              _interactionText = "알렉스 씨의 집이다.\n들어가면 혼날 거 같다.";
                             });
                           }
                         },
@@ -172,8 +167,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                               Navigator.pop(context);
                             } else {
                               setState(() {
-                                _interactionText =
-                                    "아직 빵집에 들어가기엔 \n 거리가 먼 거 같다.";
+                                _interactionText = "아직 빵집에 들어가기엔\n거리가 먼 거 같다.";
                               });
                             }
                           }
@@ -204,9 +198,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 ),
               ),
 
-              // --------------------------------------------------------
               // 2층: 가상 패드 및 유동 대사창 UI 레이어
-              // --------------------------------------------------------
 
               // 하단 가상 패드 (방향키 컨트롤러) 구역
               Positioned(
@@ -218,7 +210,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     _buildDpadButton(
                       imagePath: 'assets/images/btn_left.png',
                       onTapDown: () {
-                        if (_tutorialStep == 2) {
+                        if (_tutorialStep == 2 && _interactionText == null) {
                           _moveTimer?.cancel();
                           setState(() {
                             _currentAction = 'walk';
@@ -249,7 +241,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     _buildDpadButton(
                       imagePath: 'assets/images/btn_right.png',
                       onTapDown: () {
-                        if (_tutorialStep == 2) {
+                        if (_tutorialStep == 2 && _interactionText == null) {
                           _moveTimer?.cancel();
                           setState(() {
                             _currentAction = 'walk';
@@ -281,7 +273,16 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 ),
               ),
 
-              // 메인 가이드 대사창 (Step 0, 1 시점 노출)
+              // 가이드 대사(Step 0, 1)가 활성화되어 있을 때만 인게임 월드를 50% 어둡게 깔아주는 반투명 암전 레이어
+              if (_tutorialStep < 2)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    // 암전 레이어가 터치 이벤트를 먹어버리지 않게 차단
+                    child: Container(color: Colors.black.withOpacity(0.5)),
+                  ),
+                ),
+
+              // 메인 가이드 Box (Step 0, 1 시점 노출)
               if (_tutorialStep < 2)
                 _buildDialogueBox(
                   textWidget: Text.rich(
@@ -370,25 +371,33 @@ class _TutorialScreenState extends State<TutorialScreen> {
     return Align(
       alignment: const Alignment(0, 0.2),
       child: IntrinsicWidth(
-        // [AI 추가]: 자식 위젯(Text)의 실제 본연의 너비에 맞춰 Container 크기를 타이트하게 줄여주는 위젯
         child: Container(
-          // [AI 수정]: 말풍선이 작아졌을 때 글자가 미어터지지 않도록 패딩 수치 최적화
-          padding: EdgeInsets.symmetric(horizontal: rW(50), vertical: rH(23)),
-          constraints: BoxConstraints(
-            minWidth: rW(
-              180,
-            ), // [AI 수정]: 짧은 문장일 때 대사창이 이쁘게 작아질 수 있도록 최소 너비 제한을 대폭 낮춤
-            maxWidth: rW(500),
-          ),
+          padding: EdgeInsets.symmetric(horizontal: rW(30), vertical: rH(15)),
+          constraints: BoxConstraints(minWidth: rW(180), maxWidth: rW(500)),
           decoration: const BoxDecoration(
             image: DecorationImage(
               image: AssetImage('assets/images/tutorial_dialogue_box.png'),
               fit: BoxFit.fill,
-              // [AI 수정]: 원본 해상도(287x68) 테두리를 완벽히 보호하면서, 크기가 작아져도 도트 비율이 유지되도록 9패치 좌표 활성화
-              // centerSlice: Rect.fromLTRB(30, 15, 257, 53),
+              centerSlice: Rect.fromLTRB(30, 15, 257, 53),
             ),
           ),
-          child: textWidget,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment:
+                CrossAxisAlignment.end, // 대사창 우측 하단에 정렬하기 위해 end 세팅
+            children: [
+              // 텍스트가 화살표 영역을 침범하지 않고 줄바꿈되도록 Expanded 처리
+              Expanded(child: textWidget),
+              SizedBox(width: rW(10)), // 글씨와 화살표 사이 간격
+              // 대사창용 공통 둥근 화살표 이미지 에셋 박기
+              Image.asset(
+                'assets/images/tutorial_arrow.png',
+                width: rW(12),
+                height: rH(12),
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
         ),
       ),
     );
