@@ -20,7 +20,7 @@ class Chaeon extends SpriteComponent with HasGameRef {
     anchor = Anchor.bottomCenter;
 
     // 시작 위치 (바닥 쯤)
-    position = Vector2(150, 320);
+    position = Vector2(100, (320 / 402) * gameRef.size.y); // 화면 비율에 맞춰 Y 좌표 조정
   }
 
   @override

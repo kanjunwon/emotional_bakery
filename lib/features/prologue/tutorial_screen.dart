@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'dart:async'; // 연속 이동 (화살표 꾹 누르기)
+import '../chapter1/game_play_screen.dart';
 
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
@@ -156,7 +157,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
                     // 우측 목적지 (빛나는 빵집 건물) 터치 이벤트 구역 (메인 거리 끝자락)
                     Positioned(
-                      left: rW(1000),
+                      left: rW(850),
                       top: rH(40),
                       width: rW(220),
                       height: rH(260),
@@ -164,7 +165,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         onTapDown: (_) {
                           if (_tutorialStep == 2) {
                             if (_playerX >= rW(950)) {
-                              Navigator.pop(context);
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const GamePlayScreen(),
+                                ),
+                              );
                             } else {
                               setState(() {
                                 _interactionText = "아직 빵집에 들어가기엔\n거리가 먼 거 같다.";
@@ -199,7 +205,6 @@ class _TutorialScreenState extends State<TutorialScreen> {
               ),
 
               // 2층: 가상 패드 및 유동 대사창 UI 레이어
-
               // 하단 가상 패드 (방향키 컨트롤러) 구역
               Positioned(
                 right: rW(20),

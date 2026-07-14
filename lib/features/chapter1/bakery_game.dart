@@ -5,12 +5,20 @@ import 'package:flame/game.dart';
 import 'package:flame/experimental.dart';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/features/chapter1/chaeon.dart';
-import 'package:emotional_bakery/features/chapter1/lillian.dart';
 
 class BakeryGame extends FlameGame {
-  late Chaeon chaeon;
-  late Lillian lillian;
+  Chaeon? chaeon;
   final double mapWidth = 1852; // 배경 이미지 가로 길이
+
+  // 가상 패드가 플레이어 이동을 막게 제어할 수 있는 상태 변수
+  bool isMovementBlocked = false;
+
+  // 가이드 박스가 딱 한 번만 켜지도록 제어하는 트리거 스위치
+  bool _hasTriggeredGuide = false;
+
+  // 플러터 UI 레이어와 연동하기 위한 콜백 함수 포인터들
+  Function(List<String>)? onShowDialogue;
+  Function()? onGameUpdate;
 
   @override
   Future<void> onLoad() async {
@@ -24,33 +32,60 @@ class BakeryGame extends FlameGame {
     );
     add(background);
 
-    // 릴리안 레이어 (플레이어보다 뒤에 그리도록 먼저 추가)
+    /*
     lillian = Lillian();
-    // 맵 내부에서 NPC가 서 있을 좌표 설정 (x축 1200 지점)
     lillian.position = Vector2(1200, 320);
     add(lillian);
+    */
 
     // 채온 레이어
     chaeon = Chaeon(mapWidth: mapWidth);
-    add(chaeon);
+    add(chaeon!);
 
     // 카메라 추적 설정
-    camera.follow(chaeon);
+    camera.follow(chaeon!);
 
     // 카메라 이동 한계선 설정
     camera.setBounds(Rectangle.fromLTWH(0, 0, mapWidth, size.y));
   }
 
+  @override
+  void update(double dt) {
+    super.update(dt);
+
+    if (chaeon != null &&
+        !_hasTriggeredGuide &&
+        chaeon!.isMounted &&
+        chaeon!.position.x >= mapWidth * 0.3) {
+      _hasTriggeredGuide = true; // 스위치 ON
+
+      // 대사 띄우는 중에는 조작 완전히 잠금!
+      isMovementBlocked = true;
+      movePlayer(0);
+
+      // 대화 트리거 실행!
+      showDialogue([
+        "지금부터 감정의 온도를 확인할 수 있습니다.\n당신의 선택에 따라 감정의 온도는 오를수도, 내려갈 수도 있습니다.",
+        "뒤로가기 버튼을 통해 대화를 뒤로 돌릴 수 있습니다.\n단, 당신의 선택은 돌릴 수 없습니다.",
+      ]);
+
+      print("30% 지점 도달");
+    }
+
+    onGameUpdate?.call();
+  }
+
   // 외부 위젯에서 플레이어 방향 제어용 함수
   void movePlayer(int direction) {
-    chaeon.moveDirection = direction;
+    if (isMovementBlocked) {
+      chaeon?.moveDirection = 0;
+      return;
+    }
+    chaeon?.moveDirection = direction;
   }
 
   // 전역 대화창 제어 함수
   void showDialogue(List<String> textLines) {
-    // 나중에 플레임 오버레이(DialogueOverlay)나 구현한 글로벌 대화창 위젯에 textLines(대사 리스트)를 꽂아주는 로직
-    print("게임 엔진에서 대사 완료: ${textLines.first}");
-
-    // ex) overlays.add('dialogue'); -> 오버레이 키는 플레임 내장 함수
+    onShowDialogue?.call(textLines);
   }
 }
