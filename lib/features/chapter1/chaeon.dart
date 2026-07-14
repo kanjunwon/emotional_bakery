@@ -10,8 +10,9 @@ class Chaeon extends SpriteComponent with HasGameRef {
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    // 채온 이미지
-    sprite = await gameRef.loadSprite('chaeon_normal.png');
+    // 채온 이미지 (실제 화면상의 GIF 표현은 game_play_screen.dart의 오버레이 레이어가 담당하므로
+    // 여기서는 카메라 추적/충돌용 위치 앵커로만 쓰이는 정적 이미지를 로드)
+    sprite = await gameRef.loadSprite('chaeon_idle_right.gif');
 
     // 스크린샷 비율 보고 대충 크기 맞춤 (피그마 크기 확인 필요)
     size = Vector2(70, 110);

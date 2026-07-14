@@ -23,13 +23,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
   // 채온이 상태 변수
   String _chaeonState = 'idle';
-  bool _isChaeonFacingRight = true; // [AI 추가]: 채온이 좌우 반전용 스위치
+  bool _isChaeonFacingRight = true; // 채온 좌우 반전용 스위치
 
   // 릴리안 상태 및 자동 걷기 애니메이션 변수
   late AnimationController _lillianController;
   double _lillianStartX = 1200.0; // 릴리안 시작 좌표 (빵집 우측 깊숙한 곳)
   double _lillianTargetX = 1200.0; // 걸어와서 멈출 좌표 (채온이 앞)
   bool _isLillianWalking = false; // 릴리안이 현재 걷는 중인지 여부
+  bool _isLillianVisible = false; // 30% 지점 대화가 끝나기 전에는 릴리안을 숨김
 
   @override
   void initState() {
@@ -74,7 +75,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
   @override
   void dispose() {
-    _lillianController.dispose(); // 메모리 누수 방지용 수거 시발!
+    _lillianController.dispose(); // 메모리 누수 방지용
     super.dispose();
   }
 
@@ -85,6 +86,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
     setState(() {
       _isDialogueActive = false; // 대화창 끄기
+      _isLillianVisible = true; // 대화가 끝났으니 이제부터 릴리안 등장
       _isLillianWalking = true; // 릴리안 걷기 상태 돌입
 
       // 채온이 앞 120px 지점까지 걸어오도록 타겟 설정
@@ -102,22 +104,27 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     double rH(double px) => (px / 402) * h;
 
     // 실시간 카메라 스크롤 값 계산
+    // camera.viewfinder.position은 "뷰포트 중앙에 오는 월드 좌표"이므로
+    // 화면 좌측 기준 좌표로 바꾸려면 뷰포트 절반 너비를 다시 더해줘야 함
     double cameraX = _game.camera.isMounted
         ? _game.camera.viewfinder.position.x
         : 0.0;
+    double viewportHalfWidth = _game.camera.isMounted
+        ? _game.camera.viewport.size.x / 2
+        : 0.0;
 
-    // 1️채온이 렌더링 좌표 계산
+    // 채온이 렌더링 좌표 계산
     double chaeonX = (_game.chaeon != null && _game.chaeon!.isMounted)
         ? _game.chaeon!.position.x
         : 0.0;
-    double renderChaeonX = chaeonX - cameraX;
+    double renderChaeonX = chaeonX - cameraX + viewportHalfWidth;
 
-    // 2️릴리안 렌더링 좌표 계산
+    // 릴리안 렌더링 좌표 계산
     double currentLillianX = Tween<double>(
       begin: _lillianStartX,
       end: _lillianTargetX,
     ).evaluate(_lillianController);
-    double renderLillianX = currentLillianX - cameraX;
+    double renderLillianX = currentLillianX - cameraX + viewportHalfWidth;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -150,8 +157,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     flipX: !_isChaeonFacingRight,
                     child: Image.asset(
                       _chaeonState == 'walk'
-                          ? 'assets/images/chaeon_walk.gif'
-                          : 'assets/images/chaeon_idle.gif',
+                          ? 'assets/images/chaeon_walk_right.gif'
+                          : 'assets/images/chaeon_idle_right.gif',
                       width: rW(75),
                       height: rH(75),
                       fit: BoxFit.contain,
@@ -160,7 +167,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 ),
 
               // 3층:릴리안 GIF
-              if (!widget.isPrologue)
+              if (!widget.isPrologue && _isLillianVisible)
                 Positioned(
                   left: renderLillianX,
                   top: rH(265), // 채온이랑 발 높이 일치
