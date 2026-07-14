@@ -1,4 +1,5 @@
 import 'package:flame/components.dart';
+import 'dart:ui';
 
 class Chaeon extends SpriteComponent with HasGameRef {
   double speed = 250.0; // 캐릭터 이동 속도
@@ -21,8 +22,11 @@ class Chaeon extends SpriteComponent with HasGameRef {
     anchor = Anchor.bottomCenter;
 
     // 시작 위치 (바닥 쯤)
-    position = Vector2(100, (320 / 402) * gameRef.size.y); // 화면 비율에 맞춰 Y 좌표 조정
+    position = Vector2(100, 320);
   }
+
+  @override
+  void render(Canvas canvas) {}
 
   @override
   void update(double dt) {

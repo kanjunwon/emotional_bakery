@@ -2,13 +2,13 @@
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flame/experimental.dart';
-import 'package:flutter/material.dart';
+import 'package:flame/camera.dart';
 import 'package:emotional_bakery/features/chapter1/chaeon.dart';
 
 class BakeryGame extends FlameGame {
   Chaeon? chaeon;
   final double mapWidth = 1852; // 배경 이미지 가로 길이
+  final double mapHeight = 402; // 배경 이미지 세로 길이
 
   // 가상 패드가 플레이어 이동을 막게 제어할 수 있는 상태 변수
   bool isMovementBlocked = false;
@@ -20,6 +20,12 @@ class BakeryGame extends FlameGame {
   Function(List<String>)? onShowDialogue;
   Function()? onGameUpdate;
 
+  // 게임 내부 좌표계(카메라)를 874x402로 고정
+  BakeryGame()
+    : super(
+        camera: CameraComponent.withFixedResolution(width: 874, height: 402),
+      );
+
   @override
   Future<void> onLoad() async {
     super.onLoad();
@@ -28,30 +34,39 @@ class BakeryGame extends FlameGame {
     final bgSprite = await loadSprite('bakery_bg_main.png');
     final background = SpriteComponent(
       sprite: bgSprite,
-      size: Vector2(mapWidth, size.y),
+      size: Vector2(mapWidth, mapHeight),
     );
-    add(background);
+    world.add(background);
 
     /*
     lillian = Lillian();
     lillian.position = Vector2(1200, 320);
-    add(lillian);
+    world.add(lillian);
     */
 
     // 채온 레이어
     chaeon = Chaeon(mapWidth: mapWidth);
-    add(chaeon!);
+    world.add(chaeon!);
 
     // 카메라 추적 설정
-    camera.follow(chaeon!);
-
-    // 카메라 이동 한계선 설정
-    camera.setBounds(Rectangle.fromLTWH(0, 0, mapWidth, size.y));
+    camera.viewfinder.anchor = Anchor.center;
+    camera.viewfinder.position = Vector2(
+      437,
+      mapHeight / 2,
+    ); // 시작 위치 (화면 절반너비, 세로 정중앙)
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+
+    if (chaeon != null && chaeon!.isMounted) {
+      double halfViewWidth = 874 / 2; // 카메라 고정 해상도(874)의 절반
+      camera.viewfinder.position.x = chaeon!.position.x.clamp(
+        halfViewWidth,
+        mapWidth - halfViewWidth,
+      );
+    }
 
     if (chaeon != null &&
         !_hasTriggeredGuide &&

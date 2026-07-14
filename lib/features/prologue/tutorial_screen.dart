@@ -205,76 +205,74 @@ class _TutorialScreenState extends State<TutorialScreen> {
               ),
 
               // 2층: 가상 패드 및 유동 대사창 UI 레이어
-              // 하단 가상 패드 (방향키 컨트롤러) 구역
+              // 왼쪽 이동 버튼
               Positioned(
-                right: rW(20),
+                left: rW(650),
                 bottom: rH(20),
-                child: Row(
-                  children: [
-                    // 왼쪽 이동 버튼
-                    _buildDpadButton(
-                      imagePath: 'assets/images/btn_left.png',
-                      onTapDown: () {
-                        if (_tutorialStep == 2 && _interactionText == null) {
-                          _moveTimer?.cancel();
+                child: _buildDpadButton(
+                  imagePath: 'assets/images/btn_left.png',
+                  onTapDown: () {
+                    if (_tutorialStep == 2 && _interactionText == null) {
+                      _moveTimer?.cancel();
+                      setState(() {
+                        _currentAction = 'walk';
+                        _isLookingLeft = true;
+                      });
+                      _moveTimer = Timer.periodic(
+                        const Duration(milliseconds: 40),
+                        (timer) {
                           setState(() {
-                            _currentAction = 'walk';
-                            _isLookingLeft = true;
+                            if (_playerX > rW(30)) _playerX -= rW(12);
                           });
-                          _moveTimer = Timer.periodic(
-                            const Duration(milliseconds: 40),
-                            (timer) {
-                              setState(() {
-                                if (_playerX > rW(30)) _playerX -= rW(12);
-                              });
-                            },
-                          );
-                        }
-                      },
-                      onTapUp: () {
-                        _moveTimer?.cancel();
-                        setState(() {
-                          _currentAction = 'idle';
-                          _isLookingLeft = true;
-                        });
-                      },
-                      rW: rW,
-                      rH: rH,
-                    ),
-                    SizedBox(width: rW(15)),
-                    // 오른쪽 이동 버튼
-                    _buildDpadButton(
-                      imagePath: 'assets/images/btn_right.png',
-                      onTapDown: () {
-                        if (_tutorialStep == 2 && _interactionText == null) {
-                          _moveTimer?.cancel();
+                        },
+                      );
+                    }
+                  },
+                  onTapUp: () {
+                    _moveTimer?.cancel();
+                    setState(() {
+                      _currentAction = 'idle';
+                      _isLookingLeft = true;
+                    });
+                  },
+                  rW: rW,
+                  rH: rH,
+                ),
+              ),
+
+              // 오른쪽 이동 버튼
+              Positioned(
+                left: rW(730),
+                bottom: rH(20),
+                child: _buildDpadButton(
+                  imagePath: 'assets/images/btn_right.png',
+                  onTapDown: () {
+                    if (_tutorialStep == 2 && _interactionText == null) {
+                      _moveTimer?.cancel();
+                      setState(() {
+                        _currentAction = 'walk';
+                        _isLookingLeft = false;
+                      });
+                      _moveTimer = Timer.periodic(
+                        const Duration(milliseconds: 40),
+                        (timer) {
                           setState(() {
-                            _currentAction = 'walk';
-                            _isLookingLeft = false;
+                            if (_playerX < rW(_mapWidth - 100))
+                              _playerX += rW(12);
                           });
-                          _moveTimer = Timer.periodic(
-                            const Duration(milliseconds: 40),
-                            (timer) {
-                              setState(() {
-                                if (_playerX < rW(_mapWidth - 100))
-                                  _playerX += rW(12);
-                              });
-                            },
-                          );
-                        }
-                      },
-                      onTapUp: () {
-                        _moveTimer?.cancel();
-                        // 손을 떼면 idle 상태로 돌아가되 오른쪽 방향 유지
-                        setState(() {
-                          _currentAction = 'idle';
-                          _isLookingLeft = false;
-                        });
-                      },
-                      rW: rW,
-                      rH: rH,
-                    ),
-                  ],
+                        },
+                      );
+                    }
+                  },
+                  onTapUp: () {
+                    _moveTimer?.cancel();
+                    setState(() {
+                      _currentAction = 'idle';
+                      _isLookingLeft = false;
+                    });
+                  },
+                  rW: rW,
+                  rH: rH,
                 ),
               ),
 

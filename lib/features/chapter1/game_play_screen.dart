@@ -109,22 +109,24 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     double cameraX = _game.camera.isMounted
         ? _game.camera.viewfinder.position.x
         : 0.0;
-    double viewportHalfWidth = _game.camera.isMounted
-        ? _game.camera.viewport.size.x / 2
-        : 0.0;
+
+    // 카메라가 이제 마스터 해상도 고정 좌표계를 쓰므로, 화면 절반은 항상 874/2로 고정
+    const double masterHalfWidth = 437.0;
 
     // 채온이 렌더링 좌표 계산
     double chaeonX = (_game.chaeon != null && _game.chaeon!.isMounted)
         ? _game.chaeon!.position.x
         : 0.0;
-    double renderChaeonX = chaeonX - cameraX + viewportHalfWidth;
+
+    // 마스터 좌표계 오프셋을 계산한 뒤, rW로 실제 화면 픽셀로 변환
+    double renderChaeonX = rW(chaeonX - cameraX + masterHalfWidth);
 
     // 릴리안 렌더링 좌표 계산
     double currentLillianX = Tween<double>(
       begin: _lillianStartX,
       end: _lillianTargetX,
     ).evaluate(_lillianController);
-    double renderLillianX = currentLillianX - cameraX + viewportHalfWidth;
+    double renderLillianX = rW(currentLillianX - cameraX + masterHalfWidth);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -134,16 +136,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
           child: Stack(
             children: [
               // 1층: 게임 엔진 구역
-              GameWidget(
-                game: _game,
-                overlayBuilderMap: {
-                  'dialogue': (BuildContext context, BakeryGame game) {
-                    return DialogueOverlay(game: game);
+              Positioned.fill(
+                child: GameWidget(
+                  game: _game,
+                  overlayBuilderMap: {
+                    'dialogue': (BuildContext context, BakeryGame game) {
+                      return DialogueOverlay(game: game);
+                    },
                   },
-                },
-                initialActiveOverlays: widget.isPrologue
-                    ? const ['dialogue']
-                    : const [],
+                  initialActiveOverlays: widget.isPrologue
+                      ? const ['dialogue']
+                      : const [],
+                ),
               ),
 
               // 2층: 채온 GIF
@@ -172,7 +176,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   left: renderLillianX,
                   top: rH(265), // 채온이랑 발 높이 일치
                   child: Transform.flip(
-                    flipX: false, // 필요시 true로 반전
+                    flipX: _isLillianWalking, // 반전
                     child: Image.asset(
                       _isLillianWalking
                           ? 'assets/images/lillian_walk.gif'
@@ -190,20 +194,20 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   left: rW(20),
                   top: rH(15),
                   child: Image.asset(
-                    'assets/images/temp_bar.png',
+                    'assets/images/main_thermometer_ex.png',
                     width: rW(380),
                     fit: BoxFit.contain,
                   ),
                 ),
                 Positioned(
-                  right: rW(20),
+                  left: rW(650),
                   top: rH(15),
                   child: Row(
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Image.asset(
-                          'assets/images/back_btn.png',
+                          'assets/images/main_back_btn.png',
                           width: rW(45),
                           height: rH(45),
                           fit: BoxFit.contain,
@@ -213,7 +217,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                       GestureDetector(
                         onTap: () => print("옵션 클릭!"),
                         child: Image.asset(
-                          'assets/images/option_btn.png',
+                          'assets/images/main_setting_btn.png',
                           width: rW(45),
                           height: rH(45),
                           fit: BoxFit.contain,
