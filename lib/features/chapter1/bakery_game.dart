@@ -45,4 +45,12 @@ class BakeryGame extends FlameGame {
   void movePlayer(int direction) {
     chaeon.moveDirection = direction;
   }
+
+  // 전역 대화창 제어 함수
+  void showDialogue(List<String> textLines) {
+    // 나중에 플레임 오버레이(DialogueOverlay)나 구현한 글로벌 대화창 위젯에 textLines(대사 리스트)를 꽂아주는 로직
+    print("게임 엔진에서 대사 완료: ${textLines.first}");
+
+    // ex) overlays.add('dialogue'); -> 오버레이 키는 플레임 내장 함수
+  }
 }
