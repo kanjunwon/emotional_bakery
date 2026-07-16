@@ -64,7 +64,7 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
         setState(() {
           // 마지막 대사인 경우 오버레이를 닫고 인게임 진입
           if (_currentIndex >= _prologueData.length - 1) {
-            // 챕터 선택 스크린으로 결과값 true, 게임 화면을 닫고 복귀함
+            // 챕터 선택 스크린으로 결과값 true, 게임 화면 닫고 복귀
             Navigator.pop(context, true);
           } else {
             _currentIndex++;

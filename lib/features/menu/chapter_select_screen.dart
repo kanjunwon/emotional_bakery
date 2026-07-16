@@ -120,7 +120,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
             ),
           ),
 
-          // 3. 하단 스크롤 진행 바
+          // 하단 스크롤 진행 바
           Positioned(
             bottom: rH(30),
             left: rW(100),

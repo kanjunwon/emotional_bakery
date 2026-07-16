@@ -26,7 +26,7 @@ class _ChoiceScreenState extends State<ChoiceScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. 배경 이미지
+          // 배경 이미지
           Image.asset('assets/images/main_bg.png', fit: BoxFit.cover),
 
           Positioned(
@@ -39,7 +39,7 @@ class _ChoiceScreenState extends State<ChoiceScreen> {
             ),
           ),
 
-          // 3. 시작하기 버튼
+          // 시작하기 버튼
           Positioned(
             left: rW(100), // X축 위치
             top: rH(195), // Y축 위치
@@ -61,7 +61,7 @@ class _ChoiceScreenState extends State<ChoiceScreen> {
             ),
           ),
 
-          // 4. 이어하기 버튼
+          // 이어하기 버튼
           Positioned(
             left: rW(100), // X축 위치
             top: rH(261), // Y축 위치
@@ -76,7 +76,7 @@ class _ChoiceScreenState extends State<ChoiceScreen> {
             ),
           ),
 
-          // 5. 게임 설정 버튼
+          // 게임 설정 버튼
           Positioned(
             left: rW(100), // X축 위치
             top: rH(327), // Y축 위치
@@ -104,7 +104,6 @@ class _ChoiceScreenState extends State<ChoiceScreen> {
     required Function rW,
     required Function rH,
   }) {
-    // 현재 이 버튼이 눌린 상태인가?
     bool isPressed = (_pressedIndex == index);
 
     return Padding(

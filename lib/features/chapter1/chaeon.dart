@@ -2,7 +2,7 @@ import 'package:flame/components.dart';
 import 'dart:ui';
 
 class Chaeon extends SpriteComponent with HasGameRef {
-  double speed = 250.0; // 캐릭터 이동 속도
+  double speed = 225; // 캐릭터 이동 속도 (튜토리얼과 동일하게 통일)
   int moveDirection = 0; // -1: 왼쪽, 0: 정지, 1: 오른쪽
   final double mapWidth; // 맵 전체 가로 길이 한계선
 
@@ -11,18 +11,17 @@ class Chaeon extends SpriteComponent with HasGameRef {
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    // 채온 이미지 (실제 화면상의 GIF 표현은 game_play_screen.dart의 오버레이 레이어가 담당하므로
-    // 여기서는 카메라 추적/충돌용 위치 앵커로만 쓰이는 정적 이미지를 로드)
+    // 채온 이미지 (실제 GIF는 game_play_screen 오버레이가 담당, 여기선 위치 앵커용 정적 이미지만 로드)
     sprite = await gameRef.loadSprite('chaeon_idle_right.gif');
 
-    // 스크린샷 비율 보고 대충 크기 맞춤 (피그마 크기 확인 필요)
-    size = Vector2(70, 110);
+    // 캐릭터 크기 설정
+    size = Vector2(172, 172);
 
     // 캐릭터의 기준점 발바닥 중앙 잡기
     anchor = Anchor.bottomCenter;
 
-    // 시작 위치 (바닥 쯤)
-    position = Vector2(100, 320);
+    // 시작 위치
+    position = Vector2(10, 350);
   }
 
   @override

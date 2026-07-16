@@ -32,8 +32,29 @@ flutter:
     - assets/images/
     - assets/sounds/
     - assets/data/
+    - assets/data/chapter1/
+    - assets/lines/
+    - assets/lines/chapter1/
+    - assets/lines/chapter2/
 
-#  fonts:
-#    - family: 머시기 머시기
-#     fonts:
-#       - asset: assets/fonts/머시기.ttf
+  fonts:
+    - family: SCDream
+      fonts:
+        - asset: assets/fonts/SCDream1.otf
+          weight: 100
+        - asset: assets/fonts/SCDream2.otf
+          weight: 200
+        - asset: assets/fonts/SCDream3.otf
+          weight: 300
+        - asset: assets/fonts/SCDream4.otf
+          weight: 400
+        - asset: assets/fonts/SCDream5.otf
+          weight: 500
+        - asset: assets/fonts/SCDream6.otf
+          weight: 600
+        - asset: assets/fonts/SCDream7.otf
+          weight: 700
+        - asset: assets/fonts/SCDream8.otf
+          weight: 800
+        - asset: assets/fonts/SCDream9.otf
+          weight: 900

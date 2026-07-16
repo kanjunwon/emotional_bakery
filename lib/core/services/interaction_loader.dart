@@ -11,11 +11,9 @@ class InteractionLoader {
   ) async {
     String jsonPath = '';
 
-    // 배경 이미지 이름에 따라 읽어올 JSON 파일을 매핑함
+    // 배경 이미지 이름에 따라 읽어올 JSON 파일을 매핑
     if (bgAssetName == 'bakery_bg_main.png') {
-      jsonPath = 'assets/data/chapter1_bakery_inside.json';
-    } else if (bgAssetName == 'bakery_outside.png') {
-      jsonPath = 'assets/data/chapter1_bakery_outside.json';
+      jsonPath = 'assets/data/chapter1/chapter1_bakery.json';
     } else {
       return []; // 예외 처리
     }
@@ -24,7 +22,7 @@ class InteractionLoader {
       final String response = await rootBundle.loadString(jsonPath);
       final List<dynamic> data = json.decode(response);
 
-      // JSON 배열을 Dart 객체 리스트로 세련되게 파싱해서 반환
+      // JSON 배열을 Dart 객체 리스트로 파싱해서 반환
       return data.map((obj) => InteractionObject.fromJson(obj)).toList();
     } catch (e) {
       print("JSON 로드 에러: $e");

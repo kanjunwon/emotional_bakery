@@ -1,0 +1,118 @@
+// lib/core/models/dialogue_node.dart
+// 채온-릴리안 대화 그래프(JSON) 파싱 모델
+
+import 'package:flutter/material.dart';
+
+// 대사 하나, 색/굵기 다른 구간 섞인 텍스트 표현용
+class DialogueSpan {
+  final String text;
+  final Color? color;
+  final bool bold;
+
+  DialogueSpan({required this.text, this.color, this.bold = false});
+}
+
+// choice 노드의 선택지 하나
+class DialogueOption {
+  final String text;
+  final String next;
+
+  DialogueOption({required this.text, required this.next});
+}
+
+// 그래프의 노드 하나 (대사 한 줄 또는 분기 선택지)
+class DialogueNode {
+  final String id;
+  final String type; // 'line' | 'choice'
+  final String? speaker; // 'chaeon' | 'lillian' (type == 'line'일 때만)
+  final List<DialogueSpan> spans; // type == 'line'일 때만
+  final int temperatureEffect; // type == 'line'일 때만
+  final String? next; // type == 'line'일 때만. null이면 대화 종료
+  final List<DialogueOption> options; // type == 'choice'일 때만
+
+  DialogueNode({
+    required this.id,
+    required this.type,
+    this.speaker,
+    this.spans = const [],
+    this.temperatureEffect = 0,
+    this.next,
+    this.options = const [],
+  });
+
+  factory DialogueNode.fromJson(String id, Map<String, dynamic> json) {
+    final String type = json['type'] as String;
+
+    if (type == 'choice') {
+      final optionsJson = json['options'] as List<dynamic>;
+      return DialogueNode(
+        id: id,
+        type: type,
+        options: optionsJson
+            .map(
+              (o) => DialogueOption(
+                text: o['text'] as String,
+                next: o['next'] as String,
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    // text는 일반 문자열이거나, {text, color, bold} 배열(리치 텍스트)일 수 있음
+    final List<DialogueSpan> spans = [];
+    final rawText = json['text'];
+    if (rawText is String) {
+      spans.add(DialogueSpan(text: rawText));
+    } else if (rawText is List) {
+      for (final part in rawText) {
+        final map = part as Map<String, dynamic>;
+        Color? color;
+        final colorHex = map['color'] as String?;
+        if (colorHex != null) {
+          final hex = colorHex.replaceFirst('#', '');
+          color = Color(int.parse('FF$hex', radix: 16));
+        }
+        spans.add(
+          DialogueSpan(
+            text: map['text'] as String,
+            color: color,
+            bold: map['bold'] == true,
+          ),
+        );
+      }
+    }
+
+    int temperatureEffect = 0;
+    final effect = json['effect'];
+    if (effect is Map && effect['temperature'] != null) {
+      temperatureEffect = (effect['temperature'] as num).toInt();
+    }
+
+    // "다음 대사 없음"을 문자열 null로 적어둔 경우
+    String? next = json['next'] as String?;
+    if (next == 'null') next = null;
+
+    return DialogueNode(
+      id: id,
+      type: type,
+      speaker: json['speaker'] as String?,
+      spans: spans,
+      temperatureEffect: temperatureEffect,
+      next: next,
+    );
+  }
+}
+
+// 대화 그래프 전체 (시작 노드 + 노드 맵)
+class DialogueGraph {
+  final String dialogueId;
+  final String start;
+  final Map<String, DialogueNode> nodes;
+
+  DialogueGraph({
+    required this.dialogueId,
+    required this.start,
+    required this.nodes,
+  });
+}
