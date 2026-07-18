@@ -26,35 +26,70 @@ class _HouseZone {
 
 const List<_HouseZone> _houseZones = [
   _HouseZone(
-    left: 50,
-    top: 60,
-    width: 120,
-    height: 240,
+    left: 0,
+    top: 0,
+    width: 110,
+    height: 295,
     dialogue: "클로에의 집이다.\n지금은 아무도 없는 거 같다.",
   ),
   _HouseZone(
-    left: 200,
-    top: 60,
-    width: 120,
-    height: 240,
+    left: 120,
+    top: 0,
+    width: 198,
+    height: 295,
     dialogue: "피터의 집이다.\n예전에 한 번 들어가 본 적이 있다.",
   ),
   _HouseZone(
-    left: 400,
-    top: 80,
-    width: 140,
-    height: 220,
+    left: 325,
+    top: 0,
+    width: 281,
+    height: 295,
     dialogue: "소피아의 집이다.\n소피아는 나에게 항상 친절하다.",
   ),
   _HouseZone(
-    left: 600,
-    top: 50,
-    width: 110,
-    height: 250,
+    left: 615,
+    top: 0,
+    width: 279,
+    height: 295,
     dialogue: "알렉스 씨의 집이다.\n들어가면 혼날 거 같다.",
   ),
+  _HouseZone(
+    left: 903,
+    top: 0,
+    width: 195,
+    height: 295,
+    dialogue: "간 씨의 집이다.\n들어가면 혼날 거 같다.",
+  ),
+  _HouseZone(
+    left: 1107,
+    top: 0,
+    width: 280,
+    height: 295,
+    dialogue: "오 씨의 집이다.\n들어가면 혼날 거 같다.",
+  ),
+  _HouseZone(
+    left: 1407,
+    top: 183,
+    width: 49,
+    height: 114,
+    dialogue: "잘 키운 식물이다.\n가까이 가면 풀 냄새가 난다.",
+  ),
+  _HouseZone(
+    left: 1758,
+    top: 226,
+    width: 62,
+    height: 71,
+    dialogue: "카페 메뉴판이다.\n오늘의 추천 빵은 크루와상이다.",
+  ),
+  _HouseZone(
+    left: 1842,
+    top: 0,
+    width: 113,
+    height: 556,
+    dialogue: "이곳에는 누가 사는거지?",
+  ),
   // 우측 목적지 (빛나는 빵집 건물), 메인 거리 끝자락
-  _HouseZone(left: 850, top: 40, width: 220, height: 260, isDestination: true),
+  _HouseZone(left: 1456, top: 0, width: 302, height: 295, isDestination: true),
 ];
 
 class TutorialScreen extends StatefulWidget {
@@ -78,8 +113,7 @@ class TutorialScreen extends StatefulWidget {
 class _TutorialScreenState extends State<TutorialScreen> {
   late int _tutorialStep = widget.initialStep;
 
-  // 월드 맵 전체 가로 길이 (전체 단일 이미지 가로 스케일 기준)
-  final double _mapWidth = 1352;
+  final double _mapWidth = 1955;
   double _playerX = 150; // 캐릭터 시작 위치 (뒷골목 구역)
   bool _isPlayerInitialized = false;
   String? _interactionText;
@@ -143,7 +177,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       left: 0,
                       bottom: 0,
                       width: zW(_mapWidth),
-                      height: rH(699),
+                      height: rH(661),
                       child: Image.asset(
                         'assets/images/tutorial_bg_full.png',
                         fit: BoxFit.fill,
@@ -300,8 +334,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                               const TextSpan(
                                 text: "클릭할 시, 정보를 얻을 수 있습니다.",
                                 style: TextStyle(
-                                  color: Color(0xFFD2691E),
-                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFFF7100),
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ]
@@ -347,28 +381,34 @@ class _TutorialScreenState extends State<TutorialScreen> {
       top: rH(zone.top),
       width: zW(zone.width),
       height: rH(zone.height),
-      child: GestureDetector(
-        onTapDown: (_) {
-          if (_interactionText != null) {
-            setState(() => _interactionText = null);
-          } else if (_tutorialStep == 2) {
-            if (zone.isDestination) {
-              if (_playerX >= zW(950)) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const GamePlayScreen(),
-                  ),
-                );
+      child: IgnorePointer(
+        ignoring: _tutorialStep < 2,
+        child: GestureDetector(
+          onTapDown: (_) {
+            if (_interactionText != null) {
+              setState(() => _interactionText = null);
+            } else if (_tutorialStep == 2) {
+              if (zone.isDestination) {
+                // 빵집 문 근처에서만 다음 화면으로 넘어가도록 체크
+                final bool isNearDoor =
+                    _playerX >= zW(1380) && _playerX <= zW(1680);
+                if (isNearDoor) {
+                  Navigator.pushReplacement(
+                    context,
+                    fadeThroughBlackRoute(const GamePlayScreen()),
+                  );
+                } else {
+                  setState(
+                    () => _interactionText = "아직 빵집에 들어가기엔\n거리가 먼 거 같다.",
+                  );
+                }
               } else {
-                setState(() => _interactionText = "아직 빵집에 들어가기엔\n거리가 먼 거 같다.");
+                setState(() => _interactionText = zone.dialogue);
               }
-            } else {
-              setState(() => _interactionText = zone.dialogue);
             }
-          }
-        },
-        child: Container(color: Colors.transparent),
+          },
+          child: Container(color: Colors.transparent),
+        ),
       ),
     );
   }

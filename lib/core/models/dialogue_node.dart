@@ -8,8 +8,9 @@ class DialogueSpan {
   final String text;
   final Color? color;
   final bool bold;
+  final double? size;
 
-  DialogueSpan({required this.text, this.color, this.bold = false});
+  DialogueSpan({required this.text, this.color, this.bold = false, this.size});
 }
 
 // choice 노드의 선택지 하나
@@ -29,6 +30,7 @@ class DialogueNode {
   final int temperatureEffect; // type == 'line'일 때만
   final String? next; // type == 'line'일 때만. null이면 대화 종료
   final List<DialogueOption> options; // type == 'choice'일 때만
+  final String? animation; // type == 'line'일 때만. 캐릭터 모션 트리거용 (예: "lillian_hop")
 
   DialogueNode({
     required this.id,
@@ -38,6 +40,7 @@ class DialogueNode {
     this.temperatureEffect = 0,
     this.next,
     this.options = const [],
+    this.animation,
   });
 
   factory DialogueNode.fromJson(String id, Map<String, dynamic> json) {
@@ -78,6 +81,7 @@ class DialogueNode {
             text: map['text'] as String,
             color: color,
             bold: map['bold'] == true,
+            size: (map['size'] as num?)?.toDouble(),
           ),
         );
       }
@@ -100,6 +104,7 @@ class DialogueNode {
       spans: spans,
       temperatureEffect: temperatureEffect,
       next: next,
+      animation: json['animation'] as String?,
     );
   }
 }

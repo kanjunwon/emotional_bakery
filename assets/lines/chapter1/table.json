@@ -71,7 +71,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": [
-        { "text": "!", "color": "#FF0509", "bold": true, "size": 20 },
+        { "text": "!", "color": "#FF0509", "bold": true, "size": 18 },
         { "text": "한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." }
       ],
       "next": "line_004a2"

@@ -5,7 +5,8 @@
     "line_001": {
       "type": "line",
       "speaker": "lillian",
-      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 20 }],
+      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 18 }],
+      "animation": "lillian_hop",
       "next": "line_002"
     },
     "line_002": {
@@ -167,7 +168,8 @@
     "line_015": {
       "type": "line",
       "speaker": "chaeon",
-      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 20 }],
+      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 18 }],
+      "animation": "chaeon_hop",
       "next": "line_016"
     },
     "line_016": {
@@ -186,11 +188,11 @@
       "type": "choice",
       "options": [
         {
-          "text": "네...",
+          "text": "아...",
           "next": "line_018a"
         },
         {
-          "text": "아...",
+          "text": "네...",
           "next": "line_018b"
         }
       ]
@@ -198,27 +200,27 @@
     "line_018a": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "네... 그럼 안녕히...",
+      "text": "아... 나가면 되잖아요. 왜 화를 내세요.",
+      "effect": { "temperature": -1 },
       "next": "line_018a1"
     },
     "line_018a1": {
       "type": "line",
       "speaker": "lillian",
-      "text": "에이 농담이에요~",
-      "effect": { "temperature": 1 },
+      "text": "자,잠깐! 장난이에요. 장난!",
       "next": "line_019"
     },
     "line_018b": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "아... 나가면 되잖아요. 왜 화를 내세요.",
-      "effect": { "temperature": -1 },
+      "text": "네... 그럼 안녕히...",
       "next": "line_018b1"
     },
     "line_018b1": {
       "type": "line",
       "speaker": "lillian",
-      "text": "자,잠깐! 장난이에요. 장난!",
+      "text": "에이 농담이에요~",
+      "effect": { "temperature": 1 },
       "next": "line_019"
     },
     "line_019": {
@@ -266,7 +268,7 @@
     "line_025": {
       "type": "line",
       "speaker": "lillian",
-      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 20 }],
+      "text": [{ "text": "!", "color": "#FF0509", "bold": true, "size": 18 }],
       "next": "line_026"
     },
     "line_026": {
@@ -279,17 +281,17 @@
       "type": "line",
       "speaker": "lillian",
       "text": "따끈할 때 먹어볼래요?",
-      "next": "line_028"
+      "next": "choice_004"
     },
     "choice_004": {
       "type": "choice",
       "options": [
         {
-          "text": "정말요...? 먹어도 돼요?",
+          "text": "혹시 마녀이신가요...?",
           "next": "line_029a"
         },
         {
-          "text": "혹시 마녀이신가요...?",
+          "text": "정말요...? 먹어도 돼요?",
           "next": "line_029b"
         }
       ]
@@ -297,87 +299,87 @@
     "line_029a": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "정말요...? 먹어도 돼요?",
-      "effect": { "temperature": 1 },
+      "text": "혹시 마녀이신가요...?",
       "next": "line_029a1"
     },
     "line_029a1": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "그래도 된다면 먹어보고 싶어요...",
+      "speaker": "lillian",
+      "text": "네...?",
       "next": "line_029a2"
     },
     "line_029a2": {
       "type": "line",
+      "speaker": "chaeon",
+      "text": "먹으면 이상한 동물로 변하고 그런...",
+      "effect": { "temperature": -1 },
+      "next": "line_029a3"
+    },
+    "line_029a3": {
+      "type": "line",
       "speaker": "lillian",
-      "text": "그럼요~! 안쪽에 테이블이 있어요~!",
-      "next": "line_30"
+      "text": "에이 저를 뭘로 보시고!",
+      "next": "line_029a4"
+    },
+    "line_029a4": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "속는 셈 치고 한번 먹어봐요~",
+      "next": "line_029a5"
+    },
+    "line_029a5": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "..............",
+      "next": "line_029a6"
+    },
+    "line_029a6": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "아니면 제가 먹어볼게요!",
+      "next": "line_029a7"
+    },
+    "line_029a7": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": [{ "text": "?!", "color": "#FF0509", "bold": true, "size": 18 }],
+      "next": "line_029a8"
+    },
+    "line_029a8": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "저... 저기 괜찮으세요...?",
+      "next": "line_029a9"
+    },
+    "line_029a9": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "어때요? 이제 믿을 수 있겠죠?",
+      "next": "line_029a10"
+    },
+    "line_029a10": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "그,그래요....",
+      "next": "line_030"
     },
     "line_029b": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "혹시 마녀이신가요...?",
+      "text": "정말요...? 먹어도 돼요?",
+      "effect": { "temperature": 1 },
       "next": "line_029b1"
     },
     "line_029b1": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "네...?",
+      "speaker": "chaeon",
+      "text": "그래도 된다면 먹어보고 싶어요...",
       "next": "line_029b2"
     },
     "line_029b2": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "먹으면 이상한 동물로 변하고 그런...",
-      "effect": { "temperature": 1 },
-      "next": "line_029b3"
-    },
-    "line_029b3": {
-      "type": "line",
       "speaker": "lillian",
-      "text": "에이 저를 뭘로 보시고!",
-      "next": "line_029b4"
-    },
-    "line_029b4": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "속는 셈 치고 한번 먹어봐요~",
-      "next": "line_029b5"
-    },
-    "line_029b5": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "..............",
-      "next": "line_029b6"
-    },
-    "line_029b6": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "아니면 제가 먹어볼게요!",
-      "next": "line_029b7"
-    },
-    "line_029b7": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": [{ "text": "?!", "color": "#FF0509", "bold": true, "size": 20 }],
-      "next": "line_029b8"
-    },
-    "line_029b8": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "저... 저기 괜찮으세요...?",
-      "next": "line_029b9"
-    },
-    "line_029b9": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "어때요? 이제 믿을 수 있겠죠?",
-      "next": "line_029b10"
-    },
-    "line_029b10": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그,그래요....",
+      "text": "그럼요~! 안쪽에 테이블이 있어요~!",
       "next": "line_030"
     },
     "line_030": {
