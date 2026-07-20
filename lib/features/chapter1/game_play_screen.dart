@@ -10,6 +10,10 @@ import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
+import 'package:emotional_bakery/features/chapter1/memory_flashback_scene.dart';
+
+// 챕터1 대사 체이닝 진행 단계: first_meet → table → 회상 컷씬 → first_bread
+enum DialoguePhase { none, firstMeet, table, memoryFlashback, firstBread }
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
@@ -59,6 +63,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 첫 만남 대사 종료 후, 채온이가 1200 지점에 도착하면 true. 이때부터 방향키 숨김, 이동 잠금
   bool _isFreeWalkPhase = false;
 
+  // 현재 어느 대사 단계인지: first_meet → table → 회상 컷씬 → first_bread 순으로 변경
+  DialoguePhase _dialoguePhase = DialoguePhase.none;
+
   // 채온-릴리안 첫 만남 대사(line/choice 그래프 순회, 타이핑 효과, 온도 변화) 상태 관리
   late final SceneDialogueController _sceneController;
 
@@ -70,14 +77,30 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
-        // 릴리안-채온 대화가 끝났으니 이제부터 자유롭게 걸을 수 있는 구간으로 전환하고 릴리안 퇴장
-        setState(() {
-          _isFreeWalkPhase = true;
-          _isLillianVisible = false;
-        });
-        // 카메라가 채온이를 따라가도록 복귀
-        _game.lillianArrivalX = null;
-        _game.startCameraCatchUp();
+        switch (_dialoguePhase) {
+          case DialoguePhase.firstMeet:
+            // 릴리안-채온 첫 만남 대화가 끝났으니 자유롭게 걸을 수 있는 구간으로 전환하고 릴리안 퇴장
+            setState(() {
+              _isFreeWalkPhase = true;
+              _isLillianVisible = false;
+              _dialoguePhase = DialoguePhase.none;
+            });
+            // 카메라가 채온이를 따라가도록 복귀
+            _game.lillianArrivalX = null;
+            _game.startCameraCatchUp();
+            break;
+          case DialoguePhase.table:
+            // 자유이동으로 빠지지 않고 곧바로 회상 컷씬(구름 미니게임)으로 전환
+            setState(() => _dialoguePhase = DialoguePhase.memoryFlashback);
+            break;
+          case DialoguePhase.firstBread:
+            // 다음 작업에서 주방 미니게임 화면으로 연결할 예정
+            debugPrint('챕터1 대사 끝, 주방 미니게임 진입 예정');
+            break;
+          case DialoguePhase.none:
+          case DialoguePhase.memoryFlashback:
+            break;
+        }
       },
       onLillianHop: () => _lillianHopController.forward(from: 0),
       onChaeonHop: () => _chaeonHopController.forward(from: 0),
@@ -98,7 +121,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       });
     _lillianStairsController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        setState(() => _isLillianWalking = false); // 도착하면 idle 모션으로 전환
+        setState(() {
+          _isLillianWalking = false; // 도착하면 idle 모션으로 전환
+          _dialoguePhase = DialoguePhase.table;
+        });
+        _sceneController.loadDialogue('assets/lines/chapter1/table.json');
       }
     });
 
@@ -121,10 +148,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         setState(() {
           _isLillianWalking = false;
           _game.isMovementBlocked = false;
+          _dialoguePhase = DialoguePhase.firstMeet;
         });
         // 릴리안 도착 후 첫 만남 대사 시작
-        print("릴리안 도착 완료 조작 잠금 해제");
-        _sceneController.startFirstMeetDialogue();
+        debugPrint("릴리안 도착 완료 조작 잠금 해제");
+        _sceneController.loadDialogue('assets/lines/chapter1/first_meet.json');
       }
     });
 
@@ -210,6 +238,15 @@ class _GamePlayScreenState extends State<GamePlayScreen>
           AssetImage('assets/images/main_dialogue_box_$i.png'),
           context,
         );
+      }
+      // table.json 대사 구간에서 채온이 먹는 GIF를 전체화면 클로즈업으로 보여주므로, 미리 프리캐싱
+      const List<String> tableSceneAssets = [
+        'assets/images/bread_plate.png',
+        'assets/images/chaeon_eating_1.png',
+        'assets/images/chaeon_eating_2.png',
+      ];
+      for (final asset in tableSceneAssets) {
+        precacheImage(AssetImage(asset), context);
       }
     }
   }
@@ -388,6 +425,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         : null;
     final DialogueNode? lastLineNode = _sceneController.lastLineNode;
 
+    // table.json의 먹는 대사 구간에서는 채온 GIF 대신 전체화면 클로즈업을 보여줌
+    final bool isEatingCloseupActive =
+        _dialoguePhase == DialoguePhase.table &&
+        sceneNodeId != null &&
+        widgets.eatingCloseupNodeIds.contains(sceneNodeId);
+
+    // 빵 접시는 채온-릴리안 사이 테이블 위치(추후 피그마 좌표로 미세조정)에 표시
+    double breadPlateWorldX = (chaeonX + currentLillianX) / 2;
+    double breadPlateDisplaySize = rW(60);
+    double renderBreadPlateX =
+        (breadPlateWorldX - cameraX) * zoom - breadPlateDisplaySize / 2;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SizedBox(
@@ -411,29 +460,35 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
             ),
 
-            // 2층: 채온 GIF
+            // 2층: 채온 GIF (table.json 먹는 구간에서는 전체화면 클로즈업으로 대체)
             if (!widget.isPrologue &&
                 _game.chaeon != null &&
                 _game.chaeon!.isMounted)
-              Positioned(
-                key: const ValueKey('chaeon'),
-                left: renderChaeonX,
-                bottom: rH(50), // 튜토리얼 채온이와 동일한 바닥선 기준
-                child: Transform.translate(
-                  offset: Offset(0, _chaeonHopOffset.value),
-                  child: Transform.flip(
-                    flipX: !_isChaeonFacingRight,
-                    child: Image.asset(
-                      _chaeonState == 'walk'
-                          ? 'assets/images/chaeon_walk_right.gif'
-                          : 'assets/images/chaeon_idle_right.gif',
-                      width: chaeonDisplaySize,
-                      height: chaeonDisplaySize,
-                      fit: BoxFit.contain,
+              if (isEatingCloseupActive)
+                Positioned.fill(
+                  key: const ValueKey('chaeon_eating_closeup'),
+                  child: const widgets.EatingCloseupOverlay(),
+                )
+              else
+                Positioned(
+                  key: const ValueKey('chaeon'),
+                  left: renderChaeonX,
+                  bottom: rH(50), // 튜토리얼 채온이와 동일한 바닥선 기준
+                  child: Transform.translate(
+                    offset: Offset(0, _chaeonHopOffset.value),
+                    child: Transform.flip(
+                      flipX: !_isChaeonFacingRight,
+                      child: Image.asset(
+                        _chaeonState == 'walk'
+                            ? 'assets/images/chaeon_walk_right.gif'
+                            : 'assets/images/chaeon_idle_right.gif',
+                        width: chaeonDisplaySize,
+                        height: chaeonDisplaySize,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
             // 3층: 릴리안 GIF
             if (_isLillianVisible)
@@ -455,6 +510,19 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                       fit: BoxFit.contain,
                     ),
                   ),
+                ),
+              ),
+
+            // 3-2층: 빵 접시. table.json 대사가 시작되는 시점부터 테이블 위에 표시
+            if (_dialoguePhase == DialoguePhase.table)
+              Positioned(
+                key: const ValueKey('bread_plate'),
+                left: renderBreadPlateX,
+                bottom: rH(70), // 테이블 높이 추정치, 추후 피그마 좌표로 미세조정
+                child: Image.asset(
+                  'assets/images/bread_plate.png',
+                  width: breadPlateDisplaySize,
+                  fit: BoxFit.contain,
                 ),
               ),
 
@@ -758,6 +826,22 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     ),
                   );
                 },
+              ),
+
+            // 18층: 회상 컷씬(구름 드래그 미니게임 + 놀이공원 연출). 최상단에서 화면을 전부 덮음
+            if (_dialoguePhase == DialoguePhase.memoryFlashback)
+              Positioned.fill(
+                key: const ValueKey('memory_flashback'),
+                child: MemoryFlashbackScene(
+                  onTemperatureIncrease: () =>
+                      _sceneController.applyTemperatureEffect(1),
+                  onComplete: () {
+                    setState(() => _dialoguePhase = DialoguePhase.firstBread);
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter1/first_bread.json',
+                    );
+                  },
+                ),
               ),
           ],
         ),

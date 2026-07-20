@@ -46,11 +46,9 @@ class SceneDialogueController extends ChangeNotifier {
     if (!_isDisposed) notifyListeners();
   }
 
-  // 릴리안이 도착하면 이어서 재생되는 채온-릴리안 말풍선 대화 시작
-  Future<void> startFirstMeetDialogue() async {
-    final graph = await DialogueLoader.loadDialogue(
-      'assets/lines/chapter1/first_meet.json',
-    );
+  // 주어진 경로의 대화 그래프를 불러와서 처음부터 재생 (first_meet/table/first_bread 등 공용)
+  Future<void> loadDialogue(String assetPath) async {
+    final graph = await DialogueLoader.loadDialogue(assetPath);
     if (_isDisposed) return;
     sceneDialogue = graph;
     sceneNodeHistory.clear();
@@ -92,6 +90,14 @@ class SceneDialogueController extends ChangeNotifier {
     } else {
       typedCharCount = 0;
     }
+  }
+
+  // 대사 그래프 밖(예: 회상 컷씬 미니게임)에서 온도 변화를 적용할 때 사용
+  void applyTemperatureEffect(int effect) {
+    if (effect == 0) return;
+    temperature = (temperature + effect).clamp(1, 10).toInt();
+    _showTemperatureChange(effect);
+    _notify();
   }
 
   // 온도 변화 안내 문구를 잠깐 띄웠다가 2초 뒤 자동으로 닫음

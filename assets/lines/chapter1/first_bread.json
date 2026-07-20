@@ -6,7 +6,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": [
-        { "text": "....?!", "color": "#FF0509", "bold": true, "size": 18}
+        { "text": "....?!", "color": "#FF0509", "bold": true, "size": 18 }
       ],
       "next": "line_002"
     },
@@ -40,7 +40,7 @@
     },
     "line_006": {
       "type": "line",
-      "speaker": "chaeon",
+      "speaker": "lillian",
       "text": "그래서 빵을 먹는 순간 그때의 감정이 고스란히 느껴지는 거랍니다.",
       "next": "line_007"
     },

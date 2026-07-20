@@ -1,9 +1,67 @@
 // lib/features/chapter1/game_play_widgets.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
+
+// 채온이 빵 먹는 장면에서 전체화면 클로즈업으로 보여주는 GIF. table.json 대사 구간에서만 표시
+const List<String> eatingCloseupNodeIds = [
+  'line_004a1',
+  'line_004a2',
+  'line_004a3',
+  'line_004b2',
+  'line_004b3',
+];
+
+class EatingCloseupOverlay extends StatefulWidget {
+  const EatingCloseupOverlay({super.key});
+
+  @override
+  State<EatingCloseupOverlay> createState() => _EatingCloseupOverlayState();
+}
+
+class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
+  static const List<String> _frames = [
+    'assets/images/chaeon_eating_1.png',
+    'assets/images/chaeon_eating_2.png',
+  ];
+
+  int _frameIndex = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      setState(() => _frameIndex = (_frameIndex + 1) % _frames.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: Image.asset(
+          _frames[_frameIndex],
+          key: ValueKey(_frames[_frameIndex]),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      ),
+    );
+  }
+}
 
 // main_dialogue_box_1~9.png의 원본 가로 크기(px). 전부 높이는 60으로 고정.
 const List<double> dialogueBoxWidths = [
