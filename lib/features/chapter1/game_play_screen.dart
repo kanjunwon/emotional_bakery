@@ -11,9 +11,17 @@ import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/memory_flashback_scene.dart';
+import 'package:emotional_bakery/features/chapter1/apron_change_scene.dart';
 
-// 챕터1 대사 체이닝 진행 단계: first_meet → table → 회상 컷씬 → first_bread
-enum DialoguePhase { none, firstMeet, table, memoryFlashback, firstBread }
+// 챕터1 대사 체이닝 진행 단계: first_meet → table → 회상 컷씬 → first_bread → 앞치마 갈아입기
+enum DialoguePhase {
+  none,
+  firstMeet,
+  table,
+  memoryFlashback,
+  firstBread,
+  apronChange,
+}
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
@@ -94,11 +102,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             setState(() => _dialoguePhase = DialoguePhase.memoryFlashback);
             break;
           case DialoguePhase.firstBread:
-            // 다음 작업에서 주방 미니게임 화면으로 연결할 예정
-            debugPrint('챕터1 대사 끝, 주방 미니게임 진입 예정');
+            // first_bread.json 종료 후 앞치마 갈아입기 컷씬으로 전환
+            setState(() => _dialoguePhase = DialoguePhase.apronChange);
             break;
           case DialoguePhase.none:
           case DialoguePhase.memoryFlashback:
+          case DialoguePhase.apronChange:
             break;
         }
       },
@@ -242,8 +251,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       // table.json 대사 구간에서 채온이 먹는 GIF를 전체화면 클로즈업으로 보여주므로, 미리 프리캐싱
       const List<String> tableSceneAssets = [
         'assets/images/bread_plate.png',
-        'assets/images/chaeon_eating_1.png',
-        'assets/images/chaeon_eating_2.png',
+        'assets/images/chaeon_laughing.gif',
+        'assets/images/chaeon_laughing.png',
+        'assets/images/chaeon_holding_bread.png',
       ];
       for (final asset in tableSceneAssets) {
         precacheImage(AssetImage(asset), context);
@@ -425,15 +435,30 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         : null;
     final DialogueNode? lastLineNode = _sceneController.lastLineNode;
 
-    // table.json의 먹는 대사 구간에서는 채온 GIF 대신 전체화면 클로즈업을 보여줌
-    final bool isEatingCloseupActive =
+    // table.json의 먹는 대사 구간에서는 채온 GIF 대신 전체화면 클로즈업을 보여줌 (분기별로 다른 에셋)
+    final bool isEatingCloseupActiveA =
         _dialoguePhase == DialoguePhase.table &&
         sceneNodeId != null &&
-        widgets.eatingCloseupNodeIds.contains(sceneNodeId);
+        widgets.eatingCloseupNodeIdsA.contains(sceneNodeId);
+    final bool isEatingCloseupActiveB =
+        _dialoguePhase == DialoguePhase.table &&
+        sceneNodeId != null &&
+        widgets.eatingCloseupNodeIdsB.contains(sceneNodeId);
+    final bool isEatingCloseupActive =
+        isEatingCloseupActiveA || isEatingCloseupActiveB;
 
-    // 빵 접시는 채온-릴리안 사이 테이블 위치(추후 피그마 좌표로 미세조정)에 표시
+    // 먹는 클로즈업 중에는 채온/릴리안 스프라이트가 안 보이므로, 말풍선도 캐릭터의
+    // 월드 좌표 대신 화면 중앙(클로즈업 이미지 기준)에 맞춰 표시
+    final double bubbleChaeonCenterX = isEatingCloseupActive
+        ? w / 2
+        : chaeonCenterX;
+    final double bubbleLillianCenterX = isEatingCloseupActive
+        ? w / 2
+        : lillianCenterX;
+
+    // 빵 접시는 채온-릴리안 사이, 테이블 가로 중앙에 표시 (테이블 상판 바로 위)
     double breadPlateWorldX = (chaeonX + currentLillianX) / 2;
-    double breadPlateDisplaySize = rW(60);
+    double breadPlateDisplaySize = rW(73);
     double renderBreadPlateX =
         (breadPlateWorldX - cameraX) * zoom - breadPlateDisplaySize / 2;
 
@@ -467,7 +492,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               if (isEatingCloseupActive)
                 Positioned.fill(
                   key: const ValueKey('chaeon_eating_closeup'),
-                  child: const widgets.EatingCloseupOverlay(),
+                  child: widgets.EatingCloseupOverlay(
+                    frames: isEatingCloseupActiveA
+                        ? const [
+                            'assets/images/chaeon_laughing.gif',
+                            'assets/images/chaeon_laughing.png',
+                          ]
+                        : const ['assets/images/chaeon_holding_bread.png'],
+                  ),
                 )
               else
                 Positioned(
@@ -490,8 +522,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   ),
                 ),
 
-            // 3층: 릴리안 GIF
-            if (_isLillianVisible)
+            // 3층: 릴리안 GIF (먹는 클로즈업 중에는 페이드 없이 즉시 숨김)
+            if (_isLillianVisible && !isEatingCloseupActive)
               Positioned(
                 key: const ValueKey('lillian'),
                 left: renderLillianX,
@@ -513,12 +545,13 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 ),
               ),
 
-            // 3-2층: 빵 접시. table.json 대사가 시작되는 시점부터 테이블 위에 표시
-            if (_dialoguePhase == DialoguePhase.table)
+            // 3-2층: 빵 접시. table.json 대사가 시작되는 시점부터 테이블 상판 위에 표시.
+            // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
+            if (_dialoguePhase == DialoguePhase.table && !isEatingCloseupActive)
               Positioned(
                 key: const ValueKey('bread_plate'),
                 left: renderBreadPlateX,
-                bottom: rH(70), // 테이블 높이 추정치, 추후 피그마 좌표로 미세조정
+                bottom: rH(140), // 빵 위치
                 child: Image.asset(
                   'assets/images/bread_plate.png',
                   width: breadPlateDisplaySize,
@@ -526,9 +559,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 ),
               ),
 
-            // 4층: 온도계
+            // 4층: 온도계 (먹는 클로즈업 중에는 페이드 없이 즉시 숨김)
             if (_isGuidePhaseStarted &&
-                !(_isDialogueActive && _dialogueStep == 0))
+                !(_isDialogueActive && _dialogueStep == 0) &&
+                !isEatingCloseupActive)
               widgets.buildThermometer(
                 key: 'thermometer_below',
                 rW: rW,
@@ -694,8 +728,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                         node: currentSceneNode,
                         rW: rW,
                         rH: rH,
-                        chaeonCenterX: chaeonCenterX,
-                        lillianCenterX: lillianCenterX,
+                        chaeonCenterX: bubbleChaeonCenterX,
+                        lillianCenterX: bubbleLillianCenterX,
                         typedCharCount: _sceneController.typedCharCount,
                       ),
                     ],
@@ -714,8 +748,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                         node: lastLineNode,
                         rW: rW,
                         rH: rH,
-                        chaeonCenterX: chaeonCenterX,
-                        lillianCenterX: lillianCenterX,
+                        chaeonCenterX: bubbleChaeonCenterX,
+                        lillianCenterX: bubbleLillianCenterX,
                         typedCharCount: _sceneController.typedCharCount,
                         charCount: lastLineNode.spans.fold<int>(
                           0,
@@ -733,7 +767,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 14층: 뒤로가기 버튼 (가이드 대사/선택지 중엔 4-3층 흐릿한 버튼이 대신 나오므로 여기선 안 그림)
-            if (_isGuidePhaseStarted && !_isDialogueActive)
+            // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
+            if (_isGuidePhaseStarted &&
+                !_isDialogueActive &&
+                !isEatingCloseupActive)
               widgets.buildBackButton(
                 key: 'back_below',
                 rW: rW,
@@ -755,7 +792,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 16층: 설정(옵션) 버튼. 15층 안내 배지보다 위에 있어야 배지가 버튼에 안 가려짐
-            if (_isGuidePhaseStarted && !_isDialogueActive)
+            // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
+            if (_isGuidePhaseStarted &&
+                !_isDialogueActive &&
+                !isEatingCloseupActive)
               widgets.buildSettingButton(
                 key: 'setting',
                 rW: rW,
@@ -840,6 +880,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     _sceneController.loadDialogue(
                       'assets/lines/chapter1/first_bread.json',
                     );
+                  },
+                ),
+              ),
+
+            // 19층: 앞치마 갈아입기 컷씬. 최상단에서 화면을 전부 덮음
+            if (_dialoguePhase == DialoguePhase.apronChange)
+              Positioned.fill(
+                key: const ValueKey('apron_change'),
+                child: ApronChangeScene(
+                  onComplete: () {
+                    // 다음 작업에서 챕터1 종료 트리거로 연결할 예정
+                    debugPrint('앞치마 갈아입기 완료, 챕터1 종료 처리 예정');
                   },
                 ),
               ),
