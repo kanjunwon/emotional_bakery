@@ -40,6 +40,12 @@ class SceneDialogueController extends ChangeNotifier {
   int typedCharCount = 0;
   static const Duration _typingInterval = Duration(milliseconds: 50);
 
+  // 대사 텍스트가 없는 연출용 노드(예: 클로즈업 사이 빈 노드)는 타이핑할 글자가 없어서
+  // 진입하자마자 "다 읽었다"고 판단돼, 연속 탭 한 번에 순식간에 지나쳐버릴 수 있음.
+  // 최소한 화면에 잠깐 머무르도록 진입 후 일정 시간 동안은 탭으로 넘어가지 못하게 막음
+  bool _emptyNodeHoldElapsed = true;
+  static const Duration _emptyNodeMinHold = Duration(milliseconds: 500);
+
   bool _isDisposed = false;
 
   void _notify() {
@@ -116,7 +122,14 @@ class SceneDialogueController extends ChangeNotifier {
   void _startTypingEffect(DialogueNode node) {
     final int fullLength = node.spans.fold(0, (sum, s) => sum + s.text.length);
     typedCharCount = 0;
-    if (fullLength == 0) return;
+    if (fullLength == 0) {
+      _emptyNodeHoldElapsed = false;
+      _typingTimer = Timer(_emptyNodeMinHold, () {
+        _emptyNodeHoldElapsed = true;
+        _notify();
+      });
+      return;
+    }
     _typingTimer = Timer.periodic(_typingInterval, (timer) {
       typedCharCount++;
       if (typedCharCount >= fullLength) {
@@ -166,6 +179,8 @@ class SceneDialogueController extends ChangeNotifier {
       _notify();
       return;
     }
+    // 대사 없는 연출용 노드는 최소 노출 시간이 지나기 전까지 탭으로 못 넘어가게 막음
+    if (fullLength == 0 && !_emptyNodeHoldElapsed) return;
 
     sceneNodeHistory.add(node.id);
     _enterSceneNode(node.next);

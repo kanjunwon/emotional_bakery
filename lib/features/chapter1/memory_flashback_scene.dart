@@ -188,8 +188,17 @@ class _MemoryFlashbackSceneState extends State<MemoryFlashbackScene> {
                         final double hintLeft = w / 2 - hintSize / 2;
                         final double hintTop = rH(40);
                         final double arrowWidth = rW(50);
-                        final double arrowLeft = hintLeft - arrowWidth - rW(10);
-                        final double arrowTop =
+                        final double trailWidth =
+                            arrowWidth +
+                            arrowWidth *
+                                arrowTrailOverlap *
+                                (arrowTrailCount - 1);
+                        // 원 테두리 안쪽에 여백 없이 그림(구름)이 바로 시작하지 않으므로,
+                        // 트레일 오른쪽 끝이 테두리를 살짝 넘어 구름 쪽으로 들어가게 겹쳐서
+                        // 눈으로 봤을 때 완전히 붙어 보이도록 함
+                        final double trailRight = hintLeft + rW(14);
+                        final double trailLeft = trailRight - trailWidth;
+                        final double trailTop =
                             hintTop + hintSize / 2 - arrowWidth / 2;
                         return Stack(
                           children: [
@@ -220,13 +229,9 @@ class _MemoryFlashbackSceneState extends State<MemoryFlashbackScene> {
                               ),
                             ),
                             Positioned(
-                              left: arrowLeft,
-                              top: arrowTop,
-                              child: Image.asset(
-                                'assets/images/cloud_drag_arrow.png',
-                                width: arrowWidth,
-                                fit: BoxFit.contain,
-                              ),
+                              left: trailLeft,
+                              top: trailTop,
+                              child: _ArrowTrail(arrowWidth: arrowWidth),
                             ),
                           ],
                         );
@@ -341,6 +346,93 @@ class _DraggableCloudState extends State<_DraggableCloud> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// _ArrowTrail 크기 계산을 배치하는 쪽(트레일이 몇 개 겹치는지)과 트레일 위젯 내부가
+// 항상 같은 값을 쓰도록 공유하는 상수
+const int arrowTrailCount = 6;
+const double arrowTrailOverlap = 0.4;
+
+// 드래그 방향 힌트: cloud_drag_arrow.png 여러 장을 겹쳐 놓고, 오른쪽(구름과 맞닿는 쪽)은
+// 선명하게 왼쪽으로 갈수록 투명해지는 그라데이션을 씌워 흘러나가는 트레일처럼 보이게 함.
+// 트레일 전체가 살짝 좌우로 흔들리는 반복 애니메이션도 함께 재생
+class _ArrowTrail extends StatefulWidget {
+  const _ArrowTrail({
+    required this.arrowWidth,
+    this.arrowCount = arrowTrailCount,
+  });
+
+  final double arrowWidth;
+  final int arrowCount;
+
+  @override
+  State<_ArrowTrail> createState() => _ArrowTrailState();
+}
+
+class _ArrowTrailState extends State<_ArrowTrail>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _driftController;
+  late final Animation<double> _driftX;
+
+  @override
+  void initState() {
+    super.initState();
+    _driftController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _driftX = Tween<double>(begin: 0, end: -widget.arrowWidth * 0.25).animate(
+      CurvedAnimation(parent: _driftController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _driftController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // cloud_drag_arrow.png가 겹치는 간격만큼씩 왼쪽으로 밀어서 배치
+    final double step = widget.arrowWidth * arrowTrailOverlap;
+    final double totalWidth =
+        widget.arrowWidth + step * (widget.arrowCount - 1);
+
+    final Widget trail = ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.centerRight,
+        end: Alignment.centerLeft,
+        colors: [Colors.white, Colors.transparent],
+      ).createShader(bounds),
+      child: SizedBox(
+        width: totalWidth,
+        height: widget.arrowWidth,
+        child: Stack(
+          children: [
+            for (int i = 0; i < widget.arrowCount; i++)
+              Positioned(
+                left: step * i,
+                top: 0,
+                child: Image.asset(
+                  'assets/images/cloud_drag_arrow.png',
+                  width: widget.arrowWidth,
+                  fit: BoxFit.contain,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    return AnimatedBuilder(
+      animation: _driftX,
+      builder: (context, child) =>
+          Transform.translate(offset: Offset(_driftX.value, 0), child: child),
+      child: trail,
     );
   }
 }

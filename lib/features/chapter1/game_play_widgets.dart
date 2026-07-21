@@ -6,20 +6,21 @@ import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 
-// table.json a분기(먹는 대사, 온도 -1 구간)에서 전체화면 클로즈업으로 보여줄 노드
-const List<String> eatingCloseupNodeIdsA = [
-  'line_004a1',
-  'line_004a2',
-  'line_004a3',
+// table.json a분기(먹는 대사, 온도 -1 구간)에서 전체화면 클로즈업으로 보여줄 노드.
+// line_004a(대사 끝)~line_004a2(다음 대사 시작) 사이, 즉 line_004a1 노드 동안만 보여줌
+const List<String> eatingCloseupNodeIdsA = ['line_004a1'];
+// table.json b분기(먹는 대사, 온도 +1 구간)에서 전체화면 클로즈업으로 보여줄 노드.
+// line_004b2(대사 끝)~line_004b3(다음 대사 시작) 사이에 넣은 빈 대사 노드 동안만 보여줌
+const List<String> eatingCloseupNodeIdsB = ['line_004b_eat'];
+
+// 채온이 빵 먹는 장면에서 전체화면 클로즈업으로 보여주는 이미지. 분기와 상관없이 항상 동일한 2프레임 번갈이
+const List<String> eatingCloseupFrames = [
+  'assets/images/chaeon_eating_1.png',
+  'assets/images/chaeon_eating_2.png',
 ];
-// table.json b분기(먹는 대사, 온도 +1 구간)에서 전체화면 클로즈업으로 보여줄 노드
-const List<String> eatingCloseupNodeIdsB = ['line_004b2', 'line_004b3'];
 
-// 채온이 빵 먹는 장면에서 전체화면 클로즈업으로 보여주는 이미지. frames가 1장이면 정지, 2장 이상이면 번갈이
 class EatingCloseupOverlay extends StatefulWidget {
-  const EatingCloseupOverlay({super.key, required this.frames});
-
-  final List<String> frames;
+  const EatingCloseupOverlay({super.key});
 
   @override
   State<EatingCloseupOverlay> createState() => _EatingCloseupOverlayState();
@@ -32,11 +33,11 @@ class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
   @override
   void initState() {
     super.initState();
-    if (widget.frames.length > 1) {
-      _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-        setState(() => _frameIndex = (_frameIndex + 1) % widget.frames.length);
-      });
-    }
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      setState(
+        () => _frameIndex = (_frameIndex + 1) % eatingCloseupFrames.length,
+      );
+    });
   }
 
   @override
@@ -49,25 +50,17 @@ class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // 캐릭터가 잘리지 않도록 화면 전체가 아닌 세로 75%로 제한해서 가운데 정렬
-          final double boxHeight = constraints.maxHeight * 0.75;
-          return Center(
-            child: SizedBox(
-              width: constraints.maxWidth,
-              height: boxHeight,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 80),
-                child: Image.asset(
-                  widget.frames[_frameIndex],
-                  key: ValueKey(widget.frames[_frameIndex]),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          );
-        },
+      // 게임 화면 전체 크기 기준으로 BoxFit.contain을 적용해서, 잘리지 않는 선에서
+      // 최대한 꽉 차게 보여줌
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 80),
+        child: Image.asset(
+          eatingCloseupFrames[_frameIndex],
+          key: ValueKey(eatingCloseupFrames[_frameIndex]),
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+        ),
       ),
     );
   }

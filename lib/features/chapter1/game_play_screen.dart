@@ -490,16 +490,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 _game.chaeon != null &&
                 _game.chaeon!.isMounted)
               if (isEatingCloseupActive)
-                Positioned.fill(
-                  key: const ValueKey('chaeon_eating_closeup'),
-                  child: widgets.EatingCloseupOverlay(
-                    frames: isEatingCloseupActiveA
-                        ? const [
-                            'assets/images/chaeon_laughing.gif',
-                            'assets/images/chaeon_laughing.png',
-                          ]
-                        : const ['assets/images/chaeon_holding_bread.png'],
-                  ),
+                const Positioned.fill(
+                  key: ValueKey('chaeon_eating_closeup'),
+                  child: widgets.EatingCloseupOverlay(),
                 )
               else
                 Positioned(
@@ -724,14 +717,17 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   onTap: _sceneController.advanceScene,
                   child: Stack(
                     children: [
-                      widgets.buildSceneBubble(
-                        node: currentSceneNode,
-                        rW: rW,
-                        rH: rH,
-                        chaeonCenterX: bubbleChaeonCenterX,
-                        lillianCenterX: bubbleLillianCenterX,
-                        typedCharCount: _sceneController.typedCharCount,
-                      ),
+                      // 대사 텍스트 없는 노드(예: 먹는 클로즈업 사이 빈 노드)는 말풍선 없이
+                      // 탭으로만 다음으로 넘어감
+                      if (currentSceneNode.spans.isNotEmpty)
+                        widgets.buildSceneBubble(
+                          node: currentSceneNode,
+                          rW: rW,
+                          rH: rH,
+                          chaeonCenterX: bubbleChaeonCenterX,
+                          lillianCenterX: bubbleLillianCenterX,
+                          typedCharCount: _sceneController.typedCharCount,
+                        ),
                     ],
                   ),
                 ),

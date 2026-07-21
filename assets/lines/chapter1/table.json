@@ -53,6 +53,11 @@
         { "text": "과하게 먹으면 탈 나요!", "color": "#FF7100" }
       ],
       "effect": { "temperature": 1 },
+      "next": "line_004b_eat"
+    },
+    "line_004b_eat": {
+      "type": "line",
+      "speaker": "chaeon",
       "next": "line_004b3"
     },
     "line_004b3": {
