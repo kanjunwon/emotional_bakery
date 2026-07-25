@@ -545,12 +545,17 @@ class _MemoryFlashbackSceneState extends State<MemoryFlashbackScene>
                       rH: rH,
                     ),
                   ),
-                // 모든 구름을 다 치우면 성공 이미지를 잠깐 띄운 뒤 memory_car_smooth로 전환
+                // 모든 구름을 다 치워서 minigame_success를 띄우는 연출. 이후 memory_car_smooth로 전환
                 if (_showMinigameSuccess)
-                  Center(
+                  Positioned(
+                    left: rW(158),
+                    top: rH(43),
+                    width: rW(557),
+                    height: rH(129),
                     child: Image.asset(
                       'assets/images/minigame_success.png',
-                      width: rW(280),
+                      width: rW(557),
+                      height: rH(129),
                       fit: BoxFit.contain,
                     ),
                   ),

@@ -389,9 +389,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   void _triggerLillianStairsEntrance() {
     const Offset stairsStart = Offset(1800, 180);
     // 릴리안이 계단을 다 올라와서 채온이 앞까지 걸어오면, 그 다음 연출을 트리거
-    const Offset stairsTop = Offset(1632, 163);
+    const Offset stairsTop = Offset(1632, 172);
     final double chaeonX = _game.chaeon?.position.x ?? 1300.0;
-    final Offset walkEnd = Offset(chaeonX + 280, 163); // 채온이 앞 280 거리
+    final Offset walkEnd = Offset(chaeonX + 280, 172); // 채온이 앞 280 거리
 
     final double climbDist = (stairsTop - stairsStart).distance;
     final double walkDist = (walkEnd - stairsTop).distance;
