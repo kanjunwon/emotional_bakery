@@ -7,8 +7,8 @@ import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 
 // table.json a분기(먹는 대사, 온도 -1 구간)에서 전체화면 클로즈업으로 보여줄 노드.
-// line_004a(대사 끝)~line_004a2(다음 대사 시작) 사이, 즉 line_004a1 노드 동안만 보여줌
-const List<String> eatingCloseupNodeIdsA = ['line_004a1'];
+// line_004a1(대사 끝)~line_004a2(다음 대사 시작) 사이에 넣은 빈 대사 노드 동안만 보여줌
+const List<String> eatingCloseupNodeIdsA = ['line_004a1_eat'];
 // table.json b분기(먹는 대사, 온도 +1 구간)에서 전체화면 클로즈업으로 보여줄 노드.
 // line_004b2(대사 끝)~line_004b3(다음 대사 시작) 사이에 넣은 빈 대사 노드 동안만 보여줌
 const List<String> eatingCloseupNodeIdsB = ['line_004b_eat'];
@@ -19,24 +19,44 @@ const List<String> eatingCloseupFrames = [
   'assets/images/chaeon_eating_2.png',
 ];
 
+// first_bread.json 특정 노드에 머무는 동안만 채온이 스프라이트를 잠깐 바꿔주는 매핑.
+// 여기 없는 노드거나 first_bread.json 단계가 아니면 기존 idle/holding_bread 로직을 그대로 씀.
+// 주의: table.json도 line_001/line_002 같은 같은 이름의 노드 ID를 쓰므로, 이 맵은 반드시
+// DialoguePhase.firstBread일 때만 참조해야 함 (game_play_screen.dart 쪽에서 처리)
+const Map<String, String> chaeonSpriteOverrides = {
+  'line_001': 'assets/images/chaeon_emotion_0to100.gif',
+  'line_002': 'assets/images/chaeon_emotion_100to0.gif',
+};
+
 class EatingCloseupOverlay extends StatefulWidget {
-  const EatingCloseupOverlay({super.key});
+  const EatingCloseupOverlay({super.key, this.onFinished});
+
+  // eating_1 -> eating_2 순서로 한 번씩 보여준 뒤 호출되는 콜백 (다음 대사로 자동 진행용)
+  final VoidCallback? onFinished;
 
   @override
   State<EatingCloseupOverlay> createState() => _EatingCloseupOverlayState();
 }
 
 class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
+  static const Duration _frame1HoldDuration = Duration(milliseconds: 500);
+  static const Duration _crossfadeDuration = Duration(milliseconds: 600);
+  static const Duration _frame2HoldDuration = Duration(milliseconds: 500);
+
   int _frameIndex = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      setState(
-        () => _frameIndex = (_frameIndex + 1) % eatingCloseupFrames.length,
-      );
+    // eating_1을 500ms 그대로 보여준 뒤 eating_2로 전환 시작
+    _timer = Timer(_frame1HoldDuration, () {
+      if (!mounted) return;
+      setState(() => _frameIndex = 1);
+      // 크로스페이드(600ms) + eating_2 유지(500ms) 후 완료 콜백 호출
+      _timer = Timer(_crossfadeDuration + _frame2HoldDuration, () {
+        widget.onFinished?.call();
+      });
     });
   }
 
@@ -50,14 +70,13 @@ class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      // 게임 화면 전체 크기 기준으로 BoxFit.contain을 적용해서, 잘리지 않는 선에서
-      // 최대한 꽉 차게 보여줌
+      // 화면을 꽉 채우도록 BoxFit.cover 적용
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 80),
+        duration: _crossfadeDuration,
         child: Image.asset(
           eatingCloseupFrames[_frameIndex],
           key: ValueKey(eatingCloseupFrames[_frameIndex]),
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
         ),

@@ -70,25 +70,31 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "먹어볼게요.",
-      "next": "line_004a1"
+      "next": "line_004a1_eat"
     },
-    "line_004a1": {
+        "line_004a1_eat": {
       "type": "line",
-      "speaker": "lillian",
-      "text": [
-        { "text": "!", "color": "#FF0509", "bold": true, "size": 18 },
-        { "text": "한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." }
-      ],
+      "speaker": "chaeon",
       "next": "line_004a2"
     },
     "line_004a2": {
       "type": "line",
+      "speaker": "lillian",
+      "text": [
+        { "text": "!", "color": "#FF0509", "bold": true },
+        { "text": " 한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." }
+      ],
+      "next": "line_004a3"
+    },
+
+    "line_004a3": {
+      "type": "line",
       "speaker": "chaeon",
       "text": "어, 어라... 어... 하하... 하하하!!!!! 안 멈춰요!",
       "effect": { "temperature": -1 },
-      "next": "line_004a3"
+      "next": "line_004a4"
     },
-    "line_004a3": {
+    "line_004a4": {
       "type": "line",
       "speaker": "lillian",
       "text": [

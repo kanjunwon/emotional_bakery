@@ -1,5 +1,6 @@
 // lib/features/chapter1/game_play_screen.dart
 
+import 'dart:async';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart';
@@ -23,6 +24,11 @@ enum DialoguePhase {
   apronChange,
 }
 
+// table.json 종료 후 회상 컷씬으로 넘어갈 때 쓰는 검은 화면 페이드 전환 타이밍
+const Duration _memoryFadeInDuration = Duration(milliseconds: 300);
+const Duration _memoryFadeHoldDuration = Duration(milliseconds: 1000);
+const Duration _memoryFadeOutDuration = Duration(milliseconds: 300);
+
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
   const GamePlayScreen({super.key, this.isPrologue = false});
@@ -44,6 +50,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 채온이 상태 변수
   String _chaeonState = 'idle';
   bool _isChaeonFacingRight = true; // 채온 좌우 반전용 스위치
+  // table.json 먹는 클로즈업을 한 번이라도 지나갔는지. true가 되면 회상 컷씬으로 넘어갈 때까지
+  // 빵 접시를 다시 그리지 않고, 채온이도 빵 든 정지 이미지로 표시
+  bool _hasEatenBread = false;
 
   // 릴리안 상태 및 자동 걷기 애니메이션 변수
   late AnimationController _lillianController;
@@ -74,6 +83,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 현재 어느 대사 단계인지: first_meet → table → 회상 컷씬 → first_bread 순으로 변경
   DialoguePhase _dialoguePhase = DialoguePhase.none;
 
+  // table.json -> 회상 컷씬 전환용 검은 화면 페이드 오버레이
+  bool _showMemoryFadeOverlay = false;
+  double _memoryFadeOpacity = 0.0;
+  Timer? _memoryFadeTimer;
+
   // 채온-릴리안 첫 만남 대사(line/choice 그래프 순회, 타이핑 효과, 온도 변화) 상태 관리
   late final SceneDialogueController _sceneController;
 
@@ -98,8 +112,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _game.startCameraCatchUp();
             break;
           case DialoguePhase.table:
-            // 자유이동으로 빠지지 않고 곧바로 회상 컷씬(구름 미니게임)으로 전환
-            setState(() => _dialoguePhase = DialoguePhase.memoryFlashback);
+            // 자유이동으로 빠지지 않고, 검은 화면 페이드 전환 후 회상 컷씬(구름 미니게임)으로 전환
+            _transitionToMemoryFlashback();
             break;
           case DialoguePhase.firstBread:
             // first_bread.json 종료 후 앞치마 갈아입기 컷씬으로 전환
@@ -228,7 +242,17 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   }
 
   void _onSceneControllerChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      // 먹는 클로즈업 노드를 한 번이라도 지나가면 이후로는 계속 "먹은 상태"로 취급
+      final String? nodeId = _sceneController.sceneNodeId;
+      if (_dialoguePhase == DialoguePhase.table &&
+          nodeId != null &&
+          (widgets.eatingCloseupNodeIdsA.contains(nodeId) ||
+              widgets.eatingCloseupNodeIdsB.contains(nodeId))) {
+        _hasEatenBread = true;
+      }
+    });
   }
 
   @override
@@ -258,6 +282,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in tableSceneAssets) {
         precacheImage(AssetImage(asset), context);
       }
+      // first_bread.json 특정 노드에서 잠깐 바뀌는 채온이 감정 GIF도 미리 프리캐싱
+      for (final asset in widgets.chaeonSpriteOverrides.values) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -269,7 +297,48 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     _lillianStairsController.dispose();
     _lillianHopController.dispose();
     _chaeonHopController.dispose();
+    _memoryFadeTimer?.cancel();
     super.dispose();
+  }
+
+  // table.json 종료 -> 검은 화면 페이드인(300ms) -> 유지(400ms, 이 동안 회상 컷씬으로 전환해둠)
+  // -> 페이드아웃(300ms)되며 memory_car_bumpy.gif 노출
+  void _transitionToMemoryFlashback() {
+    setState(() {
+      _showMemoryFadeOverlay = true;
+      _memoryFadeOpacity = 0.0;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _memoryFadeOpacity = 1.0);
+    });
+    _memoryFadeTimer = Timer(_memoryFadeInDuration, () {
+      if (!mounted) return;
+      // 화면이 완전히 검게 덮인 상태에서 미리 전환해둬서, 화면이 열릴 때 바로 회상 컷씬이 보임
+      setState(() => _dialoguePhase = DialoguePhase.memoryFlashback);
+      _memoryFadeTimer = Timer(_memoryFadeHoldDuration, () {
+        if (!mounted) return;
+        setState(() => _memoryFadeOpacity = 0.0);
+        _memoryFadeTimer = Timer(_memoryFadeOutDuration, () {
+          if (!mounted) return;
+          setState(() => _showMemoryFadeOverlay = false);
+        });
+      });
+    });
+  }
+
+  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로를 결정.
+  // first_bread.json 단계면 chaeonSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle로 복귀),
+  // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
+  String _resolveChaeonSprite(String? sceneNodeId) {
+    if (_dialoguePhase == DialoguePhase.firstBread) {
+      return widgets.chaeonSpriteOverrides[sceneNodeId] ??
+          'assets/images/chaeon_idle_right.gif';
+    }
+    if (_hasEatenBread) return 'assets/images/chaeon_holding_bread.png';
+    return _chaeonState == 'walk'
+        ? 'assets/images/chaeon_walk_right.gif'
+        : 'assets/images/chaeon_idle_right.gif';
   }
 
   // 짧게 위로 튀었다가 바운스감 있게 제자리로 돌아오는 오프셋 애니메이션 생성
@@ -416,7 +485,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         begin: _lillianStartX,
         end: _lillianTargetX,
       ).evaluate(_lillianController);
-      lillianTopValue = rH(163);
+      lillianTopValue = rH(172);
     }
     // 채온이랑 똑같이 중심 기준 보정 필요 (안 하면 릴리안이 오른쪽으로 밀려 그려짐)
     double lillianDisplaySize = 174 * zoom;
@@ -490,9 +559,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 _game.chaeon != null &&
                 _game.chaeon!.isMounted)
               if (isEatingCloseupActive)
-                const Positioned.fill(
-                  key: ValueKey('chaeon_eating_closeup'),
-                  child: widgets.EatingCloseupOverlay(),
+                Positioned.fill(
+                  key: const ValueKey('chaeon_eating_closeup'),
+                  child: widgets.EatingCloseupOverlay(
+                    onFinished: _sceneController.advanceScene,
+                  ),
                 )
               else
                 Positioned(
@@ -504,9 +575,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
                       child: Image.asset(
-                        _chaeonState == 'walk'
-                            ? 'assets/images/chaeon_walk_right.gif'
-                            : 'assets/images/chaeon_idle_right.gif',
+                        _resolveChaeonSprite(sceneNodeId),
                         width: chaeonDisplaySize,
                         height: chaeonDisplaySize,
                         fit: BoxFit.contain,
@@ -539,8 +608,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 3-2층: 빵 접시. table.json 대사가 시작되는 시점부터 테이블 상판 위에 표시.
-            // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
-            if (_dialoguePhase == DialoguePhase.table && !isEatingCloseupActive)
+            // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김. 빵을 다 먹은 뒤로는 계속 숨김
+            if (_dialoguePhase == DialoguePhase.table &&
+                !isEatingCloseupActive &&
+                !_hasEatenBread)
               Positioned(
                 key: const ValueKey('bread_plate'),
                 left: renderBreadPlateX,
@@ -889,6 +960,21 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     // 다음 작업에서 챕터1 종료 트리거로 연결할 예정
                     debugPrint('앞치마 갈아입기 완료, 챕터1 종료 처리 예정');
                   },
+                ),
+              ),
+
+            // 20층: table.json -> 회상 컷씬 전환용 검은 화면 페이드. 항상 최상단
+            if (_showMemoryFadeOverlay)
+              Positioned.fill(
+                key: const ValueKey('memory_fade_overlay'),
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _memoryFadeOpacity,
+                    duration: _memoryFadeOpacity == 1.0
+                        ? _memoryFadeInDuration
+                        : _memoryFadeOutDuration,
+                    child: Container(color: Colors.black),
+                  ),
                 ),
               ),
           ],
