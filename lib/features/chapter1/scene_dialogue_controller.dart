@@ -4,6 +4,36 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/services/dialogue_loader.dart';
+import 'package:emotional_bakery/core/services/gif_duration.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
+
+// first_bread.json에서만 쓰는 dialogue_id. table.json도 line_001/line_002라는 같은
+// 노드ID를 쓰기 때문에, 노드ID만 보고 지연 로직을 걸면 table.json에서도 오작동함
+const String _bubbleDelayDialogueId = 'chapter1_first_bread';
+
+// 이 노드에 진입하면 대사창을 바로 안 띄우고, 여기 적힌 GIF가 다 재생될 때까지 기다렸다가 띄움.
+// game_play_widgets.dart의 chaeonSpriteOverrides랑 같은 GIF를 가리키니 값 바꿀 때 같이 맞춰줘야 함
+const Map<String, String> _bubbleDelayGifByNodeId = {
+  'line_001': 'assets/images/chaeon_emotion_0to100.gif',
+  'line_002': 'assets/images/chaeon_emotion_100to0.gif',
+};
+
+// first_meet.json에서만 쓰는 dialogue_id
+const String _autoAdvanceDialogueId = 'chapter1_first_meet';
+
+// 이 노드에 진입하면 대사 없이 GIF만 한 번 재생되고, 끝나면 유저 탭 없이 자동으로 다음 노드로 넘어감.
+// game_play_widgets.dart의 lillianSpriteOverrides랑 같은 GIF를 가리키니 값 바꿀 때 같이 맞춰줘야 함
+const Map<String, String> _autoAdvanceGifByNodeId = {
+  'line_029a6_eat': 'assets/images/lillian_eating_bread.gif',
+  'line_029a6_cry': 'assets/images/lillian_crying.gif',
+};
+
+// 위 GIF들은 실제 재생 시간(루프 전체 길이)까지 안 기다리고, 정해진 시간만 보여준 뒤 다음 노드로
+// 넘어가야 해서 따로 고정값을 둠. 여기 없는 노드는 기존처럼 GifDuration으로 실제 재생 시간을 잼
+const Map<String, int> _autoAdvanceDurationOverrideMs = {
+  'line_029a6_eat': 2000,
+  'line_029a6_cry': 3000,
+};
 
 // 대화 그래프를 관리하고, 선택지/대사 진행/온도계 상태를 GamePlayScreen에 전달하는 역할
 class SceneDialogueController extends ChangeNotifier {
@@ -11,7 +41,8 @@ class SceneDialogueController extends ChangeNotifier {
     required this.onDialogueEnd,
     required this.onLillianHop,
     required this.onChaeonHop,
-  });
+    int initialTemperature = 3,
+  }) : temperature = initialTemperature;
 
   // 대화 종료, 릴리안 점프, 채온 점프 이벤트를 GamePlayScreen에 전달
   final VoidCallback onDialogueEnd;
@@ -29,8 +60,8 @@ class SceneDialogueController extends ChangeNotifier {
   String? choiceLockedMessage;
   Timer? _choiceLockedMessageTimer;
 
-  // 온도계 레벨
-  int temperature = 3;
+  // 온도계 레벨. KitchenScreen처럼 다른 화면에서 이어받을 때는 initialTemperature로 시작값을 맞춤
+  int temperature;
   // 온도 변화 안내 문구
   String? temperatureChangeText;
   Timer? _temperatureChangeTimer;
@@ -39,6 +70,16 @@ class SceneDialogueController extends ChangeNotifier {
   Timer? _typingTimer;
   int typedCharCount = 0;
   static const Duration _typingInterval = Duration(milliseconds: 50);
+
+  // 노드에 진입해도 말풍선을 바로 안 띄우고 대기 중인지. line_001/line_002처럼
+  // GIF 재생이 먼저 끝나야 하는 노드에서만 잠깐 false로 바뀜
+  bool bubbleRevealed = true;
+  Timer? _bubbleRevealTimer;
+
+  // 릴리안 GIF 재생이 끝나길 기다렸다가 자동으로 다음 노드로 넘어가는 중인지.
+  // true인 동안은 유저가 탭해도 advanceScene이 아무 것도 안 함
+  bool _autoAdvancePending = false;
+  Timer? _autoAdvanceTimer;
 
   // 대사 텍스트가 없는 연출용 노드(예: 클로즈업 사이 빈 노드)는 타이핑할 글자가 없어서
   // 진입하자마자 "다 읽었다"고 판단돼, 연속 탭 한 번에 순식간에 지나쳐버릴 수 있음.
@@ -66,11 +107,15 @@ class SceneDialogueController extends ChangeNotifier {
   // line 노드면 온도 효과 바로 적용하고 타이핑 시작, next 없거나 이상한 노드면 대화 종료
   void _enterSceneNode(String? nodeId) {
     _typingTimer?.cancel();
+    _bubbleRevealTimer?.cancel();
+    _autoAdvanceTimer?.cancel();
     final graph = sceneDialogue;
     if (nodeId == null || graph == null || !graph.nodes.containsKey(nodeId)) {
       sceneNodeId = null;
       sceneDialogue = null;
       typedCharCount = 0;
+      bubbleRevealed = true;
+      _autoAdvancePending = false;
       onDialogueEnd();
       return;
     }
@@ -92,10 +137,62 @@ class SceneDialogueController extends ChangeNotifier {
       } else if (node.animation == 'chaeon_hop') {
         onChaeonHop();
       }
-      _startTypingEffect(node);
+      // first_bread.json의 line_001/line_002만 GIF 다 재생될 때까지 말풍선을 숨겨둠
+      final String? delayGifAsset = graph.dialogueId == _bubbleDelayDialogueId
+          ? _bubbleDelayGifByNodeId[nodeId]
+          : null;
+      // first_meet.json의 line_029a6_eat/line_029a6_cry는 대사 자체가 없고,
+      // GIF 다 재생되면 탭 없이 바로 다음 노드로 넘어가야 함
+      final String? autoAdvanceGifAsset =
+          graph.dialogueId == _autoAdvanceDialogueId
+          ? _autoAdvanceGifByNodeId[nodeId]
+          : null;
+      if (delayGifAsset != null) {
+        bubbleRevealed = false;
+        typedCharCount = 0;
+        _waitForGifThenRevealBubble(delayGifAsset, node);
+      } else if (autoAdvanceGifAsset != null) {
+        bubbleRevealed = true;
+        typedCharCount = 0;
+        _autoAdvancePending = true;
+        _waitForGifThenAutoAdvance(autoAdvanceGifAsset, node);
+      } else {
+        bubbleRevealed = true;
+        _startTypingEffect(node);
+      }
     } else {
       typedCharCount = 0;
+      bubbleRevealed = true;
+      _autoAdvancePending = false;
     }
+  }
+
+  // GIF 총 재생 시간을 계산해서 그만큼 기다렸다가 말풍선을 띄우고 타이핑 시작.
+  // 그 사이에 다른 노드로 넘어가버렸으면(뒤로가기 등) 그냥 무시함
+  void _waitForGifThenRevealBubble(String gifAsset, DialogueNode node) async {
+    final int durationMs = await GifDuration.totalMs(gifAsset);
+    if (_isDisposed || sceneNodeId != node.id) return;
+    _bubbleRevealTimer = Timer(Duration(milliseconds: durationMs), () {
+      if (_isDisposed || sceneNodeId != node.id) return;
+      bubbleRevealed = true;
+      _startTypingEffect(node);
+      _notify();
+    });
+  }
+
+  // GIF 총 재생 시간을 계산해서 그만큼 기다렸다가, 유저 탭 없이 바로 다음 노드로 넘어감.
+  // advanceScene()이랑 똑같이 히스토리에 쌓고 다음 노드로 진입하는 것까지 직접 처리함
+  void _waitForGifThenAutoAdvance(String gifAsset, DialogueNode node) async {
+    final int? overrideMs = _autoAdvanceDurationOverrideMs[node.id];
+    final int durationMs = overrideMs ?? await GifDuration.totalMs(gifAsset);
+    if (_isDisposed || sceneNodeId != node.id) return;
+    _autoAdvanceTimer = Timer(Duration(milliseconds: durationMs), () {
+      if (_isDisposed || sceneNodeId != node.id) return;
+      _autoAdvancePending = false;
+      sceneNodeHistory.add(node.id);
+      _enterSceneNode(node.next);
+      _notify();
+    });
   }
 
   // 대사 그래프 밖(예: 회상 컷씬 미니게임)에서 온도 변화를 적용할 때 사용
@@ -171,6 +268,10 @@ class SceneDialogueController extends ChangeNotifier {
         ? graph.nodes[sceneNodeId]
         : null;
     if (node == null || node.type != 'line') return;
+    // GIF 재생 중이라 말풍선이 아직 안 떴으면 탭 무시
+    if (!bubbleRevealed) return;
+    // 릴리안 GIF 재생 끝나면 자동으로 넘어가는 노드는 탭으로 못 넘기게 막음
+    if (_autoAdvancePending) return;
 
     final int fullLength = node.spans.fold(0, (sum, s) => sum + s.text.length);
     if (typedCharCount < fullLength) {
@@ -227,6 +328,10 @@ class SceneDialogueController extends ChangeNotifier {
     // 선택지를 실제로 고른 순간 그 이전 히스토리를 비워서 되돌아갈 수 없게 함
     sceneNodeHistory.clear();
     sceneHasLockedChoice = true;
+    // setVars 있으면 전역 저장소에 병합 저장 (나중에 재료 매칭 등에서 참조)
+    if (option.setVars != null) {
+      StoryState.vars.addAll(option.setVars!);
+    }
     _enterSceneNode(option.next);
     _notify();
   }
@@ -235,6 +340,8 @@ class SceneDialogueController extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _typingTimer?.cancel();
+    _bubbleRevealTimer?.cancel();
+    _autoAdvanceTimer?.cancel();
     _temperatureChangeTimer?.cancel();
     _choiceLockedMessageTimer?.cancel();
     super.dispose();

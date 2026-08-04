@@ -102,6 +102,12 @@
         { "text": "감정은 과하면 안 돼요", "color": "#FF7100" },
         { "text": ". 조금씩 먹어야 해요..." }
       ],
+      "next": "line_004a5"
+    },
+        "line_004a5": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "어...?",
       "next": "null"
     }
   }

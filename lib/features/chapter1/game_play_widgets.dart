@@ -19,13 +19,49 @@ const List<String> eatingCloseupFrames = [
   'assets/images/chaeon_eating_2.png',
 ];
 
+// chaeonSpriteOverrides 항목 하나. beforeReveal은 말풍선 뜨기 전(GIF 재생 중)에 보여줄 에셋이고,
+// afterReveal은 말풍선이 뜬 순간부터 바꿔줄 에셋. afterReveal이 없으면 그 시점부턴 기본 idle로 폴백.
+// verticalOffsetPx는 그 에셋이 기본 idle 이미지 대비 세로로 어긋나 보일 때 보정하는 값(위로 보정하려면 음수)
+class ChaeonSpriteOverride {
+  const ChaeonSpriteOverride({
+    required this.beforeReveal,
+    this.beforeRevealVerticalOffsetPx = 0,
+    this.afterReveal,
+    this.afterRevealVerticalOffsetPx = 0,
+  });
+
+  final String beforeReveal;
+  final double beforeRevealVerticalOffsetPx;
+  final String? afterReveal;
+  final double afterRevealVerticalOffsetPx;
+}
+
 // first_bread.json 특정 노드에 머무는 동안만 채온이 스프라이트를 잠깐 바꿔주는 매핑.
 // 여기 없는 노드거나 first_bread.json 단계가 아니면 기존 idle/holding_bread 로직을 그대로 씀.
 // 주의: table.json도 line_001/line_002 같은 같은 이름의 노드 ID를 쓰므로, 이 맵은 반드시
 // DialoguePhase.firstBread일 때만 참조해야 함 (game_play_screen.dart 쪽에서 처리)
-const Map<String, String> chaeonSpriteOverrides = {
-  'line_001': 'assets/images/chaeon_emotion_0to100.gif',
-  'line_002': 'assets/images/chaeon_emotion_100to0.gif',
+const Map<String, ChaeonSpriteOverride> chaeonSpriteOverrides = {
+  'line_001': ChaeonSpriteOverride(
+    beforeReveal: 'assets/images/chaeon_emotion_0to100.gif',
+    beforeRevealVerticalOffsetPx: -12,
+    afterReveal: 'assets/images/chaeon_emotion_reveal.gif',
+    afterRevealVerticalOffsetPx: -12,
+  ),
+  'line_002': ChaeonSpriteOverride(
+    beforeReveal: 'assets/images/chaeon_emotion_100to0.gif',
+    beforeRevealVerticalOffsetPx: -12,
+  ),
+};
+
+// first_meet.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// eat/cry 노드는 대사 없이 GIF만 한 번 재생되고 끝나면 자동으로 다음 노드로 넘어가고,
+// a7/a8 노드는 crying 정지 이미지를 대사가 있는 동안 계속 보여줌.
+// 여기 없는 노드거나 first_meet.json 단계가 아니면 기존 idle/walk 로직을 그대로 씀
+const Map<String, String> lillianSpriteOverrides = {
+  'line_029a6_eat': 'assets/images/lillian_eating_bread.gif',
+  'line_029a6_cry': 'assets/images/lillian_crying.gif',
+  'line_029a7': 'assets/images/lillian_crying.png',
+  'line_029a8': 'assets/images/lillian_crying.png',
 };
 
 class EatingCloseupOverlay extends StatefulWidget {
@@ -376,9 +412,22 @@ Widget buildSceneChoices({
 }) {
   const double nativeW = 1264;
   const double nativeH = 240;
-  final double boxHeight = rW(60);
-  final double boxWidth = boxHeight * (nativeW / nativeH);
-  final double gap = rW(16);
+  double boxHeight = rW(60);
+  double boxWidth = boxHeight * (nativeW / nativeH);
+  double gap = rW(16);
+
+  // 옵션이 3개 이상이면 기존 크기 그대로는 화면 밖으로 넘쳐서(overflow) 잘려 보이므로,
+  // 한 줄에 다 들어오도록 비율은 유지한 채 축소함. 옵션 2개 이하(기존에 쓰던 화면들)는
+  // 아래 조건에 안 걸려서 원래 크기 그대로 나옴
+  final double maxRowWidth = rW(834);
+  final double naturalRowWidth =
+      boxWidth * node.options.length + gap * (node.options.length - 1);
+  if (naturalRowWidth > maxRowWidth) {
+    final double scale = maxRowWidth / naturalRowWidth;
+    boxHeight *= scale;
+    boxWidth *= scale;
+    gap *= scale;
+  }
 
   return Stack(
     key: ValueKey('scene_choices_${node.id}'),

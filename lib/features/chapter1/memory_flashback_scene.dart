@@ -9,7 +9,6 @@ enum _FlashbackStage {
   plain,
   // 구름들이 오른쪽 화면 밖에서 하나씩 슬라이드로 들어오는 상태
   cloudsEntering,
-  // TODO: 모든 구름이 들어온 뒤 이어질 미니게임 튜토리얼을 새로 만들어서 연결할 예정
   carSmooth,
   parkArrival,
   parkKid,
@@ -108,7 +107,12 @@ const double _cloudDismissDragThreshold = 40.0;
 // 구름이 치워질 때 작아지며 사라지는 애니메이션 시간
 const Duration _cloudDismissAnimDuration = Duration(milliseconds: 250);
 // 모든 구름을 다 치운 뒤 minigame_success를 띄워두는 시간. 이후 memory_car_smooth로 전환
-const Duration _minigameSuccessHoldDuration = Duration(seconds: 2);
+const Duration _minigameSuccessHoldDuration = Duration(milliseconds: 800);
+// success 다음에 이어지는 배경 전환 대기 시간들. carSmooth -> parkArrival -> parkKid 순서로 넘어가고
+// parkKid까지 다 보여준 뒤에 onComplete가 호출됨
+const Duration _carSmoothHoldDuration = Duration(milliseconds: 1600);
+const Duration _parkArrivalHoldDuration = Duration(milliseconds: 2200);
+const Duration _parkKidHoldDuration = Duration(milliseconds: 1500);
 
 // "왼쪽으로 밀어라" 드래그 유도 박스/화살표 설정 (874x402 캔버스 기준 px)
 const double _dragHintBoxLeft = 82;
@@ -378,6 +382,7 @@ class _MemoryFlashbackSceneState extends State<MemoryFlashbackScene>
     final bool allGone = _cloudGone.every((gone) => gone);
     if (allGone && !_allCloudsClearedTriggered) {
       _allCloudsClearedTriggered = true;
+      widget.onTemperatureIncrease();
       setState(() => _showMinigameSuccess = true);
       final Timer successTimer = Timer(_minigameSuccessHoldDuration, () {
         if (!mounted) return;
@@ -385,6 +390,22 @@ class _MemoryFlashbackSceneState extends State<MemoryFlashbackScene>
           _showMinigameSuccess = false;
           _stage = _FlashbackStage.carSmooth;
         });
+        // 여기서부터는 사용자 입력 없이 배경만 순서대로 넘기면서 마지막에 onComplete를 부르면 됨
+        final Timer carSmoothTimer = Timer(_carSmoothHoldDuration, () {
+          if (!mounted) return;
+          setState(() => _stage = _FlashbackStage.parkArrival);
+          final Timer parkArrivalTimer = Timer(_parkArrivalHoldDuration, () {
+            if (!mounted) return;
+            setState(() => _stage = _FlashbackStage.parkKid);
+            final Timer parkKidTimer = Timer(_parkKidHoldDuration, () {
+              if (!mounted) return;
+              widget.onComplete();
+            });
+            _cloudDismissTimers.add(parkKidTimer);
+          });
+          _cloudDismissTimers.add(parkArrivalTimer);
+        });
+        _cloudDismissTimers.add(carSmoothTimer);
       });
       _cloudDismissTimers.add(successTimer);
     }

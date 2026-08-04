@@ -99,11 +99,16 @@ class TutorialScreen extends StatefulWidget {
   final double initialPlayerX;
   // 등장 시 채온이가 왼쪽을 보도록 반전할지 여부 (빵집에서 나올 때 true)
   final bool initialFacingLeft;
+  // true면 챕터1 GamePlayScreen에서 빵집 왼쪽 끝을 넘어와서 진입한 경우라는 뜻.
+  // 이땐 빵집 문으로 다시 들어갈 때 새 GamePlayScreen을 만들지 않고 pop해서, 아래 깔려있는
+  // 기존 GamePlayScreen(진행 중이던 대사/이동 상태 그대로 보존)으로 돌아감
+  final bool returnToExistingGame;
   const TutorialScreen({
     super.key,
     this.initialStep = 0,
     this.initialPlayerX = 445,
     this.initialFacingLeft = false,
+    this.returnToExistingGame = false,
   });
 
   @override
@@ -393,10 +398,16 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 final bool isNearDoor =
                     _playerX >= zW(1380) && _playerX <= zW(1680);
                 if (isNearDoor) {
-                  Navigator.pushReplacement(
-                    context,
-                    fadeThroughBlackRoute(const GamePlayScreen()),
-                  );
+                  if (widget.returnToExistingGame) {
+                    // 챕터1 진행 중 빵집 왼쪽 끝으로 나왔다가 돌아온 경우: 새로
+                    // GamePlayScreen을 만들지 않고 pop해서 기존 진행 상태로 복귀
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      fadeThroughBlackRoute(const GamePlayScreen()),
+                    );
+                  }
                 } else {
                   setState(
                     () => _interactionText = "아직 빵집에 들어가기엔\n거리가 먼 거 같다.",

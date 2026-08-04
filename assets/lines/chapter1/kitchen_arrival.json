@@ -1,0 +1,24 @@
+{
+  "dialogue_id": "chapter1_kitchen_arrival",
+  "start": "line_001",
+  "nodes": {
+    "line_001": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "주방치고는... 좀 특이하네요.",
+      "next": "line_002"
+    },
+    "line_002": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "흐음~ 그래요?",
+      "next": "line_003"
+    },
+    "line_003": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그럼 이제 시작해볼까요?",
+      "next": "null"
+    }
+  }
+}

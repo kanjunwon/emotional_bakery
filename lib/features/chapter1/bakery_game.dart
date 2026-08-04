@@ -6,6 +6,11 @@ import 'package:emotional_bakery/features/chapter1/chaeon.dart';
 import 'package:emotional_bakery/features/chapter1/components/interactive_zone.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 
+// 계단(주방 입구) 트리거 x좌표. bakery_bg_main.png 실제 픽셀 기준으로 계단이 시작되는
+// 지점(오른쪽 끝에서 약 470px 안쪽, 원본 기준 약 7130px)을 mapWidth 비율(1852/7600)로
+// 환산한 값. 스크린샷 보고 위치 조정할 때 여기 숫자만 바꾸면 됨
+const double kitchenStairsTriggerX = 1740;
+
 class BakeryGame extends FlameGame {
   Chaeon? chaeon;
   final double mapWidth = 1852; // 배경 이미지 가로 길이
@@ -15,6 +20,11 @@ class BakeryGame extends FlameGame {
   bool canInteract = true;
   bool _hasTriggeredGuide = false;
   bool _hasTriggeredPostSceneEnd = false;
+  bool _hasTriggeredStairs = false;
+  // game_play_screen에서 DialoguePhase.kitchenApproach가 됐을 때만 true로 켜줌.
+  // 이 플래그가 켜지기 전까진 계단 트리거 체크 자체를 안 해서, chaeon 위치가 이전 단계에서
+  // 어쩌다 계단 트리거 좌표를 넘겨버려도 _hasTriggeredStairs가 미리 소모되지 않게 막는 안전장치
+  bool isKitchenApproachActive = false;
   // 채온이가 막 mount된 첫 프레임인지 추적. 안 하면 가만히 서있는 상태로 시작할 때
   // onGameUpdate가 한 번도 안 불려서 플러터 쪽 위치가 초기값(0)에 멈춰 안 보이게 됨
   bool _wasChaeonMounted = false;
@@ -37,6 +47,7 @@ class BakeryGame extends FlameGame {
   Function()? onReachLeftEdge; // 왼쪽 끝에서 계속 왼쪽으로 이동 시 프롤로그로 전환
   Function(String)? onInteract; // 배경 오브젝트 클릭 시 팝업 표시
   Function()? onReachPostSceneEnd; // 첫 만남 대사 후 채온이가 1200 지점 도착 시
+  Function()? onReachStairs; // 계단 근처 도달 시 (주방으로 내려가는 연출 트리거)
 
   @override
   Future<void> onLoad() async {
@@ -171,6 +182,32 @@ class BakeryGame extends FlameGame {
       movePlayer(0);
       onReachPostSceneEnd?.call();
       print("x=1300 지점 도달");
+      // 디버그: 이 시점 chaeon 실제 x랑 계단 트리거까지 남은 거리 확인용
+      print(
+        "postSceneEnd 도달 시 chaeon.x=${chaeon!.position.x}, "
+        "계단 트리거(kitchenStairsTriggerX=$kitchenStairsTriggerX)까지 남은 거리="
+        "${kitchenStairsTriggerX - chaeon!.position.x}",
+      );
+    }
+
+    // 앞치마 갈아입고 다시 걸을 수 있게 된 구간에서, 채온이가 계단 근처에 도착하면
+    // 조작을 잠금. 실제로 주방 전환까지 이어질지는 game_play_screen에서 대사 단계 보고 판단함.
+    // isKitchenApproachActive가 켜지기 전까진 이 체크 자체를 안 하게 막아서, chaeon 위치가
+    // 어쩌다 이전 단계에서 이 좌표를 넘겨버려도 _hasTriggeredStairs가 미리 소모되지 않게 함
+    if (isKitchenApproachActive &&
+        chaeon != null &&
+        !_hasTriggeredStairs &&
+        chaeon!.isMounted &&
+        chaeon!.position.x >= kitchenStairsTriggerX) {
+      _hasTriggeredStairs = true;
+      isMovementBlocked = true;
+      movePlayer(0);
+      onReachStairs?.call();
+      // 디버그: 계단 트리거가 실제로 발동한 시점의 chaeon x좌표 확인용
+      print(
+        "계단 트리거 발동: chaeon.x=${chaeon!.position.x}, "
+        "kitchenStairsTriggerX=$kitchenStairsTriggerX",
+      );
     }
 
     if (positionChangedThisFrame) {
@@ -180,6 +217,8 @@ class BakeryGame extends FlameGame {
 
   // 외부 위젯에서 플레이어 방향 제어용 함수
   void movePlayer(int direction) {
+    // 디버그: 방향키 없이 자동으로 걷는 버그 추적용. 호출될 때마다 direction이랑 호출 스택을 같이 찍음
+    print('movePlayer($direction) 호출됨\n${StackTrace.current}');
     if (isMovementBlocked) {
       chaeon?.moveDirection = 0;
       return;
