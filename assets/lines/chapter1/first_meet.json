@@ -337,8 +337,10 @@
       "type": "line",
       "speaker": "lillian",
       "text": "아니면 제가 먹어볼게요!",
-      "next": "line_029a7"
+      "next": "line_029a6_eat"
     },
+    "line_029a6_eat": { "type": "line", "speaker": "lillian", "next": "line_029a6_cry" },
+    "line_029a6_cry": { "type": "line", "speaker": "lillian", "next": "line_029a7" },
     "line_029a7": {
       "type": "line",
       "speaker": "chaeon",

@@ -19,13 +19,55 @@ const List<String> eatingCloseupFrames = [
   'assets/images/chaeon_eating_2.png',
 ];
 
+// chaeonSpriteOverrides 항목 하나. beforeReveal은 말풍선 뜨기 전(GIF 재생 중)에 보여줄 에셋이고,
+// afterReveal은 말풍선이 뜬 순간부터 바꿔줄 에셋. afterReveal이 없으면 그 시점부턴 기본 idle로 폴백.
+// verticalOffsetPx는 그 에셋이 기본 idle 이미지 대비 세로로 어긋나 보일 때 보정하는 값(위로 보정하려면 음수)
+class ChaeonSpriteOverride {
+  const ChaeonSpriteOverride({
+    required this.beforeReveal,
+    this.beforeRevealVerticalOffsetPx = 0,
+    this.afterReveal,
+    this.afterRevealVerticalOffsetPx = 0,
+  });
+
+  final String beforeReveal;
+  final double beforeRevealVerticalOffsetPx;
+  final String? afterReveal;
+  final double afterRevealVerticalOffsetPx;
+}
+
 // first_bread.json 특정 노드에 머무는 동안만 채온이 스프라이트를 잠깐 바꿔주는 매핑.
 // 여기 없는 노드거나 first_bread.json 단계가 아니면 기존 idle/holding_bread 로직을 그대로 씀.
 // 주의: table.json도 line_001/line_002 같은 같은 이름의 노드 ID를 쓰므로, 이 맵은 반드시
 // DialoguePhase.firstBread일 때만 참조해야 함 (game_play_screen.dart 쪽에서 처리)
-const Map<String, String> chaeonSpriteOverrides = {
-  'line_001': 'assets/images/chaeon_emotion_0to100.gif',
-  'line_002': 'assets/images/chaeon_emotion_100to0.gif',
+const Map<String, ChaeonSpriteOverride> chaeonSpriteOverrides = {
+  'line_001': ChaeonSpriteOverride(
+    beforeReveal: 'assets/images/chaeon_emotion_0to100.gif',
+    afterReveal: 'assets/images/chaeon_emotion_reveal.gif',
+  ),
+  'line_002': ChaeonSpriteOverride(
+    beforeReveal: 'assets/images/chaeon_emotion_100to0.gif',
+  ),
+};
+
+// first_meet.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// eat/cry 노드는 대사 없이 GIF만 한 번 재생되고 끝나면 자동으로 다음 노드로 넘어가고,
+// a7/a8 노드는 crying 정지 이미지를 대사가 있는 동안 계속 보여줌.
+// 여기 없는 노드거나 first_meet.json 단계가 아니면 기존 idle/walk 로직을 그대로 씀
+const Map<String, String> lillianSpriteOverrides = {
+  'line_003b1': 'assets/images/lillian_happy.png',
+  'line_010a1': 'assets/images/lillian_grieve.png',
+  'line_010b1': 'assets/images/lillian_grudge.png',
+  'line_017': 'assets/images/lillian_grudge.png',
+  'line_018a1': 'assets/images/lillian_surprise.png',
+  'line_018b1': 'assets/images/lillian_happy.png',
+  'line_029a1': 'assets/images/lillian_surprise.png',
+  'line_029a3': 'assets/images/lillian_thinking2.png',
+  'line_029a6_eat': 'assets/images/lillian_eating_bread.gif',
+  'line_029a6_cry': 'assets/images/lillian_crying.gif',
+  'line_029a7': 'assets/images/lillian_crying.png',
+  'line_029a8': 'assets/images/lillian_crying.png',
+  'line_029b2': 'assets/images/lillian_happy.png',
 };
 
 class EatingCloseupOverlay extends StatefulWidget {
@@ -276,9 +318,15 @@ Widget buildSceneBubble({
   required double lillianCenterX,
   required int typedCharCount,
   int? charCount,
+  // 캐릭터 스프라이트 top의 화면 절대좌표(px). 주어지면 그 위치 바로 위에 말풍선을 띄움.
+  // 안 주어지면(기존 game_play_screen.dart처럼 캐릭터가 항상 화면 하단에 고정 배치되는 화면)
+  // 기존처럼 rH(100 + chaeonTopExtra) 고정값을 씀
+  double? chaeonSpriteTopY,
+  double? lillianSpriteTopY,
 }) {
   final bool isChaeon = node.speaker == 'chaeon';
   final double centerX = isChaeon ? chaeonCenterX : lillianCenterX;
+  final double? spriteTopY = isChaeon ? chaeonSpriteTopY : lillianSpriteTopY;
   final bool isLargeText = node.spans.any((s) => s.size == 18);
 
   final TextStyle baseStyle = TextStyle(
@@ -341,10 +389,17 @@ Widget buildSceneBubble({
   // 채온 말풍선이면 top을 20px 더 내려서 릴리안 말풍선과 겹치지 않게 함
   final double chaeonTopExtra = isChaeon ? 20 : 0;
 
+  // spriteTopY가 주어졌으면 그 캐릭터 머리 위로 헤드갭만큼 띄운 위치에 배치,
+  // 아니면 기존 고정값(rH(100 + chaeonTopExtra))을 그대로 씀. 릴리안은 20, 채온이는 그 절반인 10
+  final double headGap = isChaeon ? 10 : 20;
+  final double bubbleTop = spriteTopY != null
+      ? spriteTopY - bubbleHeight - rH(headGap)
+      : rH(100 + chaeonTopExtra);
+
   return Positioned(
     key: ValueKey('scene_bubble_${node.id}'),
     left: centerX - bubbleWidth / 2,
-    top: rH(100 + chaeonTopExtra),
+    top: bubbleTop,
     width: bubbleWidth,
     height: bubbleHeight,
     child: Stack(

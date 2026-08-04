@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(python test_tutorial.py)",
+      "Bash(tail -60 /tmp/flutter_run2.log)",
+      "Read(//tmp/**)",
+      "Bash(python debug_load.py)",
+      "Bash(python debug_load2.py)",
+      "Bash(python debug_net.py)",
+      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 8765 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess\")",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId=3220' | Select-Object ProcessId,ParentProcessId,Name\")",
+      "Bash(powershell -NoProfile -Command \"Stop-Process -Id 3220 -Force -ErrorAction SilentlyContinue\")",
+      "Bash(python test_tutorial2.py)"
+    ]
+  }
+}

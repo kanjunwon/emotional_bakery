@@ -1,7 +1,10 @@
 // lib/features/menu/chapter_select_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:emotional_bakery/core/services/chapter_progress.dart';
+import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_screen.dart';
+import 'package:emotional_bakery/features/chapter1/kitchen_screen.dart';
 import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
 
 class ChapterSelectScreen extends StatefulWidget {
@@ -88,7 +91,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   "Chapter 2",
                   "닫아버린 마음",
                   "ch2.png",
-                  false,
+                  ChapterProgress.isChapter2Unlocked, // 챕터1 종료하면 전역으로 해금됨
                   rW,
                   rH,
                 ),
@@ -208,6 +211,16 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const TutorialScreen(),
+                    ),
+                  );
+                } else if (title == "Chapter 2") {
+                  // 챕터2는 빵집/튜토리얼 없이 바로 주방 화면(챕터2 시작 모드)에서 시작
+                  Navigator.push(
+                    context,
+                    fadeThroughBlackRoute(
+                      const KitchenScreen(
+                        mode: KitchenScreenMode.chapter2Start,
+                      ),
                     ),
                   );
                 }

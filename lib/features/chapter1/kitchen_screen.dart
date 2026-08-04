@@ -1,0 +1,609 @@
+// lib/features/chapter1/kitchen_screen.dart
+//
+// 앞치마 갈아입고 계단을 내려와 도착하는 주방 화면. tutorial_screen.dart처럼 Flame 없이
+// 순수 Flutter Positioned/Transform으로만 그림. kitchen_main.png가 화면 한 프레임에
+// 다 들어가는 단일 배경이라 카메라 스크롤도 따로 안 둠 (bakery_bg_main.png 같은 와이드 맵이 아님)
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:emotional_bakery/core/models/dialogue_node.dart';
+import 'package:emotional_bakery/core/models/interaction_model.dart';
+import 'package:emotional_bakery/core/services/chapter_progress.dart';
+import 'package:emotional_bakery/core/services/interaction_loader.dart';
+import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
+import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
+    as widgets;
+import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
+
+// 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
+const double kChaeonKitchenStartX = 60;
+const double kChaeonKitchenTopY = 235;
+// 릴리안이 고정으로 서있는 위치 (실측값)
+const double kLillianKitchenX = 467;
+const double kLillianKitchenTopY = 228;
+// 채온이가 이 위치 이상 도달하면 이동이 잠기고 kitchen_arrival.json 대사가 자동으로 시작됨
+const double kKitchenDialogueTriggerX = 232;
+// 채온이가 좌우로 움직일 수 있는 범위 (배경 밖으로 안 나가게)
+const double kChaeonKitchenMinX = 60;
+const double kChaeonKitchenMaxX = 814;
+// 채온이 이동 속도(px/초, 논리 좌표 기준). 챕터1 본편/튜토리얼이랑 동일한 값
+const double kChaeonKitchenSpeed = 225;
+const Duration _moveTickInterval = Duration(milliseconds: 40);
+
+// 계단을 다시 올라가 빵집으로 돌아가는 연출: 내려올 때(game_play_screen.dart의
+// _triggerChaeonStairsDescent)와 동일한 패턴으로, kitchen_main.png 좌표계(874x464) 기준
+// 시작/끝 지점과 재생 시간을 지정
+const Offset _stairsAscentStart = Offset(60, 235);
+const Offset _stairsAscentEnd = Offset(-120, 154);
+const Duration _stairsAscentDuration = Duration(milliseconds: 700);
+
+// 이 화면이 챕터1 엔딩용인지 챕터2 시작용인지 구분. 배경/캐릭터는 같은 주방을 재사용하고
+// 이동 가능 여부, 처음 로드하는 대사만 다름
+enum KitchenScreenMode {
+  // 챕터1 엔딩: dpad로 걸어가서 릴리안 근처에 도달하면 kitchen_arrival.json이 자동 시작됨
+  chapter1End,
+  // 챕터2 시작: 걷기 없이 화면 들어오자마자 바로 chapter2_ready.json 대사가 시작됨
+  chapter2Start,
+}
+
+class KitchenScreen extends StatefulWidget {
+  const KitchenScreen({
+    super.key,
+    this.initialTemperature = 3,
+    this.mode = KitchenScreenMode.chapter1End,
+  });
+
+  // GamePlayScreen에서 이어받는 온도계 값 (화면이 바뀌어도 온도계가 끊기지 않게)
+  final int initialTemperature;
+  final KitchenScreenMode mode;
+
+  @override
+  State<KitchenScreen> createState() => _KitchenScreenState();
+}
+
+class _KitchenScreenState extends State<KitchenScreen>
+    with SingleTickerProviderStateMixin {
+  double _chaeonX = kChaeonKitchenStartX;
+  String _chaeonState = 'idle';
+  bool _isChaeonFacingLeft = false;
+
+  Timer? _moveTimer;
+  // 대사 트리거 이후로는 이동 잠금 (dpad도 같이 숨김)
+  bool _movementLocked = false;
+  // kitchen_arrival.json 자동 로드가 중복 실행되지 않게 막는 플래그
+  bool _hasTriggeredDialogue = false;
+
+  // 왼쪽 끝에서 계단을 다시 올라가 빵집으로 돌아가는 연출
+  late final AnimationController _stairsUpController;
+  Animation<Offset>? _stairsUpAnimation;
+  bool _isChaeonAscendingStairs = false;
+
+  bool _isSettingOpen = false;
+  // kitchen_arrival.json(챕터1)이나 chapter2_ingredient_quiz.json(챕터2)이 끝나면 true.
+  // 지금은 안내 문구만 있는 임시 화면으로 대체함
+  bool _showChapterEndPlaceholder = false;
+  // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
+  bool _hasLoadedIngredientQuiz = false;
+
+  bool _imagesPrecached = false;
+
+  // 배경 오브젝트 클릭 정보 팝업. chapter_kitchen.json에서 불러온 히트박스 목록이고,
+  // 방향키가 나와있을 때(!_movementLocked)만 클릭해서 정보를 얻을 수 있음
+  List<InteractionObject> _interactionObjects = [];
+  String? _interactionText;
+
+  late final SceneDialogueController _sceneController;
+
+  @override
+  void initState() {
+    super.initState();
+    _stairsUpController =
+        AnimationController(vsync: this, duration: _stairsAscentDuration)
+          ..addListener(() {
+            if (mounted) setState(() {});
+          });
+    _stairsUpController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        Navigator.pop(context);
+      }
+    });
+    // 챕터2는 걷기 없이 바로 대사부터 시작하니까, 이동을 처음부터 잠그고 릴리안 근처에
+    // 이미 도착해있는 걸로 시작함
+    if (widget.mode == KitchenScreenMode.chapter2Start) {
+      _movementLocked = true;
+      _chaeonX = kKitchenDialogueTriggerX;
+    }
+    _sceneController = SceneDialogueController(
+      onDialogueEnd: () {
+        // 챕터2 모드는 ready -> ingredient_quiz 순서로 자동 이어붙이고, 그 다음에 끝나면
+        // (table.json -> 회상컷씬 -> first_bread.json처럼 대화 끝나면 다음 대화 자동 로드하는 패턴)
+        // 임시 안내 화면을 띄움
+        if (widget.mode == KitchenScreenMode.chapter2Start) {
+          if (!_hasLoadedIngredientQuiz) {
+            _hasLoadedIngredientQuiz = true;
+            _sceneController.loadDialogue(
+              'assets/lines/chapter2/chapter2_ingredient_quiz.json',
+            );
+          } else {
+            setState(() => _showChapterEndPlaceholder = true);
+          }
+          return;
+        }
+        // kitchen_arrival.json 종료 = 챕터 1 종료 시점.
+        // TODO: 나중에 진짜 챕터1 종료 연출/다음 챕터 연결로 교체할 예정. 지금은 임시 안내 문구만 표시
+        setState(() => _showChapterEndPlaceholder = true);
+      },
+      // kitchen_arrival.json에는 hop 트리거용 animation 필드가 없어서 둘 다 안 씀
+      onLillianHop: () {},
+      onChaeonHop: () {},
+      initialTemperature: widget.initialTemperature,
+    );
+    _sceneController.addListener(_onSceneControllerChanged);
+    // 배경 오브젝트 클릭 정보(chapter_kitchen.json) 로드
+    InteractionLoader.loadStageObjects('kitchen_main.png').then((objects) {
+      if (mounted) setState(() => _interactionObjects = objects);
+    });
+    // 챕터2는 걷기 없이 화면 들어오자마자 바로 대사 시작
+    if (widget.mode == KitchenScreenMode.chapter2Start) {
+      _sceneController.loadDialogue('assets/lines/chapter2/chapter2_ready.json');
+    }
+  }
+
+  void _onSceneControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      _imagesPrecached = true;
+      const List<String> assetsToPrecache = [
+        'assets/images/kitchen_main.png',
+        'assets/images/chaeon_apron_putting_on.gif',
+        'assets/images/chaeon_apron_idle.gif',
+        'assets/images/lillian_idle.gif',
+      ];
+      for (final asset in assetsToPrecache) {
+        precacheImage(AssetImage(asset), context);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _moveTimer?.cancel();
+    _stairsUpController.dispose();
+    _sceneController.removeListener(_onSceneControllerChanged);
+    _sceneController.dispose();
+    super.dispose();
+  }
+
+  // 채온이를 delta만큼 옮기고(배경 밖으로는 안 나가게 clamp), 대사 트리거/왼쪽 끝(계단) 트리거 확인
+  void _moveChaeonBy(double delta) {
+    setState(() {
+      _chaeonX = (_chaeonX + delta).clamp(
+        kChaeonKitchenMinX,
+        kChaeonKitchenMaxX,
+      );
+    });
+    _checkDialogueTrigger();
+    _checkStairsUpTrigger(delta);
+  }
+
+  // 릴리안 근처(대사 트리거 x좌표)에 도달하면 이동 잠그고 kitchen_arrival.json 자동 시작
+  void _checkDialogueTrigger() {
+    if (_hasTriggeredDialogue) return;
+    if (_chaeonX >= kKitchenDialogueTriggerX) {
+      _hasTriggeredDialogue = true;
+      _moveTimer?.cancel();
+      setState(() {
+        _movementLocked = true;
+        _chaeonState = 'idle';
+      });
+      _sceneController.loadDialogue(
+        'assets/lines/chapter1/kitchen_arrival.json',
+      );
+    }
+  }
+
+  // 왼쪽 끝(계단 있는 곳)까지 계속 왼쪽으로 이동하려 하면 다시 계단을 올라가 빵집으로 돌아감.
+  // 챕터1 모드(GamePlayScreen에서 push된 경우)에서만 돌아갈 화면이 있으므로 그때만 동작
+  bool _hasTriggeredStairsUp = false;
+  void _checkStairsUpTrigger(double delta) {
+    if (_hasTriggeredStairsUp) return;
+    if (widget.mode != KitchenScreenMode.chapter1End) return;
+    if (delta < 0 && _chaeonX <= kChaeonKitchenMinX) {
+      _hasTriggeredStairsUp = true;
+      _moveTimer?.cancel();
+      setState(() {
+        _movementLocked = true;
+        _chaeonState = 'idle';
+      });
+      _triggerChaeonStairsAscent();
+    }
+  }
+
+  // 내려올 때(game_play_screen.dart의 _triggerChaeonStairsDescent)와 동일한 패턴으로,
+  // _stairsAscentStart에서 _stairsAscentEnd로 이동하는 애니메이션을 재생. 끝나면 화면을 pop함
+  void _triggerChaeonStairsAscent() {
+    _stairsUpAnimation =
+        Tween<Offset>(
+          begin: _stairsAscentStart,
+          end: _stairsAscentEnd,
+        ).animate(
+          CurvedAnimation(parent: _stairsUpController, curve: Curves.easeIn),
+        );
+    setState(() => _isChaeonAscendingStairs = true);
+    _stairsUpController.forward(from: 0);
+  }
+
+  void _startMoving(int direction) {
+    if (_movementLocked) return;
+    _moveTimer?.cancel();
+    setState(() {
+      _chaeonState = 'walk';
+      _isChaeonFacingLeft = direction < 0;
+    });
+    _moveTimer = Timer.periodic(_moveTickInterval, (timer) {
+      // 225px/초 * 40ms = 9px, 튜토리얼 화면이랑 동일한 틱당 이동량
+      _moveChaeonBy(direction * 9.0);
+    });
+  }
+
+  void _stopMoving() {
+    _moveTimer?.cancel();
+    if (!_movementLocked) {
+      setState(() => _chaeonState = 'idle');
+    }
+  }
+
+  // 뒤로가기 버튼: 타이핑 중이면 텍스트 다 보여주고, 아니면 이전 대사로 되돌아감
+  void _handleBackButtonTap() {
+    _sceneController.goBackScene();
+  }
+
+  // 챕터 1 종료 임시 화면 탭하면 챕터 선택창으로 이동. tutorial_screen.dart에서 빵집 문 클릭 시
+  // GamePlayScreen으로 넘어가는 것과 동일하게 pushReplacement로 스택 정리
+  void _handleChapterEndTap() {
+    // 챕터1 엔딩을 다 봤으니 챕터2 해금. 챕터2 모드(이미 해금된 상태)에서 탭할 땐 안 해도 됨
+    if (widget.mode == KitchenScreenMode.chapter1End) {
+      ChapterProgress.isChapter2Unlocked = true;
+    }
+    Navigator.pushReplacement(
+      context,
+      fadeThroughBlackRoute(const ChapterSelectScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double w = MediaQuery.of(context).size.width;
+    final double h = MediaQuery.of(context).size.height;
+    // UI 크롬(온도계, 버튼, dpad 등 화면 가장자리에 고정되는 요소)은 game_play_screen.dart(빵집)와
+    // 완전히 동일한 기준(874x402)으로 스케일해야 크기/위치가 두 화면에서 똑같이 보임
+    double rW(double px) => (px / 874) * w;
+    double rH(double px) => (px / 402) * h;
+
+    // 배경(kitchen_main.png)은 가로 기준으로 항상 화면을 꽉 채움. 세로 기준은 중앙 정렬이 아니라,
+    // 이미지 하단에서 8px 위 지점(월드 좌표 464-8=456)이 화면 하단에 오도록 맞춤
+    final double worldScale = w / 874;
+    const double worldOffsetX = 0;
+    final double worldOffsetY = h - (464 - 8) * worldScale;
+    // 배경 이미지 안 좌표(월드 좌표)를 실제 화면 좌표로 바꿔줌. 위치는 레터박스 오프셋을 더해야 하고,
+    // 크기(width/height)는 오프셋 없이 scale만 곱하면 됨
+    double wX(double px) => worldOffsetX + px * worldScale;
+    double wY(double px) => worldOffsetY + px * worldScale;
+    double wSize(double px) => px * worldScale;
+
+    final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
+    final String? sceneNodeId = _sceneController.sceneNodeId;
+    final DialogueNode? currentSceneNode =
+        (sceneDialogue != null && sceneNodeId != null)
+        ? sceneDialogue.nodes[sceneNodeId]
+        : null;
+
+    // 채온이/릴리안 둘 다 Positioned의 left가 스프라이트 왼쪽 끝 기준이라(중앙 기준 보정 없음),
+    // 말풍선 가로 중심은 거기에 스프라이트 폭의 절반을 더해야 실제 캐릭터 중심과 맞음
+    final double chaeonCenterX = wX(_chaeonX) + wSize(172) / 2;
+    final double lillianCenterX = wX(kLillianKitchenX) + wSize(172) / 2;
+    // 말풍선 앵커: 각 캐릭터가 실제로 서있는 kitchen_main.png 좌표(wY) 기준
+    final double chaeonSpriteTopY = wY(kChaeonKitchenTopY);
+    final double lillianSpriteTopY = wY(kLillianKitchenTopY);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SizedBox(
+        width: w,
+        height: h,
+        child: Stack(
+          children: [
+            // 1층: 배경. 874:464 비율 유지한 채로 레터박스로 화면 안에 통째로 들어오게 함
+            // (화면 비율이 안 맞으면 좌우나 위아래에 검은 여백이 생김)
+            Positioned(
+              left: worldOffsetX,
+              top: worldOffsetY,
+              width: wSize(874),
+              height: wSize(464),
+              child: Image.asset(
+                'assets/images/kitchen_main.png',
+                fit: BoxFit.fill,
+              ),
+            ),
+
+            // 2층: 릴리안. 화면 안 고정된 위치에 정지 상태(idle)로 서있음
+            Positioned(
+              key: const ValueKey('kitchen_lillian'),
+              left: wX(kLillianKitchenX),
+              top: wY(kLillianKitchenTopY),
+              child: Image.asset(
+                'assets/images/lillian_idle.gif',
+                width: wSize(172),
+                height: wSize(172),
+                fit: BoxFit.contain,
+              ),
+            ),
+
+            // 3층: 채온이. dpad로 좌우 이동, 대사 트리거 이후로는 제자리에 고정.
+            // 앞치마 입고 걷는 전용 애니메이션 에셋이 아직 없어서, game_play_screen.dart의
+            // kitchenApproach 단계와 동일하게 walk 상태일 땐 chaeon_apron_idle.gif를,
+            // idle 상태일 땐 chaeon_apron_putting_on.gif를 대신 보여줌
+            Positioned(
+              key: const ValueKey('kitchen_chaeon'),
+              left: wX(
+                _isChaeonAscendingStairs
+                    ? (_stairsUpAnimation?.value.dx ?? _chaeonX)
+                    : _chaeonX,
+              ),
+              top: wY(
+                _isChaeonAscendingStairs
+                    ? (_stairsUpAnimation?.value.dy ?? kChaeonKitchenTopY)
+                    : kChaeonKitchenTopY,
+              ),
+              child: Transform.flip(
+                flipX: _isChaeonFacingLeft,
+                child: Image.asset(
+                  // 계단을 올라가는 중엔 그 시점 _chaeonState와 무관하게 항상 apron_idle.gif로 고정
+                  // (game_play_screen.dart의 하강 연출과 동일한 규칙)
+                  _isChaeonAscendingStairs || _chaeonState == 'walk'
+                      ? 'assets/images/chaeon_apron_idle.gif'
+                      : 'assets/images/chaeon_apron_putting_on.gif',
+                  width: wSize(172),
+                  height: wSize(172),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+
+            // 3-2층: 배경 오브젝트 클릭 히트박스. 방향키가 나와있을 때(!_movementLocked)만 활성화.
+            // 온도계/뒤로가기/설정 버튼(5~7층)보다 아래에 있어야 버튼 영역과 겹치는 히트박스가
+            // 버튼 탭을 가로채지 않음 (겹치면 버튼이 안 눌리는 문제가 생김)
+            if (!_movementLocked)
+              for (final obj in _interactionObjects)
+                Positioned(
+                  key: ValueKey('kitchen_interaction_${obj.id}'),
+                  left: wX(obj.clickX),
+                  top: wY(obj.clickY),
+                  width: wSize(obj.width),
+                  height: wSize(obj.height),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(
+                      () => _interactionText = obj.dialogue.join('\n'),
+                    ),
+                  ),
+                ),
+
+            // 4층: kitchen_arrival.json 대사창. SceneDialogueController + buildSceneBubble 그대로 재사용
+            if (currentSceneNode != null && currentSceneNode.type == 'line')
+              Positioned.fill(
+                key: const ValueKey('kitchen_dialogue_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _sceneController.advanceScene,
+                  child: Stack(
+                    children: [
+                      if (currentSceneNode.spans.isNotEmpty &&
+                          _sceneController.bubbleRevealed)
+                        widgets.buildSceneBubble(
+                          node: currentSceneNode,
+                          rW: rW,
+                          rH: rH,
+                          chaeonCenterX: chaeonCenterX,
+                          lillianCenterX: lillianCenterX,
+                          typedCharCount: _sceneController.typedCharCount,
+                          // 각 캐릭터 머리 위에 바로 붙도록 실제 스프라이트 top을 넘겨줌
+                          chaeonSpriteTopY: chaeonSpriteTopY,
+                          lillianSpriteTopY: lillianSpriteTopY,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // 5층: 온도계 (기존 화면들이랑 톤 맞추려고 그대로 재사용)
+            widgets.buildThermometer(
+              key: 'kitchen_thermometer',
+              rW: rW,
+              rH: rH,
+              temperature: _sceneController.temperature,
+              temperatureChangeText: _sceneController.temperatureChangeText,
+            ),
+
+            // 6층: 뒤로가기 버튼
+            widgets.buildBackButton(
+              key: 'kitchen_back',
+              rW: rW,
+              rH: rH,
+              onTap: _handleBackButtonTap,
+            ),
+
+            // 7층: 설정 버튼
+            widgets.buildSettingButton(
+              key: 'kitchen_setting',
+              rW: rW,
+              rH: rH,
+              onTap: () => setState(() => _isSettingOpen = true),
+            ),
+
+            // 8층: 가상 패드. 이동 잠기면(대사 트리거 이후) 숨김
+            if (!_movementLocked) ...[
+              Positioned(
+                key: const ValueKey('kitchen_dpad_left'),
+                left: rW(686),
+                bottom: rH(20),
+                child: DpadButton(
+                  imagePath: 'assets/images/btn_left.png',
+                  onTapDown: () => _startMoving(-1),
+                  onTapUp: _stopMoving,
+                  onTapCancel: _stopMoving,
+                  rW: rW,
+                  rH: rH,
+                ),
+              ),
+              Positioned(
+                key: const ValueKey('kitchen_dpad_right'),
+                left: rW(778),
+                bottom: rH(20),
+                child: DpadButton(
+                  imagePath: 'assets/images/btn_right.png',
+                  onTapDown: () => _startMoving(1),
+                  onTapUp: _stopMoving,
+                  onTapCancel: _stopMoving,
+                  rW: rW,
+                  rH: rH,
+                ),
+              ),
+            ],
+
+            // 8-2층: 오브젝트 클릭 정보성 팝업 - 화면 아무 곳이나 탭하면 닫힘
+            if (_interactionText != null)
+              Positioned.fill(
+                key: const ValueKey('kitchen_interaction_dismiss'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _interactionText = null),
+                ),
+              ),
+
+            // 8-3층: 오브젝트 클릭 정보성 팝업 텍스트창
+            if (_interactionText != null)
+              widgets.buildInteractionBox(
+                text: _interactionText!,
+                rW: rW,
+                rH: rH,
+              ),
+
+            // 9층: 설정 팝업. game_play_screen.dart 설정 팝업이랑 동일한 구성
+            if (_isSettingOpen)
+              Builder(
+                builder: (context) {
+                  double popupW = w * 0.8;
+                  double popupH = h * 0.8;
+
+                  // 이미지 원본 비율 650x343 기준으로 레터박스 맞춰서 중앙에 배치
+                  const double imageAspect = 650 / 343;
+                  double renderedW, renderedH;
+                  if (imageAspect > popupW / popupH) {
+                    renderedW = popupW;
+                    renderedH = popupW / imageAspect;
+                  } else {
+                    renderedH = popupH;
+                    renderedW = popupH * imageAspect;
+                  }
+                  double offsetX = (popupW - renderedW) / 2;
+                  double offsetY = (popupH - renderedH) / 2;
+
+                  return Positioned.fill(
+                    key: const ValueKey('kitchen_setting_popup'),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {},
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: Center(
+                          child: SizedBox(
+                            width: popupW,
+                            height: popupH,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  left: offsetX,
+                                  top: offsetY,
+                                  width: renderedW,
+                                  height: renderedH,
+                                  child: Image.asset(
+                                    'assets/images/main_setting_ex.png',
+                                    fit: BoxFit.fill,
+                                  ),
+                                ),
+                                Positioned(
+                                  right: offsetX + renderedW * (5 / 650),
+                                  top: offsetY + renderedH * (5 / 343),
+                                  width: renderedW * (45 / 650),
+                                  height: renderedH * (45 / 343),
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        setState(() => _isSettingOpen = false),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+            // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라
+            // 지금은 암전 + 중앙 안내 문구만 있는 자리표시자로 둠. 탭하면 챕터 선택창으로 이동.
+            // 챕터1 모드면 "챕터 1 종료", 챕터2 모드면 "챕터 2 계속 준비 중" 문구로 나뉨
+            if (_showChapterEndPlaceholder)
+              Positioned.fill(
+                key: const ValueKey('chapter_end_placeholder'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _handleChapterEndTap,
+                  child: Container(
+                    color: Colors.black.withOpacity(0.85),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.mode == KitchenScreenMode.chapter1End
+                                ? '챕터 1 종료'
+                                : '챕터 2 계속 준비 중',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: rW(28),
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SCDream',
+                            ),
+                          ),
+                          SizedBox(height: rH(16)),
+                          // 임시 화면이라 안내도 짧게: 탭하면 챕터 선택창으로 넘어감
+                          Text(
+                            '화면을 탭하면 챕터 선택창으로 이동합니다',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: rW(14),
+                              fontFamily: 'SCDream',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

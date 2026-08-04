@@ -335,25 +335,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "지하에 주방으로 내려와주세요!",
-      "next": "line_035"
-    },
-    "line_035": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "주방치고는... 좀 특이하네요.",
-      "next": "line_036"
-    },
-    "line_036": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "흐음~ 그래요?",
-      "next": "line_037"
-    },
-    "line_037": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "그럼 이제 시작해볼까요?",
-      "next": "line_038"
+      "next": "null"
     }
   }
 }

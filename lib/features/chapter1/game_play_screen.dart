@@ -12,22 +12,35 @@ import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/memory_flashback_scene.dart';
-import 'package:emotional_bakery/features/chapter1/apron_change_scene.dart';
+import 'package:emotional_bakery/features/chapter1/kitchen_screen.dart';
 
-// 챕터1 대사 체이닝 진행 단계: first_meet → table → 회상 컷씬 → first_bread → 앞치마 갈아입기
+// 챕터1 대사 체이닝 진행 단계: first_meet → table → 회상 컷씬 → first_bread → 앞치마 착용 후 주방행
 enum DialoguePhase {
   none,
   firstMeet,
   table,
   memoryFlashback,
   firstBread,
-  apronChange,
+  // first_bread.json 종료 직후부터 적용되는 구간: 채온이는 앞치마를 입은 상태(idle/walk에 따라
+  // chaeon_apron_putting_on.gif / chaeon_apron_idle.gif로 표시)로 다시 자유롭게 움직이며
+  // 계단(주방 입구)까지 걸어감. 계단 근처 트리거는 이 단계일 때만 반응하게 해서 이전 단계에서
+  // 실수로 안 걸리게 함
+  kitchenApproach,
 }
 
 // table.json 종료 후 회상 컷씬으로 넘어갈 때 쓰는 검은 화면 페이드 전환 타이밍
 const Duration _memoryFadeInDuration = Duration(milliseconds: 300);
 const Duration _memoryFadeHoldDuration = Duration(milliseconds: 1000);
 const Duration _memoryFadeOutDuration = Duration(milliseconds: 300);
+
+// 계단 꼭대기 지점의 게임 월드 절대좌표(x는 mapWidth=1852, y는 mapHeight=402 기준 top 값).
+// 릴리안이 계단을 올라와 다 도착하는 지점이자, 채온이가 계단을 내려가기 시작하는 지점으로 공유해서 씀
+const Offset _stairsTopPoint = Offset(1680, 172);
+// 릴리안이 계단을 올라오기 시작하는(화면 밖) 지점
+const Offset _stairsOffscreenPoint = Offset(1800, 180);
+// 채온이가 계단을 내려가 화면 밖으로 사라지는 지점
+const Offset _chaeonStairsDescentEnd = Offset(1920, 232);
+const Duration _stairsDescentDuration = Duration(milliseconds: 700);
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
@@ -68,6 +81,13 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
   // 왼쪽 끝에서 튜토리얼 화면으로 전환 중 중복 네비게이션 방지 플래그
   bool _isNavigatingToTutorial = false;
+
+  // 채온이가 계단 근처에 도달했을 때 재생하는 하강 애니메이션(_stairsTopPoint -> _chaeonStairsDescentEnd)
+  late AnimationController _chaeonStairsDescentController;
+  Animation<Offset>? _chaeonStairsDescentAnimation;
+  bool _isChaeonDescendingStairs = false;
+  // 계단 하강 후 주방 화면으로 전환 중 중복 네비게이션 방지 플래그
+  bool _isNavigatingToKitchen = false;
 
   // 릴리안/채온 "깜짝 놀람" 모션(살짝 위로 껑충)용 컨트롤러 및 오프셋 애니메이션
   late AnimationController _lillianHopController;
@@ -116,12 +136,24 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _transitionToMemoryFlashback();
             break;
           case DialoguePhase.firstBread:
-            // first_bread.json 종료 후 앞치마 갈아입기 컷씬으로 전환
-            setState(() => _dialoguePhase = DialoguePhase.apronChange);
+            // first_bread.json 종료 즉시 앞치마 착용 상태(chaeon_apron_putting_on)로 전환하고,
+            // 릴리안 퇴장 + 방향키·오브젝트 클릭 정보 다시 활성화 (온도계/뒤로가기/설정 버튼은 계속 노출)
+            setState(() {
+              _dialoguePhase = DialoguePhase.kitchenApproach;
+              _isLillianVisible = false;
+              _isFreeWalkPhase = true;
+            });
+            _game.isMovementBlocked = false;
+            // kitchenApproach 단계에서만 계단 트리거가 실제로 소모되게 켜줌
+            _game.isKitchenApproachActive = true;
+            // 릴리안 계단 등장 연출 때 설정된 lillianArrivalX가 남아있으면 카메라가 채온이를
+            // 온전히 못 따라가므로 초기화하고, 순간이동 없이 부드럽게 채온이 위치로 따라잡게 함
+            _game.lillianArrivalX = null;
+            _game.startCameraCatchUp();
             break;
           case DialoguePhase.none:
           case DialoguePhase.memoryFlashback:
-          case DialoguePhase.apronChange:
+          case DialoguePhase.kitchenApproach:
             break;
         }
       },
@@ -151,6 +183,27 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         _sceneController.loadDialogue('assets/lines/chapter1/table.json');
       }
     });
+
+    // 채온이 계단 하강 애니메이션 제어기 설정
+    _chaeonStairsDescentController =
+        AnimationController(vsync: this, duration: _stairsDescentDuration)
+          ..addListener(() {
+            setState(() {});
+          });
+    _chaeonStairsDescentController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _navigateToKitchenScreen();
+      }
+    });
+
+    // 계단 근처 도달 시 주방으로 내려가는 연출 시작. kitchenApproach 단계가 아니면
+    // (이전 단계에서 실수로 걸렸으면) 그냥 무시하고 반응 안 함
+    _game.onReachStairs = () {
+      if (_dialoguePhase != DialoguePhase.kitchenApproach) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _triggerChaeonStairsDescent();
+      });
+    };
 
     // 릴리안/채온 깜짝 놀람 모션: 짧게 위로 튀었다가 제자리로 돌아옴
     _lillianHopController = AnimationController(
@@ -231,12 +284,22 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               initialStep: 2,
               initialPlayerX: 1500,
               initialFacingLeft: true,
+              // 마을(튜토리얼)에서 빵집 문으로 다시 들어오면 새 GamePlayScreen을 만들지 않고
+              // pop해서 지금 이 화면(대사/이동 진행 상태 그대로)으로 돌아오게 함
+              returnToExistingGame: true,
             ),
           ),
         );
-        if (mounted) {
-          setState(() => _isNavigatingToTutorial = false);
-        }
+        if (!mounted) return;
+        // 왼쪽 벽 트리거 좌표(size.x/2)에 그대로 멈춰있으면 복귀하자마자 onReachLeftEdge가
+        // 다시 발동해버리므로, 벽에서 살짝 떨어진 곳으로 옮기고 이동 입력도 정지시켜둠
+        _game.movePlayer(0);
+        _game.chaeon?.position.x = 150;
+        setState(() {
+          _isNavigatingToTutorial = false;
+          _chaeonState = 'idle';
+          _isChaeonFacingRight = true;
+        });
       });
     };
   }
@@ -282,8 +345,25 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in tableSceneAssets) {
         precacheImage(AssetImage(asset), context);
       }
-      // first_bread.json 특정 노드에서 잠깐 바뀌는 채온이 감정 GIF도 미리 프리캐싱
-      for (final asset in widgets.chaeonSpriteOverrides.values) {
+      // first_bread.json 특정 노드에서 잠깐 바뀌는 채온이 감정 GIF도 미리 프리캐싱.
+      // beforeReveal/afterReveal 둘 다 있을 수 있어서 둘 다 챙겨줌
+      for (final override in widgets.chaeonSpriteOverrides.values) {
+        precacheImage(AssetImage(override.beforeReveal), context);
+        final String? afterReveal = override.afterReveal;
+        if (afterReveal != null) {
+          precacheImage(AssetImage(afterReveal), context);
+        }
+      }
+      // first_meet.json 특정 노드에서 잠깐 바뀌는 릴리안 스프라이트도 미리 프리캐싱
+      for (final asset in widgets.lillianSpriteOverrides.values) {
+        precacheImage(AssetImage(asset), context);
+      }
+      // 앞치마 착용 연출(kitchenApproach)에서 쓰는 채온이 스프라이트도 프리캐싱
+      const List<String> apronAssets = [
+        'assets/images/chaeon_apron_putting_on.gif',
+        'assets/images/chaeon_apron_idle.gif',
+      ];
+      for (final asset in apronAssets) {
         precacheImage(AssetImage(asset), context);
       }
     }
@@ -297,6 +377,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     _lillianStairsController.dispose();
     _lillianHopController.dispose();
     _chaeonHopController.dispose();
+    _chaeonStairsDescentController.dispose();
     _memoryFadeTimer?.cancel();
     super.dispose();
   }
@@ -327,18 +408,65 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     });
   }
 
-  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로를 결정.
+  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로와 세로 위치 보정값을 결정.
   // first_bread.json 단계면 chaeonSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle로 복귀),
   // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
-  String _resolveChaeonSprite(String? sceneNodeId) {
+  // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
+  (String, double) _resolveChaeonSprite(String? sceneNodeId) {
     if (_dialoguePhase == DialoguePhase.firstBread) {
-      return widgets.chaeonSpriteOverrides[sceneNodeId] ??
-          'assets/images/chaeon_idle_right.gif';
+      final widgets.ChaeonSpriteOverride? override =
+          widgets.chaeonSpriteOverrides[sceneNodeId];
+      if (override != null) {
+        if (_sceneController.bubbleRevealed) {
+          final String? afterReveal = override.afterReveal;
+          if (afterReveal != null) {
+            return (afterReveal, override.afterRevealVerticalOffsetPx);
+          }
+          // afterReveal이 따로 없으면 기본 idle로 폴백
+          return ('assets/images/chaeon_idle_right.gif', 0);
+        }
+        return (override.beforeReveal, override.beforeRevealVerticalOffsetPx);
+      }
+      return ('assets/images/chaeon_idle_right.gif', 0);
     }
-    if (_hasEatenBread) return 'assets/images/chaeon_holding_bread.png';
-    return _chaeonState == 'walk'
-        ? 'assets/images/chaeon_walk_right.gif'
-        : 'assets/images/chaeon_idle_right.gif';
+    // 계단 하강 중엔 그 시점 _chaeonState(walk/idle)와 무관하게 항상 apron_idle.gif로 고정
+    if (_isChaeonDescendingStairs) {
+      return ('assets/images/chaeon_apron_idle.gif', 0);
+    }
+    // 앞치마 입고 걷는 전용 애니메이션 에셋이 아직 없어서, walk 상태일 땐 chaeon_apron_idle.gif를,
+    // idle 상태일 땐 chaeon_apron_putting_on.gif를 대신 보여줌. 에셋 이름이랑 실제 쓰임이
+    // 반대라 헷갈릴 수 있는데, 이렇게 매핑해야 자연스러워 보여서 일부러 이렇게 함
+    // TODO: 나중에 앞치마 입고 걷는 walk 전용 에셋 나오면 _chaeonState 보고 분기하도록 교체할 예정
+    if (_dialoguePhase == DialoguePhase.kitchenApproach) {
+      return (
+        _chaeonState == 'walk'
+            ? 'assets/images/chaeon_apron_idle.gif'
+            : 'assets/images/chaeon_apron_putting_on.gif',
+        0,
+      );
+    }
+    if (_hasEatenBread) {
+      return ('assets/images/chaeon_holding_bread.png', 0);
+    }
+    return (
+      _chaeonState == 'walk'
+          ? 'assets/images/chaeon_walk_right.gif'
+          : 'assets/images/chaeon_idle_right.gif',
+      0,
+    );
+  }
+
+  // 현재 씬 노드에 맞춰 릴리안 스프라이트 경로를 결정.
+  // first_meet.json 단계면 lillianSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle/walk로),
+  // 그 외 단계면 기존처럼 걷는 중인지 여부로 결정
+  String _resolveLillianSprite(String? sceneNodeId) {
+    if (_dialoguePhase == DialoguePhase.firstMeet) {
+      final String? override = widgets.lillianSpriteOverrides[sceneNodeId];
+      if (override != null) return override;
+    }
+    return _isLillianWalking
+        ? 'assets/images/lillian_walk.gif'
+        : 'assets/images/lillian_idle.gif';
   }
 
   // 짧게 위로 튀었다가 바운스감 있게 제자리로 돌아오는 오프셋 애니메이션 생성
@@ -387,22 +515,20 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
   // 릴리안이 계단을 올라와서 채온이 앞까지 걸어오는 연출 트리거
   void _triggerLillianStairsEntrance() {
-    const Offset stairsStart = Offset(1800, 180);
     // 릴리안이 계단을 다 올라와서 채온이 앞까지 걸어오면, 그 다음 연출을 트리거
-    const Offset stairsTop = Offset(1632, 172);
     final double chaeonX = _game.chaeon?.position.x ?? 1300.0;
     final Offset walkEnd = Offset(chaeonX + 280, 172); // 채온이 앞 280 거리
 
-    final double climbDist = (stairsTop - stairsStart).distance;
-    final double walkDist = (walkEnd - stairsTop).distance;
+    final double climbDist = (_stairsTopPoint - _stairsOffscreenPoint).distance;
+    final double walkDist = (walkEnd - _stairsTopPoint).distance;
 
     _lillianStairsAnimation = TweenSequence<Offset>([
       TweenSequenceItem(
-        tween: Tween<Offset>(begin: stairsStart, end: stairsTop),
+        tween: Tween<Offset>(begin: _stairsOffscreenPoint, end: _stairsTopPoint),
         weight: climbDist,
       ),
       TweenSequenceItem(
-        tween: Tween<Offset>(begin: stairsTop, end: walkEnd),
+        tween: Tween<Offset>(begin: _stairsTopPoint, end: walkEnd),
         weight: walkDist,
       ),
     ]).animate(_lillianStairsController);
@@ -424,6 +550,62 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     });
 
     _lillianStairsController.forward(from: 0);
+  }
+
+  // 채온이가 계단 근처에 도달하면 조작을 잠그고, 계단 꼭대기(_stairsTopPoint)에서
+  // 화면 밖(계단 아래, _chaeonStairsDescentEnd)으로 내려가는 하강 애니메이션을 재생
+  void _triggerChaeonStairsDescent() {
+    _chaeonStairsDescentAnimation =
+        TweenSequence<Offset>([
+          TweenSequenceItem(
+            tween: Tween<Offset>(
+              begin: _stairsTopPoint,
+              end: _chaeonStairsDescentEnd,
+            ),
+            weight: 1,
+          ),
+        ]).animate(
+          CurvedAnimation(
+            parent: _chaeonStairsDescentController,
+            curve: Curves.easeIn,
+          ),
+        );
+
+    setState(() {
+      _isFreeWalkPhase = false; // 하강 중엔 방향키도 숨김
+      _isChaeonDescendingStairs = true;
+    });
+
+    _chaeonStairsDescentController.forward(from: 0);
+  }
+
+  // 하강 애니메이션이 끝나면 암전 후 주방 화면으로 전환. onReachLeftEdge에서 쓰는 것과 동일한
+  // fadeThroughBlackRoute + 중복 네비게이션 방지 패턴
+  void _navigateToKitchenScreen() {
+    if (_isNavigatingToKitchen) return;
+    _isNavigatingToKitchen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        fadeThroughBlackRoute(
+          KitchenScreen(initialTemperature: _sceneController.temperature),
+        ),
+      );
+      if (!mounted) return;
+      // 주방에서 왼쪽 끝까지 이동해 다시 계단을 올라와 돌아온 경우: 하강 연출 상태를 되돌리고,
+      // 트리거 좌표에 딱 걸쳐있으면 돌아오자마자 하강 연출이 다시 발동해버리므로 살짝 떨어뜨려둠
+      _game.chaeon?.position.x = kitchenStairsTriggerX - 100;
+      _game.movePlayer(0);
+      _game.resetStairsTrigger();
+      _game.isMovementBlocked = false;
+      setState(() {
+        _isNavigatingToKitchen = false;
+        _isChaeonDescendingStairs = false;
+        _isFreeWalkPhase = true;
+        _chaeonState = 'idle';
+      });
+    });
   }
 
   void _advanceDialogue() {
@@ -471,7 +653,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         : 0.0;
 
     double chaeonDisplaySize = 172 * zoom;
-    double renderChaeonX = (chaeonX - cameraX) * zoom - chaeonDisplaySize / 2;
+    // 계단 하강 중엔 게임 월드 절대좌표(_stairsTopPoint -> _chaeonStairsDescentEnd) 애니메이션 값을
+    // 그대로 렌더링 좌표로 사용 (기존 chaeon.position.x 기반 좌표 대신)
+    final Offset? chaeonStairsDescentPos = _isChaeonDescendingStairs
+        ? _chaeonStairsDescentAnimation?.value
+        : null;
+    double renderChaeonX =
+        ((chaeonStairsDescentPos?.dx ?? chaeonX) - cameraX) * zoom -
+        chaeonDisplaySize / 2;
 
     // 릴리안 렌더링 좌표 계산
     double currentLillianX;
@@ -498,6 +687,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;
+    final (String chaeonSpriteAsset, double chaeonSpriteVerticalOffsetPx) =
+        _resolveChaeonSprite(sceneNodeId);
     final DialogueNode? currentSceneNode =
         (sceneDialogue != null && sceneNodeId != null)
         ? sceneDialogue.nodes[sceneNodeId]
@@ -565,17 +756,44 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     onFinished: _sceneController.advanceScene,
                   ),
                 )
+              else if (chaeonStairsDescentPos != null)
+                // 계단 하강 중: 게임 월드 절대좌표(top 기준, 릴리안 계단 등장 연출과 동일한 방식)로 배치
+                Positioned(
+                  key: const ValueKey('chaeon'),
+                  left: renderChaeonX,
+                  top: rH(chaeonStairsDescentPos.dy),
+                  height: chaeonDisplaySize,
+                  child: Transform.translate(
+                    offset: Offset(
+                      0,
+                      _chaeonHopOffset.value + chaeonSpriteVerticalOffsetPx,
+                    ),
+                    child: Transform.flip(
+                      flipX: !_isChaeonFacingRight,
+                      child: Image.asset(
+                        chaeonSpriteAsset,
+                        width: chaeonDisplaySize,
+                        height: chaeonDisplaySize,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                )
               else
                 Positioned(
                   key: const ValueKey('chaeon'),
                   left: renderChaeonX,
                   bottom: rH(50), // 튜토리얼 채온이와 동일한 바닥선 기준
                   child: Transform.translate(
-                    offset: Offset(0, _chaeonHopOffset.value),
+                    // 스프라이트별 세로 위치 보정값(chaeonSpriteVerticalOffsetPx)만큼 더해줌
+                    offset: Offset(
+                      0,
+                      _chaeonHopOffset.value + chaeonSpriteVerticalOffsetPx,
+                    ),
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
                       child: Image.asset(
-                        _resolveChaeonSprite(sceneNodeId),
+                        chaeonSpriteAsset,
                         width: chaeonDisplaySize,
                         height: chaeonDisplaySize,
                         fit: BoxFit.contain,
@@ -596,9 +814,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   child: Transform.flip(
                     flipX: _isLillianWalking,
                     child: Image.asset(
-                      _isLillianWalking
-                          ? 'assets/images/lillian_walk.gif'
-                          : 'assets/images/lillian_idle.gif',
+                      _resolveLillianSprite(sceneNodeId),
                       width: lillianDisplaySize,
                       height: lillianDisplaySize,
                       fit: BoxFit.contain,
@@ -659,7 +875,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             if (!widget.isPrologue &&
                 (!_isGuidePhaseStarted || _isFreeWalkPhase))
               Positioned(
-                key: const ValueKey('dpad_left'),
+                // 디버그: dpad 재마운트 시 이전 눌림 상태가 이어지는지 테스트하려고 단계별로
+                // 완전히 다른 키를 줘서 매번 새 위젯으로 취급되게 함. 원인 아니면 나중에 되돌릴 것
+                key: ValueKey('dpad_left_$_dialoguePhase'),
                 left: rW(686),
                 bottom: rH(20),
                 child: DpadButton(
@@ -691,7 +909,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             if (!widget.isPrologue &&
                 (!_isGuidePhaseStarted || _isFreeWalkPhase))
               Positioned(
-                key: const ValueKey('dpad_right'),
+                // 디버그: dpad 재마운트 시 이전 눌림 상태가 이어지는지 테스트하려고 단계별로
+                // 완전히 다른 키를 줘서 매번 새 위젯으로 취급되게 함. 원인 아니면 나중에 되돌릴 것
+                key: ValueKey('dpad_right_$_dialoguePhase'),
                 left: rW(778),
                 bottom: rH(20),
                 child: DpadButton(
@@ -780,7 +1000,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 12층: 채온-릴리안 첫 만남 말풍선 대화 (line 노드)
-            if (currentSceneNode != null && currentSceneNode.type == 'line')
+            // 먹는 클로즈업(isEatingCloseupActive) 중에는 탭으로 넘기지 못하게 막음.
+            // EatingCloseupOverlay가 자체 타이머(onFinished)로만 다음 노드로 넘겨야 하는데,
+            // 여기 탭 레이어가 겹쳐 있으면 애니메이션이 끝나기 전에 유저가 탭해서 먼저 넘어가버림
+            if (currentSceneNode != null &&
+                currentSceneNode.type == 'line' &&
+                !isEatingCloseupActive)
               Positioned.fill(
                 key: const ValueKey('scene_bubble_layer'),
                 child: GestureDetector(
@@ -790,7 +1015,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     children: [
                       // 대사 텍스트 없는 노드(예: 먹는 클로즈업 사이 빈 노드)는 말풍선 없이
                       // 탭으로만 다음으로 넘어감
-                      if (currentSceneNode.spans.isNotEmpty)
+                      // bubbleRevealed가 false면 GIF 재생 중이라는 뜻이라 말풍선을 아직 안 그림
+                      if (currentSceneNode.spans.isNotEmpty &&
+                          _sceneController.bubbleRevealed)
                         widgets.buildSceneBubble(
                           node: currentSceneNode,
                           rW: rW,
@@ -951,17 +1178,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 ),
               ),
 
-            // 19층: 앞치마 갈아입기 컷씬. 최상단에서 화면을 전부 덮음
-            if (_dialoguePhase == DialoguePhase.apronChange)
-              Positioned.fill(
-                key: const ValueKey('apron_change'),
-                child: ApronChangeScene(
-                  onComplete: () {
-                    // 다음 작업에서 챕터1 종료 트리거로 연결할 예정
-                    debugPrint('앞치마 갈아입기 완료, 챕터1 종료 처리 예정');
-                  },
-                ),
-              ),
+            // 19층: 앞치마 착용은 풀스크린 컷씬 없이 2층 채온이 스프라이트
+            // 전환(_resolveChaeonSprite)만으로 처리함. onDialogueEnd의 firstBread 분기 참고
 
             // 20층: table.json -> 회상 컷씬 전환용 검은 화면 페이드. 항상 최상단
             if (_showMemoryFadeOverlay)

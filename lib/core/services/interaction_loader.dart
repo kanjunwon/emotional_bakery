@@ -14,6 +14,8 @@ class InteractionLoader {
     // 배경 이미지 이름에 따라 읽어올 JSON 파일을 매핑
     if (bgAssetName == 'bakery_bg_main.png') {
       jsonPath = 'assets/data/chapter1/chapter1_bakery.json';
+    } else if (bgAssetName == 'kitchen_main.png') {
+      jsonPath = 'assets/data/chapter1/chapter_kitchen.json';
     } else {
       return []; // 예외 처리
     }
