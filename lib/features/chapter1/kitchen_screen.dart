@@ -169,6 +169,10 @@ class _KitchenScreenState extends State<KitchenScreen>
       for (final asset in assetsToPrecache) {
         precacheImage(AssetImage(asset), context);
       }
+      // kitchen_arrival.json 특정 노드에서 잠깐 바뀌는 릴리안 스프라이트도 미리 프리캐싱
+      for (final asset in widgets.kitchenArrivalLillianSpriteOverrides.values) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -260,6 +264,18 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
   }
 
+  // kitchen_arrival.json(챕터1 엔딩) 진행 중이고 현재 노드에 오버라이드가 있으면 그 표정으로,
+  // 아니면 기본 idle GIF로. chapter2_ready.json도 같은 노드 ID(line_002 등)를 쓸 수 있어서
+  // chapter1End 모드일 때만 오버라이드 맵을 참조함
+  String _resolveLillianSprite(String? sceneNodeId) {
+    if (widget.mode == KitchenScreenMode.chapter1End) {
+      final String? override =
+          widgets.kitchenArrivalLillianSpriteOverrides[sceneNodeId];
+      if (override != null) return override;
+    }
+    return 'assets/images/lillian_idle.gif';
+  }
+
   // 뒤로가기 버튼: 타이핑 중이면 텍스트 다 보여주고, 아니면 이전 대사로 되돌아감
   void _handleBackButtonTap() {
     _sceneController.goBackScene();
@@ -339,7 +355,7 @@ class _KitchenScreenState extends State<KitchenScreen>
               left: wX(kLillianKitchenX),
               top: wY(kLillianKitchenTopY),
               child: Image.asset(
-                'assets/images/lillian_idle.gif',
+                _resolveLillianSprite(sceneNodeId),
                 width: wSize(172),
                 height: wSize(172),
                 fit: BoxFit.contain,

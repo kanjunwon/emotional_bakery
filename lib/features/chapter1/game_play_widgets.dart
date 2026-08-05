@@ -62,12 +62,39 @@ const Map<String, String> lillianSpriteOverrides = {
   'line_018a1': 'assets/images/lillian_surprise.png',
   'line_018b1': 'assets/images/lillian_happy.png',
   'line_029a1': 'assets/images/lillian_surprise.png',
+  'line_029a2': 'assets/images/lillian_surprise.png',
   'line_029a3': 'assets/images/lillian_thinking2.png',
   'line_029a6_eat': 'assets/images/lillian_eating_bread.gif',
   'line_029a6_cry': 'assets/images/lillian_crying.gif',
   'line_029a7': 'assets/images/lillian_crying.png',
   'line_029a8': 'assets/images/lillian_crying.png',
   'line_029b2': 'assets/images/lillian_happy.png',
+};
+
+// table.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// table.json도 line_001/choice_001 같은 노드 ID를 first_meet.json과 공유하므로,
+// lillianSpriteOverrides와 합치지 않고 별도 맵으로 분리함 (DialoguePhase.table일 때만 참조)
+const Map<String, String> tableLillianSpriteOverrides = {
+  'line_004a2': 'assets/images/lillian_surprise.png',
+  'line_004a3': 'assets/images/lillian_surprise.png',
+  'line_004a4': 'assets/images/lillian_thinking2.png',
+};
+
+// first_bread.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// first_bread.json도 line_001/line_002 같은 노드 ID를 table.json과 공유하므로,
+// 다른 오버라이드 맵과 합치지 않고 별도 맵으로 분리함 (DialoguePhase.firstBread일 때만 참조)
+const Map<String, String> firstBreadLillianSpriteOverrides = {
+  'line_008': 'assets/images/lillian_happy.png',
+  'line_018': 'assets/images/lillian_thinking3.png',
+  'line_022b9': 'assets/images/lillian_happy.png',
+  'line_026': 'assets/images/lillian_grudge.png',
+};
+
+// kitchen_arrival.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// kitchen_screen.dart는 chapter2_ready.json과도 line_002 같은 노드 ID를 공유하므로,
+// 반드시 KitchenScreenMode.chapter1End(kitchen_arrival.json 로드 중)일 때만 참조해야 함
+const Map<String, String> kitchenArrivalLillianSpriteOverrides = {
+  'line_002': 'assets/images/lillian_happy.png',
 };
 
 class EatingCloseupOverlay extends StatefulWidget {

@@ -358,6 +358,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in widgets.lillianSpriteOverrides.values) {
         precacheImage(AssetImage(asset), context);
       }
+      // table.json 특정 노드에서 잠깐 바뀌는 릴리안 스프라이트도 미리 프리캐싱
+      for (final asset in widgets.tableLillianSpriteOverrides.values) {
+        precacheImage(AssetImage(asset), context);
+      }
+      // first_bread.json 특정 노드에서 잠깐 바뀌는 릴리안 스프라이트도 미리 프리캐싱
+      for (final asset in widgets.firstBreadLillianSpriteOverrides.values) {
+        precacheImage(AssetImage(asset), context);
+      }
       // 앞치마 착용 연출(kitchenApproach)에서 쓰는 채온이 스프라이트도 프리캐싱
       const List<String> apronAssets = [
         'assets/images/chaeon_apron_putting_on.gif',
@@ -457,11 +465,20 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   }
 
   // 현재 씬 노드에 맞춰 릴리안 스프라이트 경로를 결정.
-  // first_meet.json 단계면 lillianSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle/walk로),
+  // first_meet.json/table.json 단계면 각각 전용 오버라이드 맵부터 확인하고(해당 노드 아니면 기본 idle/walk로),
   // 그 외 단계면 기존처럼 걷는 중인지 여부로 결정
   String _resolveLillianSprite(String? sceneNodeId) {
     if (_dialoguePhase == DialoguePhase.firstMeet) {
       final String? override = widgets.lillianSpriteOverrides[sceneNodeId];
+      if (override != null) return override;
+    }
+    if (_dialoguePhase == DialoguePhase.table) {
+      final String? override = widgets.tableLillianSpriteOverrides[sceneNodeId];
+      if (override != null) return override;
+    }
+    if (_dialoguePhase == DialoguePhase.firstBread) {
+      final String? override =
+          widgets.firstBreadLillianSpriteOverrides[sceneNodeId];
       if (override != null) return override;
     }
     return _isLillianWalking
