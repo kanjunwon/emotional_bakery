@@ -10,6 +10,7 @@ import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/models/interaction_model.dart';
 import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
@@ -85,6 +86,9 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showChapterEndPlaceholder = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
+  // chapter2_ingredient_quiz.json의 재료 이름 대사(line_ingredient_reveal)가 끝나고 탭하면 뜨는,
+  // 선택한 재료 이미지 팝업. 탭하면 닫힘
+  bool _showIngredientPopup = false;
 
   bool _imagesPrecached = false;
 
@@ -126,7 +130,9 @@ class _KitchenScreenState extends State<KitchenScreen>
               'assets/lines/chapter2/chapter2_ingredient_quiz.json',
             );
           } else {
-            setState(() => _showChapterEndPlaceholder = true);
+            // line_ingredient_reveal 대사가 끝나면(next: null) 여기로 옴.
+            // 임시 종료 화면 대신 선택한 재료 이미지 팝업을 띄움
+            setState(() => _showIngredientPopup = true);
           }
           return;
         }
@@ -605,6 +611,56 @@ class _KitchenScreenState extends State<KitchenScreen>
                     ),
                   );
                 },
+              ),
+
+            // 9-2층: 재료 획득 팝업. chapter2_ingredient_quiz.json의 재료 이름 대사가 끝나고
+            // 탭하면 뜸. tutorial_dialogue_box(570x300) 뒤에 검은 50% 배경, 그 위에
+            // 선택한 재료 이미지 표시. 탭하면 닫힘
+            if (_showIngredientPopup)
+              Positioned.fill(
+                key: const ValueKey('ingredient_popup_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _showIngredientPopup = false),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: Center(
+                      child: SizedBox(
+                        width: rW(570),
+                        height: rH(300),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // 그냥 Image.asset + BoxFit.fill로 그리면 원본 이미지 비율
+                            // (1119x285)이랑 팝업 비율이 많이 달라서 테두리가 가로/세로로
+                            // 다르게 늘어나 깨져 보임. DialogueBoxFrame이랑 동일하게
+                            // centerSlice(9-slice)로 그려서 모서리 두께를 유지함
+                            Container(
+                              width: rW(570),
+                              height: rH(300),
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage(
+                                    'assets/images/tutorial_dialogue_box.png',
+                                  ),
+                                  fit: BoxFit.fill,
+                                  centerSlice: tutorialDialogueBoxCenterSlice,
+                                ),
+                              ),
+                            ),
+                            if (StoryState.resolveIngredientImage() != null)
+                              Image.asset(
+                                StoryState.resolveIngredientImage()!,
+                                width: rW(300),
+                                height: rH(300),
+                                fit: BoxFit.contain,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
 
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라

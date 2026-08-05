@@ -66,8 +66,8 @@ const Map<String, String> lillianSpriteOverrides = {
   'line_029a3': 'assets/images/lillian_thinking2.png',
   'line_029a6_eat': 'assets/images/lillian_eating_bread.gif',
   'line_029a6_cry': 'assets/images/lillian_crying.gif',
-  'line_029a7': 'assets/images/lillian_crying.png',
-  'line_029a8': 'assets/images/lillian_crying.png',
+  'line_029a7': 'assets/images/lillian_cry.gif',
+  'line_029a8': 'assets/images/lillian_cry.gif',
   'line_029b2': 'assets/images/lillian_happy.png',
 };
 
@@ -463,14 +463,13 @@ Widget buildSceneChoices({
   double gap = rW(16);
 
   // 옵션이 3개 이상이면 기존 크기 그대로는 화면 밖으로 넘쳐서(overflow) 잘려 보이므로,
-  // 한 줄에 다 들어오도록 비율은 유지한 채 축소함. 옵션 2개 이하(기존에 쓰던 화면들)는
-  // 아래 조건에 안 걸려서 원래 크기 그대로 나옴
+  // 한 줄에 다 들어오도록 가로 폭과 간격만 축소함. boxHeight는 옵션 개수와 무관하게
+  // 항상 동일하게 유지해서, 2개일 때와 3개일 때 박스 세로 길이가 달라지지 않도록 함
   final double maxRowWidth = rW(834);
   final double naturalRowWidth =
       boxWidth * node.options.length + gap * (node.options.length - 1);
   if (naturalRowWidth > maxRowWidth) {
     final double scale = maxRowWidth / naturalRowWidth;
-    boxHeight *= scale;
     boxWidth *= scale;
     gap *= scale;
   }

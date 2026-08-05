@@ -120,7 +120,7 @@ class SceneDialogueController extends ChangeNotifier {
       return;
     }
     sceneNodeId = nodeId;
-    final node = graph.nodes[nodeId]!;
+    final node = _resolvePlaceholders(graph, nodeId);
     if (node.type == 'line') {
       lastLineNode = node;
       if (node.temperatureEffect != 0) {
@@ -165,6 +165,43 @@ class SceneDialogueController extends ChangeNotifier {
       bubbleRevealed = true;
       _autoAdvancePending = false;
     }
+  }
+
+  // {{ingredient}} 같은 플레이스홀더가 든 노드면 실제 값으로 치환한 새 노드를 만들어
+  // graph.nodes에 덮어써두고 반환. 플레이스홀더가 없으면 원래 노드를 그대로 반환.
+  // graph.nodes에 덮어써야 이후 뒤로가기나 다른 화면에서 같은 노드ID로 다시 조회해도
+  // 치환된 텍스트가 그대로 보임
+  DialogueNode _resolvePlaceholders(DialogueGraph graph, String nodeId) {
+    final node = graph.nodes[nodeId]!;
+    if (node.type != 'line' ||
+        !node.spans.any((s) => s.text.contains('{{'))) {
+      return node;
+    }
+
+    final String ingredientName = StoryState.resolveIngredientName() ?? '???';
+    final resolvedSpans = node.spans
+        .map(
+          (s) => DialogueSpan(
+            text: s.text.replaceAll('{{ingredient}}', ingredientName),
+            color: s.color,
+            bold: s.bold,
+            size: s.size,
+          ),
+        )
+        .toList();
+
+    final resolvedNode = DialogueNode(
+      id: node.id,
+      type: node.type,
+      speaker: node.speaker,
+      spans: resolvedSpans,
+      temperatureEffect: node.temperatureEffect,
+      next: node.next,
+      options: node.options,
+      animation: node.animation,
+    );
+    graph.nodes[nodeId] = resolvedNode;
+    return resolvedNode;
   }
 
   // GIF 총 재생 시간을 계산해서 그만큼 기다렸다가 말풍선을 띄우고 타이핑 시작.

@@ -223,7 +223,7 @@
     },
     "line_015": {
       "type": "line",
-      "speaker": "chaeon",
+      "speaker": "lillian",
       "text": "우선, 나이가 어떻게 돼요?",
       "next": "line_016"
     },
@@ -249,12 +249,6 @@
       "type": "line",
       "speaker": "lillian",
       "text": "농담이에요 농담~ 그러면 제 나이는요?",
-      "next": "line_020"
-    },
-    "line_020": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "채온 씨는 원래 빵을 좋아해요?",
       "next": "choice_002"
     },
     "choice_002": {

@@ -52,6 +52,12 @@ PageRouteBuilder fadeThroughBlackRoute(Widget page) {
   );
 }
 
+// tutorial_dialogue_box.png(1119x285)를 9-slice로 그릴 때 쓰는 테두리 영역.
+// 실측해보면 테두리 두께가 상하좌우 약 30px이라 이 값을 써야 어떤 크기로 늘려도
+// 테두리 두께가 균일하게 유지됨 (5px처럼 실제보다 얇게 잡으면 테두리 대부분이
+// 늘어나는 중앙 영역으로 취급돼서 두께가 들쑥날쑥해짐)
+const Rect tutorialDialogueBoxCenterSlice = Rect.fromLTRB(31, 31, 1088, 252);
+
 // 대사창 텍스트 공통 스타일
 TextStyle dialogueTextStyle(double Function(double) rW) {
   return TextStyle(
@@ -90,7 +96,7 @@ class DialogueBoxFrame extends StatelessWidget {
           image: DecorationImage(
             image: AssetImage('assets/images/tutorial_dialogue_box.png'),
             fit: BoxFit.fill,
-            centerSlice: Rect.fromLTRB(5, 5, 1114, 280),
+            centerSlice: tutorialDialogueBoxCenterSlice,
           ),
         ),
         // 텍스트와 화살표를 겹치지 않게 배치
