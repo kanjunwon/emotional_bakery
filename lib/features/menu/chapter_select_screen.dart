@@ -123,6 +123,31 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
             ),
           ),
 
+          // 개발용 임시 버튼: 챕터2 테스트하려고 프롤로그부터 챕터1 전체를 매번 다시 플레이하기
+          // 번거로워서 만든 지름길. 화면 구석에 눈에 안 띄게 작게 배치. 나중에 지울 코드
+          Positioned(
+            right: rW(10),
+            bottom: rH(10),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const KitchenScreen(mode: KitchenScreenMode.chapter2Start),
+                  ),
+                );
+              },
+              child: Text(
+                "DEV: 챕터2 바로가기",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: rW(10),
+                ),
+              ),
+            ),
+          ),
+
           // 하단 스크롤 진행 바
           Positioned(
             bottom: rH(30),

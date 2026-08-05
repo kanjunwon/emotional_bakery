@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/services/dialogue_loader.dart';
 import 'package:emotional_bakery/core/services/gif_duration.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
 
 // first_bread.json에서만 쓰는 dialogue_id. table.json도 line_001/line_002라는 같은
 // 노드ID를 쓰기 때문에, 노드ID만 보고 지연 로직을 걸면 table.json에서도 오작동함
@@ -327,6 +328,10 @@ class SceneDialogueController extends ChangeNotifier {
     // 선택지를 실제로 고른 순간 그 이전 히스토리를 비워서 되돌아갈 수 없게 함
     sceneNodeHistory.clear();
     sceneHasLockedChoice = true;
+    // setVars 있으면 전역 저장소에 병합 저장 (나중에 재료 매칭 등에서 참조)
+    if (option.setVars != null) {
+      StoryState.vars.addAll(option.setVars!);
+    }
     _enterSceneNode(option.next);
     _notify();
   }

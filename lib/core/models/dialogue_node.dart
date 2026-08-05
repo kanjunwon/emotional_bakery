@@ -17,8 +17,10 @@ class DialogueSpan {
 class DialogueOption {
   final String text;
   final String next;
+  // 이 선택지를 고르면 저장할 변수들 (예: {"q1": "eat"}). 없으면 null
+  final Map<String, dynamic>? setVars;
 
-  DialogueOption({required this.text, required this.next});
+  DialogueOption({required this.text, required this.next, this.setVars});
 }
 
 // 그래프의 노드 하나 (대사 한 줄 또는 분기 선택지)
@@ -56,6 +58,7 @@ class DialogueNode {
               (o) => DialogueOption(
                 text: o['text'] as String,
                 next: o['next'] as String,
+                setVars: (o['setVars'] as Map?)?.cast<String, dynamic>(),
               ),
             )
             .toList(),

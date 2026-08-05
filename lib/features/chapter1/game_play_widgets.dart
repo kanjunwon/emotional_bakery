@@ -458,9 +458,22 @@ Widget buildSceneChoices({
 }) {
   const double nativeW = 1264;
   const double nativeH = 240;
-  final double boxHeight = rW(60);
-  final double boxWidth = boxHeight * (nativeW / nativeH);
-  final double gap = rW(16);
+  double boxHeight = rW(60);
+  double boxWidth = boxHeight * (nativeW / nativeH);
+  double gap = rW(16);
+
+  // 옵션이 3개 이상이면 기존 크기 그대로는 화면 밖으로 넘쳐서(overflow) 잘려 보이므로,
+  // 한 줄에 다 들어오도록 비율은 유지한 채 축소함. 옵션 2개 이하(기존에 쓰던 화면들)는
+  // 아래 조건에 안 걸려서 원래 크기 그대로 나옴
+  final double maxRowWidth = rW(834);
+  final double naturalRowWidth =
+      boxWidth * node.options.length + gap * (node.options.length - 1);
+  if (naturalRowWidth > maxRowWidth) {
+    final double scale = maxRowWidth / naturalRowWidth;
+    boxHeight *= scale;
+    boxWidth *= scale;
+    gap *= scale;
+  }
 
   return Stack(
     key: ValueKey('scene_choices_${node.id}'),

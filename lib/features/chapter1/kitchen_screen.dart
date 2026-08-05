@@ -439,6 +439,38 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
+            // 4-2층: choice 노드 대사창. game_play_screen.dart 13층이랑 동일한 패턴으로
+            // 직전 line 노드 말풍선(lastLineNode)은 어두운 배경 아래 계속 보여주고, 그 위에
+            // 선택지 버튼을 띄움. onChooseOption에서 chooseSceneOption 호출해서 다음 노드로 진행
+            if (currentSceneNode != null && currentSceneNode.type == 'choice')
+              Positioned.fill(
+                key: const ValueKey('kitchen_choice_layer'),
+                child: Stack(
+                  children: [
+                    if (_sceneController.lastLineNode != null)
+                      widgets.buildSceneBubble(
+                        node: _sceneController.lastLineNode!,
+                        rW: rW,
+                        rH: rH,
+                        chaeonCenterX: chaeonCenterX,
+                        lillianCenterX: lillianCenterX,
+                        typedCharCount: _sceneController.typedCharCount,
+                        charCount: _sceneController.lastLineNode!.spans
+                            .fold<int>(0, (sum, s) => sum + s.text.length),
+                        // 각 캐릭터 머리 위에 바로 붙도록 실제 스프라이트 top을 넘겨줌
+                        chaeonSpriteTopY: chaeonSpriteTopY,
+                        lillianSpriteTopY: lillianSpriteTopY,
+                      ),
+                    widgets.buildSceneChoices(
+                      node: currentSceneNode,
+                      rW: rW,
+                      rH: rH,
+                      onChooseOption: _sceneController.chooseSceneOption,
+                    ),
+                  ],
+                ),
+              ),
+
             // 5층: 온도계 (기존 화면들이랑 톤 맞추려고 그대로 재사용)
             widgets.buildThermometer(
               key: 'kitchen_thermometer',
