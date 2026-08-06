@@ -1,0 +1,123 @@
+{
+  "dialogue_id": "chapter2_after_first_game",
+  "start": "line_001",
+  "nodes": {
+    "line_001": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "완성이에요!!",
+      "next": "line_002"
+    },
+    "line_002": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "빵을 만들어보니 어땠나요?",
+      "next": "choice_001"
+    },
+    "choice_001": {
+      "type": "choice",
+      "options": [
+        {
+          "text": "생각보다 만들 만했어요.",
+          "next": "line_003a1"
+        },
+        {
+          "text": "너무 어려웠어요...",
+          "next": "line_003b1"
+        }
+      ]
+    },
+    "line_003a1": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "생각보다 만들 만했어요.",
+      "next": "line_003a2"
+    },
+    "line_003b1": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "너무 어려웠어요...",
+      "next": "line_003b2"
+    },
+    "line_003a2": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그렇죠? 저도 채온 씨가 생각보다 잘 따라와 줘서 놀랐어요.",
+      "next": "line_003a3"
+    },
+    "line_003b2": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "저도 처음엔 그랬어요. 생각보다 손이 많이 가죠.",
+      "next": "line_003b3"
+    },
+    "line_003a3": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "어쩌면 빵 만드는 데 재능이 있을지도 모르겠네요.",
+      "effect": { "temperature": 1 },
+      "next": "line_003a4"
+    },
+    "line_003b3": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그래도... 밀가루가 손에 닿는 느낌은 꽤 포근하지 않았나요?",
+      "next": "line_003b4"
+    },
+    "line_003a4": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "...감사합니다.",
+      "next": "line_004"
+    },
+    "line_003b4": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "...그러게요.",
+      "effect": { "temperature": 1 },
+      "next": "line_004"
+    },
+    "line_004": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": [
+        { "text": "이번에 완성된 건" },
+        { "text": " 따뜻한 빵", "color": "#FF7100" },
+        { "text": "이네요!" }
+      ],
+      "next": "line_005"
+    },
+    "line_005": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": [
+        { "text": "긍정적인 기억이 담기면" },
+        { "text": " 따뜻한 빵", "color": "#FF7100" },
+        { "text": "이 되고," }
+      ],
+      "next": "line_006"
+    },
+    "line_006": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": [
+        { "text": "부정적인 기억이 담기면" },
+        { "text": " 차가운 빵", "color": "#FF7100" },
+        { "text": "이 되거든요." }
+      ],
+      "next": "line_007"
+    },
+    "line_007": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그럼 먹어볼까요?",
+      "next": "line_008"
+    },
+    "line_008": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "식기 전에 먹어봐요.",
+      "next": "null"
+    }
+  }
+}

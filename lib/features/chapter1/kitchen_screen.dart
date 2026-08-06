@@ -12,6 +12,7 @@ import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/bread_making_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
@@ -72,6 +73,9 @@ class _KitchenScreenState extends State<KitchenScreen>
   Timer? _moveTimer;
   // 대사 트리거 이후로는 이동 잠금 (dpad도 같이 숨김)
   bool _movementLocked = false;
+  // chapter2_after_first_game.json이 끝나면 chaeon_0_eat.gif로 2초간 고정해서 보여줌
+  bool _showChaeonEating = false;
+  Timer? _chaeonEatingTimer;
   // kitchen_arrival.json 자동 로드가 중복 실행되지 않게 막는 플래그
   bool _hasTriggeredDialogue = false;
 
@@ -89,6 +93,15 @@ class _KitchenScreenState extends State<KitchenScreen>
   // chapter2_ingredient_quiz.json의 재료 이름 대사(line_ingredient_reveal)가 끝나고 탭하면 뜨는,
   // 선택한 재료 이미지 팝업. 탭하면 닫힘
   bool _showIngredientPopup = false;
+  // 재료 팝업 닫고 chapter2_after_quiz.json을 이미 이어붙였는지
+  bool _hasLoadedAfterQuizDialogue = false;
+  // chapter2_after_quiz.json 대화가 끝나면 뜨는 빵만들기 미니게임
+  bool _showBreadMakingGame = false;
+  // 빵만들기 미니게임에서 완성된 반죽 화면을 탭하면(BreadMakingScene.onComplete) 뜨는,
+  // 완성된 빵(salt_bread) 팝업. 탭하면 닫힘
+  bool _showBreadPopup = false;
+  // 빵 팝업 닫고 chapter2_after_first_game.json을 이미 이어붙였는지
+  bool _hasLoadedAfterFirstGameDialogue = false;
 
   bool _imagesPrecached = false;
 
@@ -120,19 +133,36 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
-        // 챕터2 모드는 ready -> ingredient_quiz 순서로 자동 이어붙이고, 그 다음에 끝나면
-        // (table.json -> 회상컷씬 -> first_bread.json처럼 대화 끝나면 다음 대화 자동 로드하는 패턴)
-        // 임시 안내 화면을 띄움
+        // 챕터2 모드는 ready -> ingredient_quiz -> (재료 팝업) -> after_quiz ->
+        // (빵만들기 미니게임) -> (빵 팝업) -> after_first_game 순서로 자동 이어붙이고
+        // (table.json -> 회상컷씬 -> first_bread.json처럼 대화 끝나면 다음 대화 자동 로드하는
+        // 패턴), 그 다음에 끝나면 임시 안내 화면을 띄움
         if (widget.mode == KitchenScreenMode.chapter2Start) {
           if (!_hasLoadedIngredientQuiz) {
             _hasLoadedIngredientQuiz = true;
             _sceneController.loadDialogue(
               'assets/lines/chapter2/chapter2_ingredient_quiz.json',
             );
-          } else {
+          } else if (!_hasLoadedAfterQuizDialogue) {
             // line_ingredient_reveal 대사가 끝나면(next: null) 여기로 옴.
-            // 임시 종료 화면 대신 선택한 재료 이미지 팝업을 띄움
+            // 선택한 재료 이미지 팝업을 띄우고, 팝업을 닫으면 다음 대사(after_quiz)로 이어짐
             setState(() => _showIngredientPopup = true);
+          } else if (!_hasLoadedAfterFirstGameDialogue) {
+            // chapter2_after_quiz.json이 끝나면(line_021) 여기로 옴. 빵만들기 미니게임 시작.
+            // 미니게임 완료 -> 빵 팝업 -> after_first_game.json 로드까지는 미니게임/팝업
+            // 쪽 콜백(onComplete, 빵 팝업 onTap)에서 처리함
+            setState(() => _showBreadMakingGame = true);
+          } else {
+            // chapter2_after_first_game.json이 끝나면(line_008) 여기로 옴.
+            // 채온이를 chaeon_0_eat.gif로 2초간 고정해서 보여준 뒤 임시 종료 화면으로 넘어감
+            setState(() => _showChaeonEating = true);
+            _chaeonEatingTimer = Timer(const Duration(milliseconds: 2000), () {
+              if (!mounted) return;
+              setState(() {
+                _showChaeonEating = false;
+                _showChapterEndPlaceholder = true;
+              });
+            });
           }
           return;
         }
@@ -185,6 +215,7 @@ class _KitchenScreenState extends State<KitchenScreen>
   @override
   void dispose() {
     _moveTimer?.cancel();
+    _chaeonEatingTimer?.cancel();
     _stairsUpController.dispose();
     _sceneController.removeListener(_onSceneControllerChanged);
     _sceneController.dispose();
@@ -309,10 +340,13 @@ class _KitchenScreenState extends State<KitchenScreen>
     double rW(double px) => (px / 874) * w;
     double rH(double px) => (px / 402) * h;
 
-    // 배경(kitchen_main.png)은 가로 기준으로 항상 화면을 꽉 채움. 세로 기준은 중앙 정렬이 아니라,
+    // 배경(kitchen_main.png)이 항상 화면을 빈틈없이 꽉 채우도록, 가로/세로 중 더 많이
+    // 확대해야 하는 쪽 기준으로 스케일함(cover). 가로 기준(w/874)만 쓰면 창을 세로로
+    // 늘렸을 때 계산된 배경 높이가 실제 화면 높이보다 작아져서 위쪽에 빈 공간이 생겼음
+    final double worldScale = (w / 874) > (h / 464) ? (w / 874) : (h / 464);
+    // 가로가 남으면(세로로 긴 창) 좌우를 대칭으로 잘라내고, 세로가 남으면(원래 케이스)
     // 이미지 하단에서 8px 위 지점(월드 좌표 464-8=456)이 화면 하단에 오도록 맞춤
-    final double worldScale = w / 874;
-    const double worldOffsetX = 0;
+    final double worldOffsetX = (w - 874 * worldScale) / 2;
     final double worldOffsetY = h - (464 - 8) * worldScale;
     // 배경 이미지 안 좌표(월드 좌표)를 실제 화면 좌표로 바꿔줌. 위치는 레터박스 오프셋을 더해야 하고,
     // 크기(width/height)는 오프셋 없이 scale만 곱하면 됨
@@ -342,8 +376,8 @@ class _KitchenScreenState extends State<KitchenScreen>
         height: h,
         child: Stack(
           children: [
-            // 1층: 배경. 874:464 비율 유지한 채로 레터박스로 화면 안에 통째로 들어오게 함
-            // (화면 비율이 안 맞으면 좌우나 위아래에 검은 여백이 생김)
+            // 1층: 배경. 874:464 비율 유지한 채로 화면을 빈틈없이 꽉 채움
+            // (화면 비율이 안 맞으면 초과분은 좌우 또는 위쪽이 화면 밖으로 잘려나감)
             Positioned(
               left: worldOffsetX,
               top: worldOffsetY,
@@ -387,9 +421,13 @@ class _KitchenScreenState extends State<KitchenScreen>
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
                 child: Image.asset(
-                  // 계단을 올라가는 중엔 그 시점 _chaeonState와 무관하게 항상 apron_idle.gif로 고정
+                  // chapter2_after_first_game.json 종료 직후엔 다른 상태와 무관하게
+                  // chaeon_0_eat.gif를 우선 보여줌. 계단을 올라가는 중엔 그 시점
+                  // _chaeonState와 무관하게 항상 apron_idle.gif로 고정
                   // (game_play_screen.dart의 하강 연출과 동일한 규칙)
-                  _isChaeonAscendingStairs || _chaeonState == 'walk'
+                  _showChaeonEating
+                      ? 'assets/images/chaeon_0_eat.gif'
+                      : _isChaeonAscendingStairs || _chaeonState == 'walk'
                       ? 'assets/images/chaeon_apron_idle.gif'
                       : 'assets/images/chaeon_apron_putting_on.gif',
                   width: wSize(172),
@@ -615,13 +653,19 @@ class _KitchenScreenState extends State<KitchenScreen>
 
             // 9-2층: 재료 획득 팝업. chapter2_ingredient_quiz.json의 재료 이름 대사가 끝나고
             // 탭하면 뜸. tutorial_dialogue_box(570x300) 뒤에 검은 50% 배경, 그 위에
-            // 선택한 재료 이미지 표시. 탭하면 닫힘
+            // 선택한 재료 이미지 표시. 탭하면 닫히고 chapter2_after_quiz.json으로 이어짐
             if (_showIngredientPopup)
               Positioned.fill(
                 key: const ValueKey('ingredient_popup_layer'),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _showIngredientPopup = false),
+                  onTap: () {
+                    setState(() => _showIngredientPopup = false);
+                    _hasLoadedAfterQuizDialogue = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter2/chapter2_after_quiz.json',
+                    );
+                  },
                   child: Container(
                     color: Colors.black.withOpacity(0.5),
                     child: Center(
@@ -655,6 +699,73 @@ class _KitchenScreenState extends State<KitchenScreen>
                                 height: rH(300),
                                 fit: BoxFit.contain,
                               ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 9-3층: 빵만들기 미니게임. chapter2_after_quiz.json 대화가 끝나면 뜨고,
+            // 최상단에서 화면을 전부 덮음. 완성된 반죽 화면을 탭하면 주방으로 돌아가고
+            // 빵 팝업이 뜸(onComplete)
+            if (_showBreadMakingGame)
+              Positioned.fill(
+                key: const ValueKey('bread_making_game'),
+                child: BreadMakingScene(
+                  onComplete: () {
+                    setState(() {
+                      _showBreadMakingGame = false;
+                      _showBreadPopup = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 9-4층: 완성된 빵(salt_bread) 팝업. 빵만들기 게임에서 완성 화면을 탭해 주방으로
+            // 돌아오면 뜸. 재료 획득 팝업이랑 동일한 연출(검은 50% 배경 + tutorial_dialogue_box
+            // 570x300 + 이미지 300x300). 탭하면 닫히고 chapter2_after_first_game.json으로 이어짐
+            if (_showBreadPopup)
+              Positioned.fill(
+                key: const ValueKey('bread_popup_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _showBreadPopup = false);
+                    _hasLoadedAfterFirstGameDialogue = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter2/chapter2_after_first_game.json',
+                    );
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: Center(
+                      child: SizedBox(
+                        width: rW(570),
+                        height: rH(300),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: rW(570),
+                              height: rH(300),
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage(
+                                    'assets/images/tutorial_dialogue_box.png',
+                                  ),
+                                  fit: BoxFit.fill,
+                                  centerSlice: tutorialDialogueBoxCenterSlice,
+                                ),
+                              ),
+                            ),
+                            Image.asset(
+                              'assets/images/salt_bread.png',
+                              width: rW(300),
+                              height: rH(300),
+                              fit: BoxFit.contain,
+                            ),
                           ],
                         ),
                       ),

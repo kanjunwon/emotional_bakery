@@ -93,4 +93,34 @@ class StoryState {
     if (q1 == null || q2 == null || q3 == null) return null;
     return _ingredientImageByAnswer['${q1}_${q2}_$q3'];
   }
+
+  // 재료 이미지 경로 -> 그 재료를 넣어 완성한 반죽 이미지 경로.
+  // 빵만들기 미니게임에서 재료를 다 넣으면 배경을 이 이미지로 바꿀 때 씀
+  static const Map<String, String> _doughImageByIngredientImage = {
+    'assets/images/ingredient_blue_crystal.png':
+        'assets/images/dough_crystal_blue.png',
+    'assets/images/ingredient_blue_powder.png':
+        'assets/images/dough_powder_blue.png',
+    'assets/images/ingredient_blue_tear.png':
+        'assets/images/dough_tear_blue.png',
+    'assets/images/ingredient_red_crystal.png':
+        'assets/images/dough_crystal_red.png',
+    'assets/images/ingredient_red_powder.png':
+        'assets/images/dough_powder_red.png',
+    'assets/images/ingredient_red_tear.png':
+        'assets/images/dough_tear_red.png',
+    'assets/images/ingredient_yellopw_tear.png':
+        'assets/images/dough_tear_yellow.png',
+    'assets/images/ingredient_yellow_crystal.png':
+        'assets/images/dough_crystal_yellow.png',
+    'assets/images/ingredient_yellow_powder.png':
+        'assets/images/dough_powder_yellow.png',
+  };
+
+  // q1/q2/q3 답변이 다 모였으면 그 재료로 완성한 반죽 이미지 경로를 반환, 아니면 null
+  static String? resolveCompletedDoughImage() {
+    final ingredientImage = resolveIngredientImage();
+    if (ingredientImage == null) return null;
+    return _doughImageByIngredientImage[ingredientImage];
+  }
 }

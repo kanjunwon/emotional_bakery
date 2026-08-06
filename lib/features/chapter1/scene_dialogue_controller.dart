@@ -100,6 +100,9 @@ class SceneDialogueController extends ChangeNotifier {
     sceneDialogue = graph;
     sceneNodeHistory.clear();
     sceneHasLockedChoice = false;
+    // 새 대화가 choice 노드로 바로 시작하면 lastLineNode를 안 거치므로, 이전 대화의
+    // 마지막 대사가 그대로 남아 선택지 버튼 뒤에 비쳐 보이는 걸 막기 위해 리셋
+    lastLineNode = null;
     _enterSceneNode(graph.start);
     _notify();
   }
