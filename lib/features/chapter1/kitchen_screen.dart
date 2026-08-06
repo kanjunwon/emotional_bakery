@@ -12,7 +12,7 @@ import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
-import 'package:emotional_bakery/features/chapter1/bread_making_scene.dart';
+import 'package:emotional_bakery/features/chapter2/bread_making_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;

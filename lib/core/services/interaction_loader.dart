@@ -15,7 +15,7 @@ class InteractionLoader {
     if (bgAssetName == 'bakery_bg_main.png') {
       jsonPath = 'assets/data/chapter1/chapter1_bakery.json';
     } else if (bgAssetName == 'kitchen_main.png') {
-      jsonPath = 'assets/data/chapter1/chapter_kitchen.json';
+      jsonPath = 'assets/data/shared/chapter_kitchen.json';
     } else {
       return []; // 예외 처리
     }

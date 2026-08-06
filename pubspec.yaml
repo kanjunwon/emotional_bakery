@@ -33,6 +33,7 @@ flutter:
     - assets/sounds/
     - assets/data/
     - assets/data/chapter1/
+    - assets/data/shared/
     - assets/lines/
     - assets/lines/chapter1/
     - assets/lines/chapter2/

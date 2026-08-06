@@ -58,7 +58,7 @@ class StoryState {
     'eat_game_yellow': 'assets/images/ingredient_yellow_crystal.png',
     'eat_game_blue': 'assets/images/ingredient_blue_crystal.png',
     'eat_movie_red': 'assets/images/ingredient_red_tear.png',
-    'eat_movie_yellow': 'assets/images/ingredient_yellopw_tear.png',
+    'eat_movie_yellow': 'assets/images/ingredient_yellow_tear.png',
     'eat_movie_blue': 'assets/images/ingredient_blue_tear.png',
     'eat_exercise_red': 'assets/images/ingredient_red_powder.png',
     'eat_exercise_yellow': 'assets/images/ingredient_yellow_powder.png',
@@ -68,7 +68,7 @@ class StoryState {
     'sleep_game_yellow': 'assets/images/ingredient_yellow_crystal.png',
     'sleep_game_blue': 'assets/images/ingredient_blue_crystal.png',
     'sleep_movie_red': 'assets/images/ingredient_red_tear.png',
-    'sleep_movie_yellow': 'assets/images/ingredient_yellopw_tear.png',
+    'sleep_movie_yellow': 'assets/images/ingredient_yellow_tear.png',
     'sleep_movie_blue': 'assets/images/ingredient_blue_tear.png',
     'sleep_exercise_red': 'assets/images/ingredient_red_powder.png',
     'sleep_exercise_yellow': 'assets/images/ingredient_yellow_powder.png',
@@ -78,7 +78,7 @@ class StoryState {
     'play_game_yellow': 'assets/images/ingredient_yellow_crystal.png',
     'play_game_blue': 'assets/images/ingredient_blue_crystal.png',
     'play_movie_red': 'assets/images/ingredient_red_tear.png',
-    'play_movie_yellow': 'assets/images/ingredient_yellopw_tear.png',
+    'play_movie_yellow': 'assets/images/ingredient_yellow_tear.png',
     'play_movie_blue': 'assets/images/ingredient_blue_tear.png',
     'play_exercise_red': 'assets/images/ingredient_red_powder.png',
     'play_exercise_yellow': 'assets/images/ingredient_yellow_powder.png',
@@ -109,7 +109,7 @@ class StoryState {
         'assets/images/dough_powder_red.png',
     'assets/images/ingredient_red_tear.png':
         'assets/images/dough_tear_red.png',
-    'assets/images/ingredient_yellopw_tear.png':
+    'assets/images/ingredient_yellow_tear.png':
         'assets/images/dough_tear_yellow.png',
     'assets/images/ingredient_yellow_crystal.png':
         'assets/images/dough_crystal_yellow.png',

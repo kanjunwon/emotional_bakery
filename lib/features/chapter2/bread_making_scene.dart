@@ -1,5 +1,5 @@
-// lib/features/chapter1/bread_making_scene.dart
-//
+// lib/features/chapter2/bread_making_scene.dart
+
 // 챕터2: 마법 재료를 골라 빵 반죽에 넣는 미니게임 화면. dough_basic.png를 배경으로
 // 가로 꽉 차게 깔고(세로는 하단 기준), 화면 오른쪽에 재료 선택 트레이(bread_choice.png)와
 // 그 위에 재료 3개(마법재료/설탕/밀가루)를 띄움
@@ -10,8 +10,7 @@ import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 
 // 튜토리얼 안내 문구. 검은 반투명 배경 위, 재료 3개는 그대로 보이게 띄운 상태로 표시되고,
 // 탭하면 닫히고 실제 게임으로 넘어감
-const String _tutorialText =
-    '빵을 만들기 위해 재료를 넣어야 합니다.\n모든 재료를 드래그하여 빵에 넣어주세요.';
+const String _tutorialText = '빵을 만들기 위해 재료를 넣어야 합니다.\n모든 재료를 드래그하여 빵에 넣어주세요.';
 
 // 트레이/재료 위치는 다른 화면들과 동일하게 실제 화면(뷰포트) 기준 874x402 좌표계를 씀.
 // 배경 캔버스(526)랑 달리 잘려나가는 부분 없이 항상 화면 맨 위/오른쪽 기준으로 고정됨
@@ -193,9 +192,7 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
                   Positioned(
                     right: rW(_trayRightMargin + ingredientInset),
                     top: rH(
-                      trayTop +
-                          ingredientGap * (i + 1) +
-                          _ingredientSize * i,
+                      trayTop + ingredientGap * (i + 1) + _ingredientSize * i,
                     ),
                     width: rW(_ingredientSize),
                     height: rH(_ingredientSize),
