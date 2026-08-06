@@ -13,6 +13,7 @@ import 'package:emotional_bakery/core/services/interaction_loader.dart';
 import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter2/bread_making_scene.dart';
+import 'package:emotional_bakery/features/chapter2/clock_minigame_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
@@ -102,6 +103,10 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showBreadPopup = false;
   // 빵 팝업 닫고 chapter2_after_first_game.json을 이미 이어붙였는지
   bool _hasLoadedAfterFirstGameDialogue = false;
+  // chaeon_0_eat.gif 노출이 끝나면 뜨는 시계 맞추기 미니게임. 끝나면(onComplete) 임시 종료 화면으로 넘어감
+  bool _showClockMinigame = false;
+  // 시계 맞추기 미니게임 끝나고 chapter2_after_second_game.json을 이미 이어붙였는지
+  bool _hasLoadedAfterSecondGameDialogue = false;
 
   bool _imagesPrecached = false;
 
@@ -152,17 +157,21 @@ class _KitchenScreenState extends State<KitchenScreen>
             // 미니게임 완료 -> 빵 팝업 -> after_first_game.json 로드까지는 미니게임/팝업
             // 쪽 콜백(onComplete, 빵 팝업 onTap)에서 처리함
             setState(() => _showBreadMakingGame = true);
-          } else {
+          } else if (!_hasLoadedAfterSecondGameDialogue) {
             // chapter2_after_first_game.json이 끝나면(line_008) 여기로 옴.
-            // 채온이를 chaeon_0_eat.gif로 2초간 고정해서 보여준 뒤 임시 종료 화면으로 넘어감
+            // 채온이를 chaeon_0_eat.gif로 2초간 고정해서 보여준 뒤 시계 맞추기 미니게임으로 넘어감.
+            // 미니게임이 끝나면(ClockMinigameScene.onComplete) chapter2_after_second_game.json으로 이어짐
             setState(() => _showChaeonEating = true);
             _chaeonEatingTimer = Timer(const Duration(milliseconds: 2000), () {
               if (!mounted) return;
               setState(() {
                 _showChaeonEating = false;
-                _showChapterEndPlaceholder = true;
+                _showClockMinigame = true;
               });
             });
+          } else {
+            // chapter2_after_second_game.json이 끝나면(line_013) 여기로 옴. 임시 종료 화면 표시
+            setState(() => _showChapterEndPlaceholder = true);
           }
           return;
         }
@@ -774,9 +783,26 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
+            // 9-5층: 시계 맞추기 미니게임. 빵 팝업 -> chapter2_after_first_game.json ->
+            // chaeon_0_eat.gif 노출이 다 끝나면 뜨고, 최상단에서 화면을 전부 덮음.
+            // 끝나면(onComplete) chapter2_after_second_game.json으로 이어짐
+            if (_showClockMinigame)
+              Positioned.fill(
+                key: const ValueKey('clock_minigame'),
+                child: ClockMinigameScene(
+                  onComplete: () {
+                    setState(() => _showClockMinigame = false);
+                    _hasLoadedAfterSecondGameDialogue = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter2/chapter2_after_second_game.json',
+                    );
+                  },
+                ),
+              ),
+
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라
             // 지금은 암전 + 중앙 안내 문구만 있는 자리표시자로 둠. 탭하면 챕터 선택창으로 이동.
-            // 챕터1 모드면 "챕터 1 종료", 챕터2 모드면 "챕터 2 계속 준비 중" 문구로 나뉨
+            // 챕터1 모드면 "챕터 1 종료", 챕터2 모드면 "챕터 2 종료" 문구로 나뉨
             if (_showChapterEndPlaceholder)
               Positioned.fill(
                 key: const ValueKey('chapter_end_placeholder'),
@@ -792,7 +818,7 @@ class _KitchenScreenState extends State<KitchenScreen>
                           Text(
                             widget.mode == KitchenScreenMode.chapter1End
                                 ? '챕터 1 종료'
-                                : '챕터 2 계속 준비 중',
+                                : '챕터 2 종료',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: rW(28),
