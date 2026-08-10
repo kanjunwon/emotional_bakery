@@ -77,6 +77,7 @@ class _KitchenScreenState extends State<KitchenScreen>
   // chapter2_after_first_game.json이 끝나면 chaeon_0_eat.gif로 2초간 고정해서 보여줌
   bool _showChaeonEating = false;
   Timer? _chaeonEatingTimer;
+  Timer? _chaeonEmotion0to20Timer;
   // kitchen_arrival.json 자동 로드가 중복 실행되지 않게 막는 플래그
   bool _hasTriggeredDialogue = false;
 
@@ -105,6 +106,11 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _hasLoadedAfterFirstGameDialogue = false;
   // chaeon_0_eat.gif 노출이 끝나면 뜨는 시계 맞추기 미니게임. 끝나면(onComplete) 임시 종료 화면으로 넘어감
   bool _showClockMinigame = false;
+  // 시계 맞추기 미니게임이 끝나면, chapter2_after_second_game.json을 로드하기 전에
+  // chaeon_emotion_0to20.gif를 2.5초간 보여줌 (챕터1 chaeon_emotion_0to100.gif와 재생 시간 동일)
+  bool _showChaeonEmotion0to20 = false;
+  // chapter2_after_second_game.json부터는 채온이가 chaeon_20.gif 상태로 고정됨
+  bool _showChaeon20 = false;
   // 시계 맞추기 미니게임 끝나고 chapter2_after_second_game.json을 이미 이어붙였는지
   bool _hasLoadedAfterSecondGameDialogue = false;
 
@@ -199,6 +205,22 @@ class _KitchenScreenState extends State<KitchenScreen>
     if (mounted) setState(() {});
   }
 
+  // 시계 맞추기 미니게임이 끝나면 chaeon_emotion_0to20.gif를 3초간 보여준 뒤,
+  // chaeon_20.gif 상태로 넘어가면서 chapter2_after_second_game.json을 이어붙임.
+  void _loadSecondGameDialogueAfterEmotionGif() {
+    _chaeonEmotion0to20Timer = Timer(const Duration(milliseconds: 3000), () {
+      if (!mounted) return;
+      setState(() {
+        _showChaeonEmotion0to20 = false;
+        _showChaeon20 = true;
+      });
+      _hasLoadedAfterSecondGameDialogue = true;
+      _sceneController.loadDialogue(
+        'assets/lines/chapter2/chapter2_after_second_game.json',
+      );
+    });
+  }
+
   // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행
   @override
   void didChangeDependencies() {
@@ -214,9 +236,16 @@ class _KitchenScreenState extends State<KitchenScreen>
       for (final asset in assetsToPrecache) {
         precacheImage(AssetImage(asset), context);
       }
-      // kitchen_arrival.json 특정 노드에서 잠깐 바뀌는 릴리안 스프라이트도 미리 프리캐싱
+      // kitchen_arrival.json / 챕터2 대화 파일들 특정 노드에서 잠깐 바뀌는 릴리안
+      // 스프라이트도 미리 프리캐싱
       for (final asset in widgets.kitchenArrivalLillianSpriteOverrides.values) {
         precacheImage(AssetImage(asset), context);
+      }
+      for (final overrides
+          in widgets.chapter2LillianSpriteOverridesByDialogueId.values) {
+        for (final asset in overrides.values) {
+          precacheImage(AssetImage(asset), context);
+        }
       }
     }
   }
@@ -225,6 +254,7 @@ class _KitchenScreenState extends State<KitchenScreen>
   void dispose() {
     _moveTimer?.cancel();
     _chaeonEatingTimer?.cancel();
+    _chaeonEmotion0to20Timer?.cancel();
     _stairsUpController.dispose();
     _sceneController.removeListener(_onSceneControllerChanged);
     _sceneController.dispose();
@@ -310,13 +340,18 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
   }
 
-  // kitchen_arrival.json(챕터1 엔딩) 진행 중이고 현재 노드에 오버라이드가 있으면 그 표정으로,
-  // 아니면 기본 idle GIF로. chapter2_ready.json도 같은 노드 ID(line_002 등)를 쓸 수 있어서
-  // chapter1End 모드일 때만 오버라이드 맵을 참조함
+  // kitchen_arrival.json(챕터1 엔딩) 진행 중이거나 챕터2 대화 진행 중이고 현재 노드에
+  // 오버라이드가 있으면 그 표정으로, 아니면 기본 idle GIF로. 챕터2 대화 파일들끼리 같은
+  // 노드 ID를 공유할 수 있어서, dialogueId로 지금 정확히 어느 대화가 로드돼 있는지 확인함
   String _resolveLillianSprite(String? sceneNodeId) {
     if (widget.mode == KitchenScreenMode.chapter1End) {
       final String? override =
           widgets.kitchenArrivalLillianSpriteOverrides[sceneNodeId];
+      if (override != null) return override;
+    } else {
+      final String? dialogueId = _sceneController.sceneDialogue?.dialogueId;
+      final String? override = widgets
+          .chapter2LillianSpriteOverridesByDialogueId[dialogueId]?[sceneNodeId];
       if (override != null) return override;
     }
     return 'assets/images/lillian_idle.gif';
@@ -430,12 +465,17 @@ class _KitchenScreenState extends State<KitchenScreen>
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
                 child: Image.asset(
-                  // chapter2_after_first_game.json 종료 직후엔 다른 상태와 무관하게
-                  // chaeon_0_eat.gif를 우선 보여줌. 계단을 올라가는 중엔 그 시점
+                  // chapter2_after_first_game.json 종료 직후엔 chaeon_0_eat.gif, 시계
+                  // 미니게임 이후엔 chaeon_emotion_0to20.gif -> chaeon_20.gif 순으로,
+                  // 다른 상태와 무관하게 우선 보여줌. 계단을 올라가는 중엔 그 시점
                   // _chaeonState와 무관하게 항상 apron_idle.gif로 고정
                   // (game_play_screen.dart의 하강 연출과 동일한 규칙)
                   _showChaeonEating
                       ? 'assets/images/chaeon_0_eat.gif'
+                      : _showChaeonEmotion0to20
+                      ? 'assets/images/chaeon_emotion_0to20.gif'
+                      : _showChaeon20
+                      ? 'assets/images/chaeon_20.gif'
                       : _isChaeonAscendingStairs || _chaeonState == 'walk'
                       ? 'assets/images/chaeon_apron_idle.gif'
                       : 'assets/images/chaeon_apron_putting_on.gif',
@@ -785,17 +825,18 @@ class _KitchenScreenState extends State<KitchenScreen>
 
             // 9-5층: 시계 맞추기 미니게임. 빵 팝업 -> chapter2_after_first_game.json ->
             // chaeon_0_eat.gif 노출이 다 끝나면 뜨고, 최상단에서 화면을 전부 덮음.
-            // 끝나면(onComplete) chapter2_after_second_game.json으로 이어짐
+            // 끝나면(onComplete) chaeon_emotion_0to20.gif를 보여준 뒤
+            // chapter2_after_second_game.json으로 이어짐
             if (_showClockMinigame)
               Positioned.fill(
                 key: const ValueKey('clock_minigame'),
                 child: ClockMinigameScene(
                   onComplete: () {
-                    setState(() => _showClockMinigame = false);
-                    _hasLoadedAfterSecondGameDialogue = true;
-                    _sceneController.loadDialogue(
-                      'assets/lines/chapter2/chapter2_after_second_game.json',
-                    );
+                    setState(() {
+                      _showClockMinigame = false;
+                      _showChaeonEmotion0to20 = true;
+                    });
+                    _loadSecondGameDialogueAfterEmotionGif();
                   },
                 ),
               ),

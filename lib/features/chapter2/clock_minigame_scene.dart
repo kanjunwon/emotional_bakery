@@ -34,37 +34,58 @@ enum _ClockHand { hour, minute }
 
 // 단계별 대기 시간
 const Duration _initialBlackoutHoldDuration = Duration(milliseconds: 400);
-const Duration _introHoldDuration = Duration(milliseconds: 2500);
+const Duration _introHoldDuration = Duration(milliseconds: 2000);
 const Duration _clockAppearToDialogueDelay = Duration(milliseconds: 1000);
 const Duration _successBannerHoldDuration = Duration(milliseconds: 1200);
 const Duration _successPhoto1HoldDuration = Duration(milliseconds: 1800);
 const Duration _successPhoto2HoldDuration = Duration(milliseconds: 1800);
 const Duration _finalBlackoutHoldDuration = Duration(milliseconds: 800);
 
-// 시계 중심 좌표 (874x402 캔버스 기준)
+// clock_minigame_bg.png 원본 비율(3496x1796)을 유지한 캔버스 크기. 가로는 874로 고정하고
+// 세로는 원본 비율 그대로 계산함(874 * 1796/3496 = 449). 예전엔 874x402(다른 화면들과
+// 맞춘 임의의 비율) 박스에 BoxFit.fill로 그려서 이미지가 가로로 눌려 찌그러져 보였음
+const double _bgCanvasWidth = 874;
+const double _bgCanvasHeight = 449;
+
+// 시계 중심 좌표 (874x449 캔버스 기준). 예전 874x402 캔버스에서 잡았던 상대 위치
+// (가로 48.3%, 세로 44.0%)를 그대로 유지해서 새 캔버스 크기에 맞게 다시 계산한 값
 const double _clockCenterXPx = 422;
-const double _clockCenterYPx = 177;
-// 시침/분침/중앙점 이미지 크기 (정사각형 박스, BoxFit.contain으로 그림)
-const double _clockHandSizePx = 180;
-const double _clockCenterDotSizePx = 36;
-// 시침/분침 그림의 실제 회전축이 캔버스 중심에서 벗어난 만큼의 보정값(874x402 단위).
+const double _clockCenterYPx = 197.7;
+// 시침(clock_hour_hand.png, 원본 96x488)과 분침(clock_minute_hand.png, 원본 720x96)은
+// 원본 크기 자체가 서로 다르게 그려져 있음. 예전엔 둘 다 같은 180x180 정사각 박스에
+// BoxFit.contain으로 각각 맞춰서, 짧아야 할 시침이 분침과 똑같은 길이(180)로 늘어나 보였음.
+// 이제 원본 픽셀에 동일한 배율(_handPxScale)만 곱해서 실제 상대 크기 그대로 유지함
+const double _hourHandNativeWidth = 96;
+const double _hourHandNativeHeight = 488;
+const double _minuteHandNativeWidth = 720;
+const double _minuteHandNativeHeight = 96;
+// 분침 길이(720)가 예전 180과 같아지도록 잡은 공통 배율. 이 값 하나로 두 바늘의
+// 상대적인 길이/두께 비율이 그대로 유지됨
+const double _handPxScale = 180 / _minuteHandNativeWidth;
+const double _clockCenterDotSizePx = 40;
+// 시침/분침 그림의 실제 회전축이 이미지 중심에서 벗어난 만큼의 보정값(worldScale 단위).
 // Transform.rotate의 origin으로 회전축 자체를 옮겨서 각도가 바뀌어도 안 어긋나게 함.
-// 실측값: 시침은 아래로 72.1, 분침은 왼쪽으로 78.1만큼 치우쳐 있음
+// 분침은 예전 배율(180/720=0.25)이 그대로라 -78.1 유지. 시침은 배율이 180/488(≈0.369)에서
+// _handPxScale(0.25)로 바뀌어서, 예전 실측값(72.1)을 새 배율 비율만큼 다시 계산함
+// (72.1 * (0.25 / (180/488)) ≈ 48.9)
 const double _hourHandOffsetX = 0;
-const double _hourHandOffsetY = 72.1;
+const double _hourHandOffsetY = 48.9;
 const double _minuteHandOffsetX = -78.1;
 const double _minuteHandOffsetY = 0;
 // 그림이 원래 그려진 방향과 12시 방향의 차이 보정값. Transform.rotate angle에 그대로 더해서
 // 적용함. 시침은 이미 12시 방향으로 그려져 있어 0, 분침은 3시 방향으로 그려져 있어 -90
 const double _hourHandBaseRotationOffsetDeg = 0.0;
 const double _minuteHandBaseRotationOffsetDeg = -90.0;
-// 드래그 히트박스 크기. 바늘 이미지 자체보다 넉넉하게 잡음
-const double _clockDragHitboxSizePx = 260;
+// 드래그 히트박스 크기. 분침의 회전축~끝 거리(90+78.1=168.1)가 반경보다 커야 분침 끝이
+// 히트박스 밖으로 안 벗어남(168.1*2=336.2보다 넉넉하게 350로 잡음)
+const double _clockDragHitboxSizePx = 350;
 
 // 시침 시작 각도(1시 위치). 분침이랑 독립적으로 드래그되는 state의 초기값으로 씀
 const double _clockBaseHourAngleDeg = 30.0;
 // 시침 스냅 단위(1시간=30도). 분침 한 바퀴당 시침 자동 이동량으로도 씀
 const double _hourSnapStepDeg = 30.0;
+// 분침 스냅 단위. 시침처럼 자유롭게 안 움직이고 눈금 단위로 딱딱 맞게 움직임
+const double _minuteSnapStepDeg = 30.0;
 
 // 목표 시간: 7시 정각. 시침은 정확히 210도(7시)에 스냅, 분침은 0도(12시) 근처 ±5도까지 허용
 // (355도~360도, 0도~5도. wraparound 처리 필요)
@@ -73,7 +94,7 @@ const double _targetMinuteValue = 0.0;
 const double _minuteToleranceValue = 5.0;
 
 // 대사창에 표시할 텍스트
-const String _clockDialogueText = '대사창 작성하깅';
+const String _clockDialogueText = '채온이가 일어날 시간이에요!\n시침과 분침을 드래그하여 시간을 7시로 맞춰주세요.';
 
 // minigame_success 배너 위치/크기. 챕터1 구름 게임/챕터2 빵만들기 게임과 동일 자산 재사용
 const double _successBannerLeft = 158;
@@ -99,8 +120,12 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
   double _hourAngleDeg = _clockBaseHourAngleDeg;
   // 지금 드래그 중인 바늘. onPanStart에서 한 번만 판정
   _ClockHand? _draggingHand;
-  // 분침의 누적 회전량(wraparound 보정한 델타 누적). 360도 단위로 시침 자동 이동에 씀
-  double _minuteRotationAccumulator = 0;
+  // 분침의 누적 회전량(wraparound 보정한 델타 누적, 12시=0도 기준 절대 회전량).
+  // 360도 단위로 시침 자동 이동에 씀. 분침이 0(30분이 아니라 0분/12시)에 도달했을 때
+  // 시침이 움직여야 하므로, 시작 각도(_minuteAngleDeg)와 동일하게 180에서 시작함
+  // (0에서 시작하면 시침이 "30분→다시 30분"까지 꽉 채운 360도를 돌아야 움직여서
+  // 실제 시계보다 절반 늦게 움직이는 문제가 있었음)
+  double _minuteRotationAccumulator = 180;
   // 위 누적값 기준 시침을 자동 이동시킨 횟수
   int _completedMinuteTurns = 0;
   // 성공 처리 후 더 이상 드래그로 안 바뀌게 막는 플래그
@@ -186,14 +211,19 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
   void _handlePanStart(
     Offset localPosition,
     double boxSize,
-    double handRadius,
+    double hourHandRadius,
+    double minuteHandRadius,
   ) {
     if (_isMinigameSolved) return;
-    final Offset hourEnd = _handEndpoint(_hourAngleDeg, boxSize, handRadius);
+    final Offset hourEnd = _handEndpoint(
+      _hourAngleDeg,
+      boxSize,
+      hourHandRadius,
+    );
     final Offset minuteEnd = _handEndpoint(
       _minuteAngleDeg,
       boxSize,
-      handRadius,
+      minuteHandRadius,
     );
     final double distToHour = (localPosition - hourEnd).distance;
     final double distToMinute = (localPosition - minuteEnd).distance;
@@ -215,16 +245,18 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
     _checkMinigameSuccess();
   }
 
-  // 분침 자유 회전 + 한 바퀴 돌 때마다 시침 30도 자동 이동
+  // 분침을 6도(1분) 단위로 스냅 + 한 바퀴 돌 때마다 시침 30도 자동 이동
   void _applyMinuteDrag(double newAngle) {
-    double delta = newAngle - _minuteAngleDeg;
+    final double snappedAngle =
+        (newAngle / _minuteSnapStepDeg).round() * _minuteSnapStepDeg % 360;
+    double delta = snappedAngle - _minuteAngleDeg;
     if (delta > 180) delta -= 360;
     if (delta < -180) delta += 360;
     final double newAccumulator = _minuteRotationAccumulator + delta;
     final int newTurns = (newAccumulator / 360).truncate();
     final int turnDelta = newTurns - _completedMinuteTurns;
     setState(() {
-      _minuteAngleDeg = newAngle;
+      _minuteAngleDeg = snappedAngle;
       _minuteRotationAccumulator = newAccumulator;
       _completedMinuteTurns = newTurns;
       if (turnDelta != 0) {
@@ -292,10 +324,17 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
         double rW(double px) => (px / 874) * w;
         double rH(double px) => (px / 402) * h;
 
-        // kitchen_screen.dart랑 동일한 worldScale로 스케일 (안 그러면 회전 시 찌그러짐)
-        final double worldScale = (w / 874) < (h / 402) ? (w / 874) : (h / 402);
-        final double worldOffsetX = (w - 874 * worldScale) / 2;
-        final double worldOffsetY = (h - 402 * worldScale) / 2;
+        // 배경이 항상 화면을 빈틈없이 꽉 채우도록, 가로/세로 중 더 많이 확대해야 하는 쪽
+        // 기준으로 스케일함(cover). 가로 기준(w/874)만 쓰면 창을 세로로 늘렸을 때 계산된
+        // 배경 높이가 실제 화면 높이보다 작아져서 아래쪽에 빈 공간이 생겼음.
+        // (가로/세로에 같은 배율을 써야 시계 바늘이 회전할 때 안 찌그러짐)
+        final double worldScale = (w / _bgCanvasWidth) > (h / _bgCanvasHeight)
+            ? (w / _bgCanvasWidth)
+            : (h / _bgCanvasHeight);
+        // 세로가 남으면(원래 케이스) 위쪽 정렬 유지, 가로가 남으면(세로로 긴 창) 좌우를
+        // 대칭으로 잘라냄
+        final double worldOffsetX = (w - _bgCanvasWidth * worldScale) / 2;
+        const double worldOffsetY = 0;
         double wX(double px) => worldOffsetX + px * worldScale;
         double wY(double px) => worldOffsetY + px * worldScale;
         double wSize(double px) => px * worldScale;
@@ -306,7 +345,14 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
             _stage == _ClockStage.minigame ||
             _stage == _ClockStage.success;
 
-        final double handSize = wSize(_clockHandSizePx);
+        // 시침/분침은 원본 종횡비를 그대로 유지한 채, 공통 배율(_handPxScale)만 적용해서
+        // 서로 다른 크기로 렌더링함
+        final double hourHandW = wSize(_hourHandNativeWidth * _handPxScale);
+        final double hourHandH = wSize(_hourHandNativeHeight * _handPxScale);
+        final double minuteHandW = wSize(_minuteHandNativeWidth * _handPxScale);
+        final double minuteHandH = wSize(
+          _minuteHandNativeHeight * _handPxScale,
+        );
         final double dotSize = wSize(_clockCenterDotSizePx);
         final double hitboxSize = wSize(_clockDragHitboxSizePx);
         final double centerX = wX(_clockCenterXPx);
@@ -332,8 +378,8 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
                 Positioned(
                   left: worldOffsetX,
                   top: worldOffsetY,
-                  width: wSize(874),
-                  height: wSize(402),
+                  width: wSize(_bgCanvasWidth),
+                  height: wSize(_bgCanvasHeight),
                   child: Image.asset(
                     'assets/images/clock_minigame_bg.png',
                     fit: BoxFit.fill,
@@ -341,10 +387,10 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
                 ),
                 // 2층: 시침. pivotOffset + baseRotationOffsetDeg 보정 적용
                 Positioned(
-                  left: centerX - handSize / 2 - wSize(_hourHandOffsetX),
-                  top: centerY - handSize / 2 - wSize(_hourHandOffsetY),
-                  width: handSize,
-                  height: handSize,
+                  left: centerX - hourHandW / 2 - wSize(_hourHandOffsetX),
+                  top: centerY - hourHandH / 2 - wSize(_hourHandOffsetY),
+                  width: hourHandW,
+                  height: hourHandH,
                   child: Transform.rotate(
                     angle:
                         (_hourAngleDeg + _hourHandBaseRotationOffsetDeg) *
@@ -362,10 +408,10 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
                 ),
                 // 2층: 분침. 동일한 보정 적용
                 Positioned(
-                  left: centerX - handSize / 2 - wSize(_minuteHandOffsetX),
-                  top: centerY - handSize / 2 - wSize(_minuteHandOffsetY),
-                  width: handSize,
-                  height: handSize,
+                  left: centerX - minuteHandW / 2 - wSize(_minuteHandOffsetX),
+                  top: centerY - minuteHandH / 2 - wSize(_minuteHandOffsetY),
+                  width: minuteHandW,
+                  height: minuteHandH,
                   child: Transform.rotate(
                     angle:
                         (_minuteAngleDeg + _minuteHandBaseRotationOffsetDeg) *
@@ -403,7 +449,11 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
                       onPanStart: (details) => _handlePanStart(
                         details.localPosition,
                         hitboxSize,
-                        handSize / 2,
+                        // 각 바늘의 중심(회전축)에서 실제 끝(뾰족한 쪽)까지의 거리.
+                        // 회전축이 이미지 중심에서 벗어난 만큼(_hourHandOffsetY 등) 더해줘야
+                        // 이미지 크기에 딱 맞는 끝점이 나옴
+                        hourHandH / 2 + wSize(_hourHandOffsetY).abs(),
+                        minuteHandW / 2 + wSize(_minuteHandOffsetX).abs(),
                       ),
                       onPanUpdate: (details) =>
                           _handleClockDrag(details.localPosition, hitboxSize),
@@ -413,20 +463,23 @@ class _ClockMinigameSceneState extends State<ClockMinigameScene> {
                   ),
               ],
 
-              // 대사창. 탭하면 사라지고 미니게임이 활성화됨
+              // 대사창. 검은 반투명(50%) 배경 위에 뜨고, 탭하면 사라지고 미니게임이 활성화됨
               if (_stage == _ClockStage.dialogue)
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: _dismissDialogueAndStartMinigame,
-                    child: CenteredDialogueBox(
-                      textWidget: Text(
-                        _clockDialogueText,
-                        textAlign: TextAlign.center,
-                        style: dialogueTextStyle(rW),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: CenteredDialogueBox(
+                        textWidget: Text(
+                          _clockDialogueText,
+                          textAlign: TextAlign.center,
+                          style: dialogueTextStyle(rW),
+                        ),
+                        rW: rW,
+                        rH: rH,
                       ),
-                      rW: rW,
-                      rH: rH,
                     ),
                   ),
                 ),

@@ -4,9 +4,14 @@
 // 가로 꽉 차게 깔고(세로는 하단 기준), 화면 오른쪽에 재료 선택 트레이(bread_choice.png)와
 // 그 위에 재료 3개(마법재료/설탕/밀가루)를 띄움
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+
+// 재료를 다 넣어 성공 배너가 뜬 뒤 자동으로 다음(onComplete)으로 넘어가기까지의 대기 시간.
+// 구름 치우기 게임(memory_flashback_scene.dart의 _minigameSuccessHoldDuration)과 동일한 값
+const Duration _successHoldDuration = Duration(milliseconds: 800);
 
 // 튜토리얼 안내 문구. 검은 반투명 배경 위, 재료 3개는 그대로 보이게 띄운 상태로 표시되고,
 // 탭하면 닫히고 실제 게임으로 넘어감
@@ -57,6 +62,14 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
   bool _showTutorial = true;
   // 드롭존(반죽) 안에 넣어서 사라진 재료들의 인덱스 (trayIngredientAssets 기준)
   final Set<int> _consumedIngredients = {};
+  // 재료를 다 넣은 뒤 성공 배너를 잠깐 보여주다가 자동으로 onComplete를 부르는 타이머
+  Timer? _successTimer;
+
+  @override
+  void dispose() {
+    _successTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,37 +114,33 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
               // 배경: 재료를 다 넣기 전엔 dough_basic, 다 넣으면 선택한 재료에 맞는 완성 반죽으로 교체.
               // memory_flashback_scene.dart(park_kid 등)와 동일하게 BoxFit.cover로 화면을
               // 항상 꽉 채워서, 창 비율이 달라져도 검은 여백이 안 생기고 유동적으로 꽉 채움.
-              // 탭하면 주방 화면으로 돌아감(빵 팝업은 돌아간 쪽에서 띄움)
+              // 구름 게임 성공 연출과 동일하게 탭 없이 800ms 뒤 자동으로 주방 화면으로 돌아감
               if (isDoughComplete)
                 Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.onComplete,
-                    child: Stack(
-                      children: [
-                        Image.asset(
-                          completedDoughAsset,
-                          fit: BoxFit.cover,
-                          alignment: const Alignment(0, -0.5),
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                        // 재료를 다 넣었다는 성공 배너. 구름 게임(memory_flashback_scene.dart)의
-                        // minigame_success 연출과 동일한 자산/위치를 그대로 씀
-                        Positioned(
-                          left: rW(_successBannerLeft),
-                          top: rH(_successBannerTop),
+                  child: Stack(
+                    children: [
+                      Image.asset(
+                        completedDoughAsset,
+                        fit: BoxFit.cover,
+                        alignment: const Alignment(0, -0.5),
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                      // 재료를 다 넣었다는 성공 배너. 구름 게임(memory_flashback_scene.dart)의
+                      // minigame_success 연출과 동일한 자산/위치를 그대로 씀
+                      Positioned(
+                        left: rW(_successBannerLeft),
+                        top: rH(_successBannerTop),
+                        width: rW(_successBannerWidth),
+                        height: rH(_successBannerHeight),
+                        child: Image.asset(
+                          'assets/images/minigame_success.png',
                           width: rW(_successBannerWidth),
                           height: rH(_successBannerHeight),
-                          child: Image.asset(
-                            'assets/images/minigame_success.png',
-                            width: rW(_successBannerWidth),
-                            height: rH(_successBannerHeight),
-                            fit: BoxFit.contain,
-                          ),
+                          fit: BoxFit.contain,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 )
               else
@@ -175,6 +184,13 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
                   child: DragTarget<int>(
                     onAcceptWithDetails: (details) {
                       setState(() => _consumedIngredients.add(details.data));
+                      // 방금 넣은 게 마지막 재료였으면, 구름 치우기 게임이랑 동일한 대기
+                      // 시간(800ms) 뒤 자동으로 onComplete를 불러 다음으로 넘어감
+                      if (_consumedIngredients.length >= totalIngredients) {
+                        _successTimer = Timer(_successHoldDuration, () {
+                          if (mounted) widget.onComplete();
+                        });
+                      }
                     },
                     builder: (context, candidateData, rejectedData) {
                       return const SizedBox.expand();

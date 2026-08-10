@@ -97,6 +97,79 @@ const Map<String, String> kitchenArrivalLillianSpriteOverrides = {
   'line_002': 'assets/images/lillian_happy.png',
 };
 
+// chapter2_ready.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// 다른 챕터2 대화 파일(chapter2_after_quiz.json 등)도 line_003b1 같은 노드 ID를 공유할 수
+// 있어서, 반드시 현재 로드된 대화가 chapter2_ready.json일 때만 참조해야 함
+const Map<String, String> chapter2ReadyLillianSpriteOverrides = {
+  'line_003b1': 'assets/images/lillian_grieve.png',
+  'line_003b5': 'assets/images/lillian_happy.png',
+  'line_003a7': 'assets/images/lillian_happy.png',
+  'line_011': 'assets/images/lillian_happy.png',
+  'line_013': 'assets/images/lillian_thinking2.png',
+  'line_017': 'assets/images/lillian_thinking3.png',
+  'line_019': 'assets/images/lillian_happy.png',
+  'line_021a': 'assets/images/lillian_surprise.png',
+  'line_021a1': 'assets/images/lillian_grudge.png',
+  'line_021b': 'assets/images/lillian_happy.png',
+  'line_021b1': 'assets/images/lillian_happy.png',
+  'line_021b2': 'assets/images/lillian_happy.png',
+  'line_021b6': 'assets/images/lillian_thinking2.png',
+};
+
+// chapter2_ingredient_quiz.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는
+// 매핑. 다른 챕터2 대화 파일들도 같은 노드 ID를 공유할 수 있어서, 반드시 현재 로드된 대화가
+// chapter2_ingredient_quiz.json일 때만 참조해야 함
+const Map<String, String> chapter2IngredientQuizLillianSpriteOverrides = {
+  'line_q1a2': 'assets/images/lillian_happy.png',
+  'line_q1b2': 'assets/images/lillian_happy.png',
+  'line_q1c3': 'assets/images/lillian_happy.png',
+  'line_q2a4': 'assets/images/lillian_surprise.png',
+  'line_q2b2': 'assets/images/lillian_surprise.png',
+  'line_q2c2': 'assets/images/lillian_thinking3.png',
+};
+
+// chapter2_after_quiz.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는 매핑.
+// 다른 챕터2 대화 파일들도 같은 노드 ID를 공유할 수 있어서, 반드시 현재 로드된 대화가
+// chapter2_after_quiz.json일 때만 참조해야 함
+const Map<String, String> chapter2AfterQuizLillianSpriteOverrides = {
+  'line_002b1': 'assets/images/lillian_thinking1.png',
+  'line_002a3': 'assets/images/lillian_happy.png',
+  'line_010': 'assets/images/lillian_thinking3.png',
+  'line_017': 'assets/images/lillian_happy.png',
+  'line_019a2': 'assets/images/lillian_thinking2.png',
+  'line_019b3': 'assets/images/lillian_surprise.png',
+  'line_019a4': 'assets/images/lillian_happy.png',
+  'line_019b15': 'assets/images/lillian_happy.png',
+};
+
+// chapter2_after_first_game.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는
+// 매핑. 다른 챕터2 대화 파일들도 같은 노드 ID를 공유할 수 있어서, 반드시 현재 로드된 대화가
+// chapter2_after_first_game.json일 때만 참조해야 함
+const Map<String, String> chapter2AfterFirstGameLillianSpriteOverrides = {
+  'line_001': 'assets/images/lillian_happy.png',
+  'line_003a3': 'assets/images/lillian_happy.png',
+  'line_003b3': 'assets/images/lillian_happy.png',
+};
+
+// chapter2_after_second_game.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는
+// 매핑. 다른 챕터2 대화 파일들도 같은 노드 ID를 공유할 수 있어서, 반드시 현재 로드된 대화가
+// chapter2_after_second_game.json일 때만 참조해야 함
+const Map<String, String> chapter2AfterSecondGameLillianSpriteOverrides = {
+  'line_006': 'assets/images/lillian_happy.png',
+};
+
+// 챕터2 대화 파일별 릴리안 스프라이트 오버라이드 맵을 dialogueId로 바로 찾을 수 있게 묶어둠.
+// 파일이 늘어날 때마다 kitchen_screen.dart의 _resolveLillianSprite에 else-if를 추가하는 대신
+// 여기에 한 줄만 추가하면 됨
+const Map<String, Map<String, String>>
+chapter2LillianSpriteOverridesByDialogueId = {
+  'chapter2_ready': chapter2ReadyLillianSpriteOverrides,
+  'chapter2_ingredient_quiz': chapter2IngredientQuizLillianSpriteOverrides,
+  'chapter2_after_quiz': chapter2AfterQuizLillianSpriteOverrides,
+  'chapter2_after_first_game': chapter2AfterFirstGameLillianSpriteOverrides,
+  'chapter2_after_second_game': chapter2AfterSecondGameLillianSpriteOverrides,
+};
+
 class EatingCloseupOverlay extends StatefulWidget {
   const EatingCloseupOverlay({super.key, this.onFinished});
 
