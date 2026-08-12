@@ -72,7 +72,7 @@
     },
     "line_q1c2": {
       "type": "line",
-      "speaker": "lillian",
+      "speaker": "chaeon",
       "text": "뭐 책도 보고... 참새랑 대화도 하고...",
       "next": "line_q1c3"
     },
@@ -136,7 +136,7 @@
     },
     "line_q2a4": {
       "type": "line",
-      "speaker": "chaeon",
+      "speaker": "lillian",
       "text": "...아?...",
       "next": "line_q3_intro"
     },

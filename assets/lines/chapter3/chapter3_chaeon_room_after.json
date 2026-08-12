@@ -1,0 +1,176 @@
+{
+  "dialogue_id": "chapter3_chaeon_room_after",
+  "start": "line_001",
+  "nodes": {
+    "line_001": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "오! 왔어요? 기다리고 있었어요~",
+      "next": "line_002"
+    },
+    "line_002": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "네. 감정을 더 되찾고 싶어요.",
+      "next": "line_003"
+    },
+    "line_003": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "음~ 그렇죠? 아무래도",
+      "next": "line_004"
+    },
+    "line_004": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "감정을 완전히 되찾으려면, 아직 추억이 더 필요한 것 같아요.",
+      "next": "line_005"
+    },
+    "line_005": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "빵을 더 만들고 싶은데... 어떻게 해야 할까요?",
+      "next": "line_006"
+    },
+    "line_006": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그럼 이번엔 어떤 추억을 넣어볼까요?",
+      "next": "line_007"
+    },
+    "line_007": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "아, 그런데 그전에 궁금한 게 있어요.",
+      "next": "line_008"
+    },
+    "line_008": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "무엇이죠??",
+      "next": "choice_001"
+    },
+    "choice_001": {
+      "type": "choice",
+      "options": [
+        {
+          "text": "꼭 추억이 담긴 물건이어야 하나요?",
+          "next": "line_009a1"
+        },
+        {
+          "text": "기억 하나만으로는 안되는 건가요?",
+          "next": "line_009b1"
+        }
+      ]
+    },
+    "line_009a1": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "꼭 추억이 담긴 물건이어야 하나요?",
+      "next": "line_009a2"
+    },
+    "line_009b1": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "기억 하나만으로는 안되는 건가요?",
+      "next": "line_009b2"
+    },
+    "line_009a2": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "물건이 사라지는 게 아쉬워서...",
+      "next": "line_009a3"
+    },
+    "line_009b2": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "물건들을 희생시키고 싶지 않아요...",
+      "next": "line_009b3"
+    },
+    "line_009a3": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그래도 그건 꼭 필요한 일이에요!",
+      "next": "line_009a4"
+    },
+    "line_009b3": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그렇다면 감정은 영원히 찾을 수 없어요.",
+      "next": "line_009b4"
+    },
+    "line_009a4": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "사실... 너무 아까워요. 그래도 필요한 거겠죠?",
+      "effect": { "temperature": 1 },
+      "next": "line_009a5"
+    },
+    "line_009b4": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "..차가우시네요...",
+      "effect": { "temperature": -1 },
+      "next": "line_009b5"
+    },
+    "line_009a5": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "안타까운 일이지만... 어쩔 수 없답니다.",
+      "next": "line_010"
+    },
+    "line_009b5": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "사실인걸요. 세상에는 희생 없이는",
+      "next": "line_009b6"
+    },
+    "line_009b6": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "얻을 수 없는 것들이 많다는 걸 꼭 알려주고 싶었어요.",
+      "next": "line_010"
+    },
+    "line_010": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "저를 위한 일인 거잖아요...",
+      "next": "line_011"
+    },
+    "line_011": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "맞아요. 감정을 되찾는다는 건",
+      "next": "line_012"
+    },
+    "line_012": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그만큼의 용기와 희생이 필요한 일이죠.",
+      "next": "line_013"
+    },
+    "line_013": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "자, 그럼 다시 아까 이야기로 돌아와서!",
+      "next": "line_014"
+    },
+    "line_014": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "새로운 빵을 만들어볼 거예요.",
+      "next": "line_015"
+    },
+    "line_016": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "이번엔 어떤 추억의 물건을 넣을 거예요?",
+      "next": "line_017"
+    },
+    "line_017": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "음....",
+      "next": "null"
+    }
+}}

@@ -195,160 +195,94 @@
     "line_019a1": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "완전히 사라지는 거죠?",
-      "next": "line_019a2"
-    },
-    "line_019b1": {
-      "type": "line",
-      "speaker": "chaeon",
       "text": "네, 괜찮아요.",
-      "next": "line_019b2"
+      "next": "line_019a2"
     },
     "line_019a2": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "네... 물건은 사라지고 오직 추억만 남을 거예요.",
-      "next": "line_019a3"
-    },
-    "line_019b2": {
-      "type": "line",
       "speaker": "chaeon",
-      "text": "물론 나중에 다시 물건은 돌아오겠죠?",
-      "next": "line_019b3"
+      "text": "... 감정만 찾을 수 있다면 전 괜찮아요.",
+      "next": "line_019a3"
     },
     "line_019a3": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "... 감정만 찾을 수 있다면 전 괜찮아요.",
+      "speaker": "lillian",
+      "text": "잘 생각했어요! 용기있는 결정이네요.",
       "effect": { "temperature": 1 },
       "next": "line_019a4"
-    },
-    "line_019b3": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "네...? 아뇨 아뇨! 물건은 영원히 사라져요!",
-      "next": "line_019b4"
     },
     "line_019a4": {
       "type": "line",
       "speaker": "lillian",
-      "text": "잘 생각했어요! 기특해 하실 거예요!",
-      "next": "line_019a5"
+      "text": "그 때의 기억이 담긴 빵이라면, 분명 좋은 빵이 될 거예요.",
+      "next": "line_020"
     },
-    "line_019b4": {
+    "line_019b1": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "완전히 사라지는 거죠?",
+      "next": "line_019b2"
+    },
+    "line_019b2": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "네... 물건은 사라지고 오직 추억만 남을 거예요.",
+      "next": "line_019b3"
+    },
+    "line_019b3": {
       "type": "line",
       "speaker": "chaeon",
       "text": "그러면 곤란해요...",
       "effect": { "temperature": -1 },
-      "next": "line_019b5"
+      "next": "line_019b4"
     },
-    "line_019a5": {
+    "line_019b4": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "그때의 기억이 담긴 빵이라면, 분명 좋은 빵이 될 거예요.",
-      "next": "line_020"
+      "speaker": "chaeon",
+      "text": "엄마의 기억이 담긴 물건까지 희생시키고 싶지 않아요!",
+      "next": "line_019b5"
     },
     "line_019b5": {
       "type": "line",
       "speaker": "lillian",
-      "text": "감정을 되찾기 위해서는 반드시 희생이 필요해요!",
+      "text": "물건은 없어져도 그 기억까지 없어지는 건 아니에요.",
       "next": "line_019b6"
     },
     "line_019b6": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "엄마의 기억이 담긴 물건까지 희생시키고 싶지 않아요!",
+      "text": "....",
       "next": "line_019b7"
     },
     "line_019b7": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "물건은 없어져도 그 기억까지 없어지는 건 아니에요.",
+      "speaker": "chaeon",
+      "text": "그래도.... 쉽게 결정할 수 없어요.",
       "next": "line_019b8"
     },
     "line_019b8": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "그때의 기억이 담긴 빵이라면, 분명 좋은 빵이 될 거예요.",
+      "speaker": "chaeon",
+      "text": "후회하고 싶지는 않은데....",
       "next": "line_019b9"
     },
     "line_019b9": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "......",
+      "speaker": "lillian",
+      "text": "지금은 잃어도 더 큰 것을 얻을 수도 있어요! 저를 믿어보세요!",
       "next": "line_019b10"
     },
     "line_019b10": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "그래도.... 쉽게 결정할 수 없어요.",
+      "text": ".....",
       "next": "line_019b11"
     },
     "line_019b11": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "후회하고 싶지는 않은데....",
-      "next": "line_019b12"
-    },
-    "line_019b12": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그래도... 희생이 없이는 안되는 건가요?",
-      "next": "line_019b13"
-    },
-    "line_019b13": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "얻는 것이 있다면 반드시 잃는 것 또한 있어야 돼요.",
-      "next": "line_019b14"
-    },
-    "line_019b14": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그렇군요...",
-      "next": "line_019b15"
-    },
-    "line_019b15": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "지금은 잃어도 더 큰 것을 얻을 수도 있어요! 저를 믿어보세요!",
-      "next": "line_019b16"
-    },
-    "line_019b16": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "... 잘 모르겠어요...",
-      "next": "line_019b17"
-    },
-    "line_019b17": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "잘 몰라도 돼요. 하지만 감정을 되찾고 싶잖아요?",
-      "next": "line_019b18"
-    },
-    "line_019b18": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "맞아요...",
-      "next": "line_019b19"
-    },
-    "line_019b19": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "되찾게 해줄게요. 힘들어도 도망치면 아무것도 남지 않는답니다.",
-      "next": "line_019b20"
-    },
-    "line_019b20": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": ".....",
-      "next": "line_019b21"
-    },
-    "line_019b21": {
-      "type": "line",
-      "speaker": "chaeon",
       "text": "... 알겠어요...",
-      "next": "line_020"
+      "next": "line_20"
     },
     "line_020": {
       "type": "line",

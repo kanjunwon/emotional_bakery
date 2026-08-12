@@ -266,11 +266,17 @@
     },
     "line_021a": {
       "type": "line",
+      "speaker": "chaeon",
+      "text": "100살?",
+      "next": "line_021a1"
+    },    
+    "line_021a1": {
+      "type": "line",
       "speaker": "lillian",
       "text": "네??? 100살이요???",
-      "next": "line_021a1"
+      "next": "line_021a2"
     },
-    "line_021a1": {
+    "line_021a2": {
       "type": "line",
       "speaker": "lillian",
       "text": "저 그 정도는 아니거든요!!",
@@ -279,50 +285,56 @@
     },
     "line_021b": {
       "type": "line",
-      "speaker": "lillian",
-      "text": "어머... 어머머...!",
+      "speaker": "chaeon",
+      "text": "혹시 저랑 동갑...?",
       "next": "line_021b1"
     },
     "line_021b1": {
       "type": "line",
       "speaker": "lillian",
-      "text": "아이 참... 뭐 비슷하긴 한데~",
+      "text": "어머... 어머머...!",
       "next": "line_021b2"
     },
     "line_021b2": {
       "type": "line",
       "speaker": "lillian",
-      "text": "제가 좀 관리가 잘 된 편이라~ 하핫!",
-      "effect": { "temperature": 1 },
+      "text": "아이 참... 뭐 비슷하긴 한데~",
       "next": "line_021b3"
     },
     "line_021b3": {
       "type": "line",
       "speaker": "lillian",
-      "text": "채온 씨 농담이 좀 과하시다아~!",
-      "next": "line_021b3b"
-    },
-    "line_021b3b": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "농담이에요.",
+      "text": "제가 좀 관리가 잘 된 편이라~ 하핫!",
+      "effect": { "temperature": 1 },
       "next": "line_021b4"
     },
     "line_021b4": {
       "type": "line",
       "speaker": "lillian",
-      "text": "...?",
+      "text": "채온 씨 농담이 좀 과하시다아~!",
       "next": "line_021b5"
     },
     "line_021b5": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "농.담.",
+      "text": "농담이에요.",
       "next": "line_021b6"
     },
     "line_021b6": {
       "type": "line",
+      "speaker": "lillian",
+      "text": "...?",
+      "next": "line_021b7"
+    },
+    "line_021b7": {
+      "type": "line",
       "speaker": "chaeon",
+      "text": "농.담.",
+      "next": "line_021b8"
+    },
+    "line_021b8": {
+      "type": "line",
+      "speaker": "lillian",
       "text": "...그러시구나...",
       "next": "null"
     }

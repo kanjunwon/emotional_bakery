@@ -136,10 +136,9 @@ const Map<String, String> chapter2AfterQuizLillianSpriteOverrides = {
   'line_002a3': 'assets/images/lillian_happy.png',
   'line_010': 'assets/images/lillian_thinking3.png',
   'line_017': 'assets/images/lillian_happy.png',
-  'line_019a2': 'assets/images/lillian_thinking2.png',
-  'line_019b3': 'assets/images/lillian_surprise.png',
-  'line_019a4': 'assets/images/lillian_happy.png',
-  'line_019b15': 'assets/images/lillian_happy.png',
+  'line_019a3': 'assets/images/lillian_happy.png',
+  'line_019b2': 'assets/images/lillian_thinking2.png',
+  'line_019b9': 'assets/images/lillian_happy.png',
 };
 
 // chapter2_after_first_game.json 특정 노드에 머무는 동안만 릴리안 스프라이트를 잠깐 바꿔주는
