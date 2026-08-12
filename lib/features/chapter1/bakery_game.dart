@@ -12,6 +12,19 @@ import 'package:emotional_bakery/core/services/interaction_loader.dart';
 const double kitchenStairsTriggerX = 1680;
 
 class BakeryGame extends FlameGame {
+  BakeryGame({this.skipChapter1Events = false}) {
+    // 챕터3 빵집 재진입 모드: 가이드 대사(x=650)/릴리안 등장(x=1305) 트리거를 처음부터
+    // "이미 발동됨" 상태로 시작해서 무효화하고, 계단 트리거만 살아있게 함
+    if (skipChapter1Events) {
+      _hasTriggeredGuide = true;
+      _hasTriggeredPostSceneEnd = true;
+      isKitchenApproachActive = true;
+    }
+  }
+
+  // true면 챕터3에서 빵집에 다시 들어온 경우. 챕터1 최초 플레이 흐름과 구분하는 용도
+  final bool skipChapter1Events;
+
   Chaeon? chaeon;
   final double mapWidth = 1852; // 배경 이미지 가로 길이
   final double mapHeight = 402; // 배경 이미지 세로 길이

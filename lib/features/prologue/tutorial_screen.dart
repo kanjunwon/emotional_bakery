@@ -103,12 +103,16 @@ class TutorialScreen extends StatefulWidget {
   // 이땐 빵집 문으로 다시 들어갈 때 새 GamePlayScreen을 만들지 않고 pop해서, 아래 깔려있는
   // 기존 GamePlayScreen(진행 중이던 대사/이동 상태 그대로 보존)으로 돌아감
   final bool returnToExistingGame;
+  // true면 챕터3 채온이 방에서 나와 골목길을 거쳐 온 경우라는 뜻. 이땐 빵집 문으로 들어갈 때
+  // GamePlayScreen을 skipChapter1Events 모드로 켜서 push함 (챕터1 이벤트 다 건너뛰고 계단으로 직행)
+  final bool chapter3Reentry;
   const TutorialScreen({
     super.key,
     this.initialStep = 0,
     this.initialPlayerX = 445,
     this.initialFacingLeft = false,
     this.returnToExistingGame = false,
+    this.chapter3Reentry = false,
   });
 
   @override
@@ -405,7 +409,11 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   } else {
                     Navigator.pushReplacement(
                       context,
-                      fadeThroughBlackRoute(const GamePlayScreen()),
+                      fadeThroughBlackRoute(
+                        GamePlayScreen(
+                          skipChapter1Events: widget.chapter3Reentry,
+                        ),
+                      ),
                     );
                   }
                 } else {

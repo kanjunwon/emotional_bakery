@@ -48,6 +48,8 @@ enum KitchenScreenMode {
   chapter1End,
   // 챕터2 시작: 걷기 없이 화면 들어오자마자 바로 chapter2_ready.json 대사가 시작됨
   chapter2Start,
+  // 챕터3 시작: 걷기 없이 화면 들어오자마자 바로 chapter3_chaeon_room_after.json 대사가 시작됨
+  chapter3Start,
 }
 
 class KitchenScreen extends StatefulWidget {
@@ -92,6 +94,8 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showChapterEndPlaceholder = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
+  // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
+  bool _hasLoadedBeforeGame = false;
   // chapter2_ingredient_quiz.json의 재료 이름 대사(line_ingredient_reveal)가 끝나고 탭하면 뜨는,
   // 선택한 재료 이미지 팝업. 탭하면 닫힘
   bool _showIngredientPopup = false;
@@ -142,6 +146,8 @@ class _KitchenScreenState extends State<KitchenScreen>
       _movementLocked = true;
       _chaeonX = kKitchenDialogueTriggerX;
     }
+    // 챕터3은 chapter1End랑 동일하게 기본 시작 위치(kChaeonKitchenStartX)에서 dpad로 걸어가서
+    // 트리거 지점에 도달해야 대사가 시작됨. 그래서 여기선 따로 잠그지 않음
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
         // 챕터2 모드는 ready -> ingredient_quiz -> (재료 팝업) -> after_quiz ->
@@ -181,6 +187,20 @@ class _KitchenScreenState extends State<KitchenScreen>
           }
           return;
         }
+        // 챕터3 모드는 chaeon_room_after -> before_game 순으로 자동 이어붙이고
+        // (chapter2Start랑 동일한 체이닝 패턴), 아직 미니게임이 없어서 끝나면 임시 안내 화면을 띄움
+        if (widget.mode == KitchenScreenMode.chapter3Start) {
+          if (!_hasLoadedBeforeGame) {
+            _hasLoadedBeforeGame = true;
+            _sceneController.loadDialogue(
+              'assets/lines/chapter3/chapter3_before_game.json',
+            );
+          } else {
+            // chapter3_before_game.json이 끝나면(line_029, "네!") 여기로 옴. 임시 종료 화면 표시
+            setState(() => _showChapterEndPlaceholder = true);
+          }
+          return;
+        }
         // kitchen_arrival.json 종료 = 챕터 1 종료 시점.
         // TODO: 나중에 진짜 챕터1 종료 연출/다음 챕터 연결로 교체할 예정. 지금은 임시 안내 문구만 표시
         setState(() => _showChapterEndPlaceholder = true);
@@ -199,6 +219,7 @@ class _KitchenScreenState extends State<KitchenScreen>
     if (widget.mode == KitchenScreenMode.chapter2Start) {
       _sceneController.loadDialogue('assets/lines/chapter2/chapter2_ready.json');
     }
+    // 챕터3은 chapter1End처럼 트리거 지점 도달 시 _checkDialogueTrigger에서 로드하므로 여기선 안 함
   }
 
   void _onSceneControllerChanged() {
@@ -283,8 +304,11 @@ class _KitchenScreenState extends State<KitchenScreen>
         _movementLocked = true;
         _chaeonState = 'idle';
       });
+      // 챕터3 모드는 kitchen_arrival.json 대신 chapter3_chaeon_room_after.json을 로드함
       _sceneController.loadDialogue(
-        'assets/lines/chapter1/kitchen_arrival.json',
+        widget.mode == KitchenScreenMode.chapter3Start
+            ? 'assets/lines/chapter3/chapter3_chaeon_room_after.json'
+            : 'assets/lines/chapter1/kitchen_arrival.json',
       );
     }
   }
@@ -859,7 +883,9 @@ class _KitchenScreenState extends State<KitchenScreen>
                           Text(
                             widget.mode == KitchenScreenMode.chapter1End
                                 ? '챕터 1 종료'
-                                : '챕터 2 종료',
+                                : widget.mode == KitchenScreenMode.chapter2Start
+                                ? '챕터 2 종료'
+                                : '챕터3 미니게임 준비 중',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: rW(28),

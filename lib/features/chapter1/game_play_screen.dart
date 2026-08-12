@@ -44,7 +44,14 @@ const Duration _stairsDescentDuration = Duration(milliseconds: 700);
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
-  const GamePlayScreen({super.key, this.isPrologue = false});
+  // 챕터3에서 빵집에 재진입하는 경우 true. 가이드 대사/릴리안 등장 없이 계단 트리거로
+  // 바로 갈 수 있게 함. 챕터1 최초 플레이 흐름(프롤로그 경로)에서는 항상 false여야 함
+  final bool skipChapter1Events;
+  const GamePlayScreen({
+    super.key,
+    this.isPrologue = false,
+    this.skipChapter1Events = false,
+  });
 
   @override
   State<GamePlayScreen> createState() => _GamePlayScreenState();
@@ -52,7 +59,7 @@ class GamePlayScreen extends StatefulWidget {
 
 class _GamePlayScreenState extends State<GamePlayScreen>
     with TickerProviderStateMixin {
-  final BakeryGame _game = BakeryGame();
+  late final BakeryGame _game;
 
   bool _isDialogueActive = false;
   int _dialogueStep = 0;
@@ -116,6 +123,13 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   @override
   void initState() {
     super.initState();
+
+    _game = BakeryGame(skipChapter1Events: widget.skipChapter1Events);
+    // 챕터3 재진입 모드는 가이드 대사/table.json/first_bread.json 단계를 전부 건너뛰고,
+    // 이미 앞치마 입고 계단으로 걸어가는 단계에서 바로 시작함
+    if (widget.skipChapter1Events) {
+      _dialoguePhase = DialoguePhase.kitchenApproach;
+    }
 
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
@@ -374,6 +388,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in apronAssets) {
         precacheImage(AssetImage(asset), context);
       }
+      // 챕터3 재진입 모드(skipChapter1Events)에서 지하 내려가기 전까지 쓰는 20% 평상복 스프라이트도 프리캐싱
+      const List<String> chapter3ReentryAssets = [
+        'assets/images/chaeon_20_normal.gif',
+        'assets/images/chaeon_20_normal_walk.gif',
+      ];
+      for (final asset in chapter3ReentryAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -421,6 +443,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
   // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
   (String, double) _resolveChaeonSprite(String? sceneNodeId) {
+    // 챕터3 재진입 모드는 kitchenApproach 단계로 시작해도 아직 앞치마 입기 전(지하 내려가기 전)
+    // 상태라서, 아래 kitchenApproach 앞치마 분기보다 먼저 여기서 20% 평상복 스프라이트로 처리함
+    if (widget.skipChapter1Events) {
+      return (
+        _chaeonState == 'walk'
+            ? 'assets/images/chaeon_20_normal_walk.gif'
+            : 'assets/images/chaeon_20_normal.gif',
+        0,
+      );
+    }
     if (_dialoguePhase == DialoguePhase.firstBread) {
       final widgets.ChaeonSpriteOverride? override =
           widgets.chaeonSpriteOverrides[sceneNodeId];
@@ -606,7 +638,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       await Navigator.push(
         context,
         fadeThroughBlackRoute(
-          KitchenScreen(initialTemperature: _sceneController.temperature),
+          KitchenScreen(
+            initialTemperature: _sceneController.temperature,
+            mode: widget.skipChapter1Events
+                ? KitchenScreenMode.chapter3Start
+                : KitchenScreenMode.chapter1End,
+          ),
         ),
       );
       if (!mounted) return;

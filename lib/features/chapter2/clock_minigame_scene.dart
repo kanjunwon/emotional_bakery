@@ -94,7 +94,8 @@ const double _targetMinuteValue = 0.0;
 const double _minuteToleranceValue = 5.0;
 
 // 대사창에 표시할 텍스트
-const String _clockDialogueText = '채온이가 일어날 시간이에요!\n시침과 분침을 드래그하여 시간을 7시로 맞춰주세요.';
+const String _clockDialogueText =
+    '채온이가 일어날 시간이에요!\n시침과 분침을 드래그하여 시간을 7시로 맞춰주세요.';
 
 // minigame_success 배너 위치/크기. 챕터1 구름 게임/챕터2 빵만들기 게임과 동일 자산 재사용
 const double _successBannerLeft = 158;

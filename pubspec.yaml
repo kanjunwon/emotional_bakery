@@ -33,10 +33,12 @@ flutter:
     - assets/sounds/
     - assets/data/
     - assets/data/chapter1/
+    - assets/data/chapter3/
     - assets/data/shared/
     - assets/lines/
     - assets/lines/chapter1/
     - assets/lines/chapter2/
+    - assets/lines/chapter3/
 
   fonts:
     - family: SCDream

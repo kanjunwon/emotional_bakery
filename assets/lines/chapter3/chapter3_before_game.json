@@ -209,7 +209,7 @@
     "line_002b11": {
       "type": "line",
       "speaker": "lillian",
-      "text": "흠~ 혹시 그 연필로 무언가 썼던 것은 없나요? 글씨에도 추억이 남거든요!",
+      "text": "흠~ 혹시 그 연필로 무언가 썼던 것은 없나요?",
       "effect": { "temperature": 1 },
       "next": "line_002b12"
     },
@@ -227,17 +227,29 @@
     },
     "line_002b12": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "... 일기장?",
+      "speaker": "lillian",
+      "text": "글씨에도 추억이 남거든요!",
       "next": "line_002b13"
     },
     "line_002b13": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "일기를 주로 썼어요. 하지만... 그 일기장은 엄마와 같이 고른 물건이라... 더 소중한데...",
+      "text": "... 일기장?",
       "next": "line_002b14"
     },
     "line_002b14": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "일기를 주로 썼어요. 하지만...",
+      "next": "line_002b15"
+    },
+    "line_002b15": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "그 일기장은 엄마와 같이 고른 물건이라... 더 소중한데...",
+      "next": "line_002b16"
+    },
+    "line_002b16": {
       "type": "line",
       "speaker": "chaeon",
       "text": "사라지게 하기 힘들어요...",
@@ -283,7 +295,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "솔직히 말하면... 이건 좀 망설여져요.",
-      "next": "line_009"
+      "next": "line_010"
     },
     "line_010": {
       "type": "line",
@@ -313,7 +325,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "아니요... 할게요. 희생 없이 얻는 건 없으니까요.",
-      "next": "line_015"
+      "next": "line_016"
     },
     "line_016": {
       "type": "line",
@@ -398,5 +410,6 @@
       "speaker": "chaeon",
       "text": "네!",
       "next": "null"
-    }}
+    }
+  }
 }

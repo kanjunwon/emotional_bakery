@@ -5,6 +5,7 @@ import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_screen.dart';
 import 'package:emotional_bakery/features/chapter1/kitchen_screen.dart';
+import 'package:emotional_bakery/features/chapter3/chaeon_room_screen.dart';
 import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
 
 class ChapterSelectScreen extends StatefulWidget {
@@ -174,9 +175,26 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   ),
                 ),
                 SizedBox(height: rH(4)),
-                // 챕터3/4/5는 화면 자체가 아직 없어서 이동하면 에러남. 탭하면 화면 전환 없이
+                // 챕터4/5는 화면 자체가 아직 없어서 이동하면 에러남. 탭하면 화면 전환 없이
                 // 스낵바로 미구현 안내만 잠깐 띄우고 끝냄. 임시 개발용 코드
-                _buildDevUnimplementedButton("DEV: 챕터3 바로가기", "챕터3 아직 미구현", rW),
+                // 챕터3은 채온이 방 화면부터 바로 시작. 다른 DEV 버튼들이랑 동일하게 잠금 체크 없음
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChaeonRoomScreen(),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    "DEV: 챕터3 바로가기",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                      fontSize: rW(10),
+                    ),
+                  ),
+                ),
                 SizedBox(height: rH(4)),
                 _buildDevUnimplementedButton("DEV: 챕터4 바로가기", "챕터4 아직 미구현", rW),
                 SizedBox(height: rH(4)),
