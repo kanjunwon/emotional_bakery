@@ -100,6 +100,14 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
   bool _hasLoadedBeforeGame = false;
+  // chapter3_before_game.json이 끝나면 뜨는 빵만들기 미니게임. 챕터2 BreadMakingScene을
+  // 그대로 재사용함(완성 반죽 이미지도 챕터2랑 동일하게 재료 조합 기준으로 결정됨)
+  bool _showChapter3BreadMakingGame = false;
+  // 챕터3 빵만들기 미니게임에서 완성된 반죽 화면을 탭하면(BreadMakingScene.onComplete) 뜨는,
+  // 완성된 빵(onion_bread) 팝업. 챕터2 _showBreadPopup이랑 동일한 패턴. 탭하면 닫힘
+  bool _showChapter3BreadPopup = false;
+  // 챕터3 빵만들기 미니게임 끝나고 chapter3_after_fitsrt_game.json을 이미 이어붙였는지
+  bool _hasLoadedChapter3AfterFirstGameDialogue = false;
   // chapter2_ingredient_quiz.json의 재료 이름 대사(line_ingredient_reveal)가 끝나고 탭하면 뜨는,
   // 선택한 재료 이미지 팝업. 탭하면 닫힘
   bool _showIngredientPopup = false;
@@ -213,7 +221,14 @@ class _KitchenScreenState extends State<KitchenScreen>
             _sceneController.loadDialogue(
               'assets/lines/chapter3/chapter3_before_game.json',
             );
+          } else if (!_hasLoadedChapter3AfterFirstGameDialogue) {
+            // chapter3_before_game.json이 끝나면(line_028, "그럼 만들어볼까요?") 여기로 옴.
+            // 빵만들기 미니게임 시작. 미니게임 완료 -> after_fitsrt_game.json 로드까지는
+            // 미니게임 쪽 콜백(onComplete)에서 처리함
+            setState(() => _showChapter3BreadMakingGame = true);
           } else {
+            // (참고: 이제 이 분기는 chapter3_before_game.json이 아니라 빵만들기 미니게임 이후
+            // chapter3_after_fitsrt_game.json이 끝나면 옴. 미니게임 붙기 전까지는 여기가 마지막이었음)
             // chapter3_before_game.json이 끝나면(line_029, "네!") 여기로 옴. 임시 종료 화면 표시
             setState(() => _showChapterEndPlaceholder = true);
           }
@@ -235,7 +250,9 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
     // 챕터2는 걷기 없이 화면 들어오자마자 바로 대사 시작
     if (widget.mode == KitchenScreenMode.chapter2Start) {
-      _sceneController.loadDialogue('assets/lines/chapter2/chapter2_ready.json');
+      _sceneController.loadDialogue(
+        'assets/lines/chapter2/chapter2_ready.json',
+      );
     }
     // 챕터3은 chapter1End처럼 트리거 지점 도달 시 _checkDialogueTrigger에서 로드하므로 여기선 안 함
   }
@@ -367,10 +384,7 @@ class _KitchenScreenState extends State<KitchenScreen>
   // _stairsAscentStart에서 _stairsAscentEnd로 이동하는 애니메이션을 재생. 끝나면 화면을 pop함
   void _triggerChaeonStairsAscent() {
     _stairsUpAnimation =
-        Tween<Offset>(
-          begin: _stairsAscentStart,
-          end: _stairsAscentEnd,
-        ).animate(
+        Tween<Offset>(begin: _stairsAscentStart, end: _stairsAscentEnd).animate(
           CurvedAnimation(parent: _stairsUpController, curve: Curves.easeIn),
         );
     setState(() => _isChaeonAscendingStairs = true);
@@ -898,6 +912,77 @@ class _KitchenScreenState extends State<KitchenScreen>
               Positioned.fill(
                 key: const ValueKey('memory_blackout'),
                 child: Container(color: Colors.black),
+              ),
+
+            // 9-7층: 챕터3 첫 번째 미니게임. chapter3_before_game.json이 끝나면 뜨고, 최상단에서
+            // 화면을 전부 덮음. 챕터2 BreadMakingScene을 forcedCompletedDoughAsset 없이 그대로
+            // 재사용해서, 미니게임 안 완성 반죽 이미지도 챕터2랑 동일하게 재료 조합에 따라
+            // StoryState.resolveCompletedDoughImage()로 결정됨. onion_bread.png 고정은 미니게임
+            // 자체가 아니라 미니게임 끝나고 뜨는 9-8층 팝업에서만 함
+            // 완성 화면을 탭하면 주방으로 돌아가고 빵 팝업이 뜸(onComplete).
+            // 다음 대사 로드는 팝업 탭에서 처리함
+            if (_showChapter3BreadMakingGame)
+              Positioned.fill(
+                key: const ValueKey('chapter3_bread_making_game'),
+                child: BreadMakingScene(
+                  onComplete: () {
+                    setState(() {
+                      _showChapter3BreadMakingGame = false;
+                      _showChapter3BreadPopup = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 9-8층: 완성된 빵(onion_bread) 팝업. 챕터2 9-4층(bread_popup_layer)이랑 동일한
+            // 연출(검은 50% 배경 + tutorial_dialogue_box 570x300 + 이미지 300x300).
+            // 탭하면 닫히고 chapter3_after_fitsrt_game.json으로 이어짐
+            if (_showChapter3BreadPopup)
+              Positioned.fill(
+                key: const ValueKey('chapter3_bread_popup_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _showChapter3BreadPopup = false);
+                    _hasLoadedChapter3AfterFirstGameDialogue = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter3/chapter3_after_fitsrt_game.json',
+                    );
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: Center(
+                      child: SizedBox(
+                        width: rW(570),
+                        height: rH(300),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: rW(570),
+                              height: rH(300),
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage(
+                                    'assets/images/tutorial_dialogue_box.png',
+                                  ),
+                                  fit: BoxFit.fill,
+                                  centerSlice: tutorialDialogueBoxCenterSlice,
+                                ),
+                              ),
+                            ),
+                            Image.asset(
+                              'assets/images/onion_bread.png',
+                              width: rW(300),
+                              height: rH(300),
+                              fit: BoxFit.contain,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
 
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라

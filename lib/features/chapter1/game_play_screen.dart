@@ -123,6 +123,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     // 챕터3 재진입 모드면, 릴리안-채온 첫 만남 대사/회상 컷씬/빵 먹는 대사 단계를 전부 건너뜀
     if (widget.skipChapter1Events) {
       _dialoguePhase = DialoguePhase.kitchenApproach;
+      // showDpad가 skip 모드에서는 _isFreeWalkPhase만 보고 판단하니까, 처음부터 걸을 수 있는
+      // 상태로 시작해야 dpad가 바로 보임
+      _isFreeWalkPhase = true;
     }
 
     _sceneController = SceneDialogueController(
@@ -161,6 +164,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             // kitchenApproach 단계에서 로드되는 JSON 대사는 지금 chapter3_door.json 하나뿐이라
             // 여기로 오면 그 대사가 끝난 거임. 이동 잠금 풀어주면 나머지(계단 트리거)는 알아서 이어짐
             _game.isMovementBlocked = false;
+            // dpad도 다시 보여줘야 계단까지 계속 걸어갈 수 있음
+            setState(() => _isFreeWalkPhase = true);
             break;
           case DialoguePhase.none:
           case DialoguePhase.memoryFlashback:
@@ -220,6 +225,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     _game.onReachChapter3Door = () {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          // dpad도 같이 숨겨야 함. 안 그러면 isMovementBlocked 때문에 실제로는 안 움직이면서
+          // _chaeonState만 walk로 바뀌어서 걷는 GIF가 제자리에서 계속 재생되는 문제가 생김
+          setState(() => _isFreeWalkPhase = false);
           _sceneController.loadDialogue(
             'assets/lines/chapter3/chapter3_door.json',
           );
@@ -687,9 +695,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     double rW(double px) => (px / 874) * w;
     double rH(double px) => (px / 402) * h;
 
+    // dpad 노출 조건. 원래 식(!_isGuidePhaseStarted || _isFreeWalkPhase)은 skipChapter1Events
+    // 모드에서 문제가 생김: 이 모드는 가이드 대사(x=650) 자체를 안 거쳐서 _isGuidePhaseStarted가
+    // 끝까지 false로 남고, 그러면 !_isGuidePhaseStarted가 항상 true라 _isFreeWalkPhase를 아무리
+    // false로 바꿔도(예: chapter3_door.json 대사 중) OR 전체가 항상 true가 되어 dpad가 안 사라짐.
+    // 그래서 skip 모드는 _isFreeWalkPhase 하나만 보고 판단하도록 분기함.
+    // canInteract(오브젝트 클릭 정보 팝업 허용 여부)도 같은 식을 쓰길래 동일하게 재사용함
+    final bool showDpad = widget.skipChapter1Events
+        ? _isFreeWalkPhase
+        : (!_isGuidePhaseStarted || _isFreeWalkPhase);
+
     // 오브젝트 클릭 정보 팝업은 이동 가능한 상태에서만 허용
-    _game.canInteract =
-        !widget.isPrologue && (!_isGuidePhaseStarted || _isFreeWalkPhase);
+    _game.canInteract = !widget.isPrologue && showDpad;
 
     // 실시간 카메라 스크롤 값 계산
     double cameraX = _game.camera.isMounted
@@ -924,8 +941,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 5층: 가상 패드 왼쪽 이동 버튼 영역
-            if (!widget.isPrologue &&
-                (!_isGuidePhaseStarted || _isFreeWalkPhase))
+            if (!widget.isPrologue && showDpad)
               Positioned(
                 // 디버그: dpad 재마운트 시 이전 눌림 상태가 이어지는지 테스트하려고 단계별로
                 // 완전히 다른 키를 줘서 매번 새 위젯으로 취급되게 함. 원인 아니면 나중에 되돌릴 것
@@ -958,8 +974,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 6층: 가상 패드 오른쪽 이동 버튼 영역
-            if (!widget.isPrologue &&
-                (!_isGuidePhaseStarted || _isFreeWalkPhase))
+            if (!widget.isPrologue && showDpad)
               Positioned(
                 // 디버그: dpad 재마운트 시 이전 눌림 상태가 이어지는지 테스트하려고 단계별로
                 // 완전히 다른 키를 줘서 매번 새 위젯으로 취급되게 함. 원인 아니면 나중에 되돌릴 것

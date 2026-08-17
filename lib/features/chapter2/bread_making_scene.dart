@@ -47,11 +47,19 @@ const double _successBannerWidth = 557;
 const double _successBannerHeight = 129;
 
 class BreadMakingScene extends StatefulWidget {
-  const BreadMakingScene({super.key, required this.onComplete});
+  const BreadMakingScene({
+    super.key,
+    required this.onComplete,
+    this.forcedCompletedDoughAsset,
+  });
 
   // 완성된 반죽 화면을 탭하면 호출됨. 주방 화면으로 돌아가서 빵 팝업을 띄우는 건
   // 이 콜백을 받는 쪽(kitchen_screen.dart)의 책임
   final VoidCallback onComplete;
+
+  // 완성 반죽 이미지를 재료 조합과 무관하게 고정하고 싶을 때 씀 (예: 챕터3에서 이 미니게임
+  // 재사용). null이면 기존처럼 StoryState.resolveCompletedDoughImage()로 결정됨
+  final String? forcedCompletedDoughAsset;
 
   @override
   State<BreadMakingScene> createState() => _BreadMakingSceneState();
@@ -101,6 +109,7 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
             .whereType<String>()
             .length;
         final String? completedDoughAsset =
+            widget.forcedCompletedDoughAsset ??
             StoryState.resolveCompletedDoughImage();
         final bool isDoughComplete =
             totalIngredients > 0 &&
