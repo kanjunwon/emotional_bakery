@@ -132,20 +132,21 @@ class SceneDialogueController extends ChangeNotifier {
       final String? delayGifAsset = graph.dialogueId == _bubbleDelayDialogueId
           ? _bubbleDelayGifByNodeId[nodeId]
           : null;
-      // first_meet.json의 line_029a6_eat/line_029a6_cry는 대사 없이 GIF만 재생 후 탭 없이 다음 노드로 넘어감
-      final String? autoAdvanceGifAsset =
-          graph.dialogueId == _autoAdvanceDialogueId
-          ? _autoAdvanceGifByNodeId[nodeId]
+      // node.expression에 autoAdvance가 켜져 있으면 대사 없이 GIF만 재생 후 탭 없이 다음 노드로 넘어감
+      // (예: first_meet.json의 line_029a6_eat/line_029a6_cry)
+      final DialogueExpression? autoAdvanceExpression =
+          (node.expression != null && node.expression!.autoAdvance)
+          ? node.expression
           : null;
       if (delayGifAsset != null) {
         bubbleRevealed = false;
         typedCharCount = 0;
         _waitForGifThenRevealBubble(delayGifAsset, node);
-      } else if (autoAdvanceGifAsset != null) {
+      } else if (autoAdvanceExpression != null) {
         bubbleRevealed = true;
         typedCharCount = 0;
         _autoAdvancePending = true;
-        _waitForGifThenAutoAdvance(autoAdvanceGifAsset, node);
+        _waitForGifThenAutoAdvance(autoAdvanceExpression.asset, node);
       } else {
         bubbleRevealed = true;
         _startTypingEffect(node);
@@ -186,6 +187,7 @@ class SceneDialogueController extends ChangeNotifier {
       next: node.next,
       options: node.options,
       animation: node.animation,
+      expression: node.expression,
     );
     graph.nodes[nodeId] = resolvedNode;
     return resolvedNode;
@@ -205,7 +207,7 @@ class SceneDialogueController extends ChangeNotifier {
 
   // GIF 재생 시간만큼 기다렸다가 탭 없이 다음 노드로 진행. advanceScene()처럼 히스토리 추가까지 직접 처리
   void _waitForGifThenAutoAdvance(String gifAsset, DialogueNode node) async {
-    final int? overrideMs = _autoAdvanceDurationOverrideMs[node.id];
+    final int? overrideMs = node.expression?.durationMs;
     final int durationMs = overrideMs ?? await GifDuration.totalMs(gifAsset);
     if (_isDisposed || sceneNodeId != node.id) return;
     _autoAdvanceTimer = Timer(Duration(milliseconds: durationMs), () {

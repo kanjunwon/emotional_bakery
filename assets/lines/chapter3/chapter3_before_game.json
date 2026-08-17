@@ -235,24 +235,6 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "... 일기장?",
-      "next": "line_002b14"
-    },
-    "line_002b14": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "일기를 주로 썼어요. 하지만...",
-      "next": "line_002b15"
-    },
-    "line_002b15": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그 일기장은 엄마와 같이 고른 물건이라... 더 소중한데...",
-      "next": "line_002b16"
-    },
-    "line_002b16": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "사라지게 하기 힘들어요...",
       "next": "line_003"
     },
     "line_003": {
@@ -300,7 +282,7 @@
     "line_010": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "다른 물건은 그냥 넣을 수 있는데,",
+      "text": "다른 물건은 그냥 넣을 수 있을 거 같은데,",
       "next": "line_011"
     },
     "line_011": {
@@ -324,7 +306,7 @@
     "line_014": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "아니요... 할게요. 희생 없이 얻는 건 없으니까요.",
+      "text": "아니요... 할게요.",
       "next": "line_016"
     },
     "line_016": {
@@ -391,24 +373,12 @@
       "type": "line",
       "speaker": "lillian",
       "text": "네...",
-      "next": "line_027"
-    },
-    "line_027": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그래도 해볼게요.",
       "next": "line_028"
     },
     "line_028": {
       "type": "line",
       "speaker": "lillian",
-      "text": "좋아요! 한 번 열심히 만들어봐요 우리!",
-      "next": "line_029"
-    },
-    "line_029": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "네!",
+      "text": "흠흠... 그럼 만들어볼까요?",
       "next": "null"
     }
   }

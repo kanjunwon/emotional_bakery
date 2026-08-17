@@ -42,24 +42,6 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그래요?",
-      "next": "line_008"
-    },
-    "line_008": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "어렸을 때 일이 선명하게 떠올라요.",
-      "next": "line_009"
-    },
-    "line_009": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "잊고 있었는데.",
-      "next": "line_009"
-    },
-    "line_010": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "그때, 제가 웃고 있었어요.",
       "next": "line_011"
     },
     "line_011": {
@@ -101,25 +83,25 @@
     "line_018": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "그렇군요... 그리움... 그것도 좋은 기억의 일부겠죠.",
+      "text": "그리움... 그것도 좋은 감정인거죠?",
       "next": "line_019"
     },
     "line_019": {
       "type": "line",
       "speaker": "lillian",
-      "text": "맞아요!",
+      "text": "뭐, 감정에 좋고 나쁘고를 판단할 순 없지만",
       "next": "line_020"
     },
     "line_020": {
       "type": "line",
-      "speaker": "chaeon",
-      "text": "저...",
+      "speaker": "lillian",
+      "text": "그리움도 꼭 필요한 감정이죠!",
       "next": "line_021"
     },
     "line_021": {
       "type": "line",
       "speaker": "chaeon",
-      "text": ".....행복한 감정을 느낄 수 있는 빵이 필요해요.",
+      "text": "저는...행복한 감정을 느낄 수 있는 빵이 더 필요해요.",
       "next": "line_022"
     },
     "line_022": {
@@ -137,19 +119,13 @@
     "line_024": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "그리움은 좋은 기억이지만,",
+      "text": "그리움은 좋은 감정이지만,",
       "next": "line_025"
     },
     "line_025": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "힘들고 아파요.",
-      "next": "line_026"
-    },
-    "line_026": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": "행복하고만 싶어요...",
+      "text": "좀 힘든 거 같아요.",
       "next": "line_027"
     },
     "line_027": {

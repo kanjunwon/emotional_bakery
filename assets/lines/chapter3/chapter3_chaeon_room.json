@@ -47,7 +47,13 @@
     "line_008": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "엄마...",
+      "text": "그래도... 감정을 되찾는게 우선이니까.",
+      "next": "line_009"
+    },
+    "line_009": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "오늘도 찾아가볼까...?",
       "next": "null"
     }
 }}

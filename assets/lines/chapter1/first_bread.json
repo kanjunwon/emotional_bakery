@@ -53,7 +53,8 @@
     "line_008": {
       "type": "line",
       "speaker": "lillian",
-      "text": "감정이 잘 느껴졌다니, 다행이에요!",
+      "text": "다행이에요!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_009"
     },
     "line_009": {
@@ -66,42 +67,14 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "따뜻함...",
-      "next": "line_011"
+      "next": "line_010.1"
     },
-    "line_011": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "이곳은 아무나 찾아올 수 없어요.",
-      "next": "line_012"
-    },
-    "line_012": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": [
-        { "text": "오직" },
-        { "text": " 감정을 잃은 사람만", "color": "#FF7100" },
-        { "text": "이 찾을 수 있는 곳이거든요." }
-      ],
-      "next": "line_013"
-    },
-    "line_013": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "손님은 어떤 감정을 되찾고 싶으세요?",
-      "next": "line_014"
-    },
-    "line_014": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": ".....",
-      "next": "line_015"
-    },
-    "line_015": {
+    "line_010.1": {
       "type": "line",
       "speaker": "chaeon",
       "text": [
-        { "text": "엄마를 꿈에서 다시 만나면 " },
-        { "text": "웃어주겠다", "color": "#FF7100" },
+        { "text": "엄마를 꿈에서 다시 만나면" },
+        { "text": " 웃어주겠다", "color": "#FF7100" },
         { "text": "고 다짐했거든요." }
       ],
       "next": "line_016"
@@ -122,6 +95,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "음... 이건 다른 사람의 추억으로 구운 빵이라서",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_019"
     },
     "line_019": {
@@ -195,7 +169,13 @@
     "line_022a6": {
       "type": "line",
       "speaker": "lillian",
-      "text": "그리고 추억으로 빵을 만들고 나면, 함께 넣은 물건은 사라지고 말아요.",
+      "text": "그리고 다시 한번 이야기하지만, 추억으로 빵을 만들고 나면",
+      "next": "line_022a6.1"
+    },
+    "line_022a6.1": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그 물건은 대가로 가져갈거에요.",
       "next": "line_022a7"
     },
     "line_022a7": {
@@ -250,19 +230,26 @@
     "line_022b7": {
       "type": "line",
       "speaker": "lillian",
-      "text": "그리고 추억으로 빵을 만들고 나면, 함께 넣은 물건은 사라지고 말아요.",
+      "text": "그리고 다시 한번 이야기하지만, 추억으로 빵을 만들고 나면",
       "next": "line_022b8"
     },
     "line_022b8": {
       "type": "line",
       "speaker": "lillian",
-      "text": "그래도... 이 과정을 통해 분명 감정을 찾을 수 있을 거예요.",
+      "text": "그 물건은 대가로 가져갈거에요.",
+      "next": "line_022b8.1"
+    },
+    "line_022b8.1": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그래도... 이 과정을 통해 분명 감정을 찾을 수 있을 거에요.",
       "next": "line_022b9"
     },
     "line_022b9": {
       "type": "line",
       "speaker": "lillian",
       "text": "같이 해봐요, 우리!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_023"
     },
     "line_023": {
@@ -287,6 +274,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그런 거 아니에요!!",
+      "expression": "assets/images/lillian_grudge.png",
       "next": "line_027"
     },
     "line_027": {
@@ -328,13 +316,13 @@
     "line_033": {
       "type": "line",
       "speaker": "lillian",
-      "text": "자! 그러면 제가 주방 옷을 드릴 테니, 갈아입으시고",
+      "text": "자! 그러면 제가 앞치마를 드릴 테니, 갈아입으시고",
       "next": "line_034"
     },
     "line_034": {
       "type": "line",
       "speaker": "lillian",
-      "text": "지하에 주방으로 내려와주세요!",
+      "text": "지하에 제빵실로 내려와주세요!",
       "next": "null"
     }
   }

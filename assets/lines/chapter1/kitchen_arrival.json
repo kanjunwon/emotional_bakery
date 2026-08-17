@@ -5,13 +5,14 @@
     "line_001": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "주방치고는... 좀 특이하네요.",
+      "text": "빵을 만드는 곳치고는... 좀 특이하네요.",
       "next": "line_002"
     },
     "line_002": {
       "type": "line",
       "speaker": "lillian",
       "text": "흐음~ 그래요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_003"
     },
     "line_003": {

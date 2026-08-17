@@ -21,10 +21,7 @@ enum DialoguePhase {
   table,
   memoryFlashback,
   firstBread,
-  // first_bread.json 종료 직후부터 적용되는 구간: 채온이는 앞치마를 입은 상태(idle/walk에 따라
-  // chaeon_apron_putting_on.gif / chaeon_apron_idle.gif로 표시)로 다시 자유롭게 움직이며
-  // 계단(주방 입구)까지 걸어감. 계단 근처 트리거는 이 단계일 때만 반응하게 해서 이전 단계에서
-  // 실수로 안 걸리게 함
+  // 앞치마 착용 후 주방으로 내려가는 연출 단계. 이때부터 계단 트리거가 실제로 소모되게 켜짐
   kitchenApproach,
 }
 
@@ -33,8 +30,7 @@ const Duration _memoryFadeInDuration = Duration(milliseconds: 300);
 const Duration _memoryFadeHoldDuration = Duration(milliseconds: 1000);
 const Duration _memoryFadeOutDuration = Duration(milliseconds: 300);
 
-// 계단 꼭대기 지점의 게임 월드 절대좌표(x는 mapWidth=1852, y는 mapHeight=402 기준 top 값).
-// 릴리안이 계단을 올라와 다 도착하는 지점이자, 채온이가 계단을 내려가기 시작하는 지점으로 공유해서 씀
+// 계단 하강 연출용 상수: 계단 꼭대기 지점, 계단 화면 밖 지점, 채온이 계단 내려가는 끝 지점, 하강 애니메이션 지속시간
 const Offset _stairsTopPoint = Offset(1680, 172);
 // 릴리안이 계단을 올라오기 시작하는(화면 밖) 지점
 const Offset _stairsOffscreenPoint = Offset(1800, 180);
@@ -44,8 +40,7 @@ const Duration _stairsDescentDuration = Duration(milliseconds: 700);
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
-  // 챕터3에서 빵집에 재진입하는 경우 true. 가이드 대사/릴리안 등장 없이 계단 트리거로
-  // 바로 갈 수 있게 함. 챕터1 최초 플레이 흐름(프롤로그 경로)에서는 항상 false여야 함
+  // 챕터3 재진입 모드: true면 가이드 대사/table.json/first_bread.json 단계를 전부 건너뛰고,
   final bool skipChapter1Events;
   const GamePlayScreen({
     super.key,
@@ -125,8 +120,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     super.initState();
 
     _game = BakeryGame(skipChapter1Events: widget.skipChapter1Events);
-    // 챕터3 재진입 모드는 가이드 대사/table.json/first_bread.json 단계를 전부 건너뛰고,
-    // 이미 앞치마 입고 계단으로 걸어가는 단계에서 바로 시작함
+    // 챕터3 재진입 모드면, 릴리안-채온 첫 만남 대사/회상 컷씬/빵 먹는 대사 단계를 전부 건너뜀
     if (widget.skipChapter1Events) {
       _dialoguePhase = DialoguePhase.kitchenApproach;
     }
@@ -150,8 +144,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _transitionToMemoryFlashback();
             break;
           case DialoguePhase.firstBread:
-            // first_bread.json 종료 즉시 앞치마 착용 상태(chaeon_apron_putting_on)로 전환하고,
-            // 릴리안 퇴장 + 방향키·오브젝트 클릭 정보 다시 활성화 (온도계/뒤로가기/설정 버튼은 계속 노출)
+            // 앞치마 착용 후 주방으로 내려가는 연출 단계로 전환. 이때부터 계단 트리거가 실제로 소모되게 켜짐
             setState(() {
               _dialoguePhase = DialoguePhase.kitchenApproach;
               _isLillianVisible = false;
@@ -160,8 +153,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _game.isMovementBlocked = false;
             // kitchenApproach 단계에서만 계단 트리거가 실제로 소모되게 켜줌
             _game.isKitchenApproachActive = true;
-            // 릴리안 계단 등장 연출 때 설정된 lillianArrivalX가 남아있으면 카메라가 채온이를
-            // 온전히 못 따라가므로 초기화하고, 순간이동 없이 부드럽게 채온이 위치로 따라잡게 함
+            // 카메라가 채온이를 따라가도록 복귀
             _game.lillianArrivalX = null;
             _game.startCameraCatchUp();
             break;
@@ -473,9 +465,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     if (_isChaeonDescendingStairs) {
       return ('assets/images/chaeon_apron_idle.gif', 0);
     }
-    // 앞치마 입고 걷는 전용 애니메이션 에셋이 아직 없어서, walk 상태일 땐 chaeon_apron_idle.gif를,
-    // idle 상태일 땐 chaeon_apron_putting_on.gif를 대신 보여줌. 에셋 이름이랑 실제 쓰임이
-    // 반대라 헷갈릴 수 있는데, 이렇게 매핑해야 자연스러워 보여서 일부러 이렇게 함
+    // 앞치마 착용 후 주방으로 내려가는 연출 단계(kitchenApproach)에서는, walk 상태면 apron_idle.gif
     // TODO: 나중에 앞치마 입고 걷는 walk 전용 에셋 나오면 _chaeonState 보고 분기하도록 교체할 예정
     if (_dialoguePhase == DialoguePhase.kitchenApproach) {
       return (
@@ -496,23 +486,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     );
   }
 
-  // 현재 씬 노드에 맞춰 릴리안 스프라이트 경로를 결정.
-  // first_meet.json/table.json 단계면 각각 전용 오버라이드 맵부터 확인하고(해당 노드 아니면 기본 idle/walk로),
-  // 그 외 단계면 기존처럼 걷는 중인지 여부로 결정
+  // 현재 씬 노드에 맞춰 릴리안 스프라이트 경로를 결정. 노드에 expression이 있으면 그걸 쓰고,
+  // 없으면 기존처럼 걷는 중인지 여부로 결정
   String _resolveLillianSprite(String? sceneNodeId) {
-    if (_dialoguePhase == DialoguePhase.firstMeet) {
-      final String? override = widgets.lillianSpriteOverrides[sceneNodeId];
-      if (override != null) return override;
-    }
-    if (_dialoguePhase == DialoguePhase.table) {
-      final String? override = widgets.tableLillianSpriteOverrides[sceneNodeId];
-      if (override != null) return override;
-    }
-    if (_dialoguePhase == DialoguePhase.firstBread) {
-      final String? override =
-          widgets.firstBreadLillianSpriteOverrides[sceneNodeId];
-      if (override != null) return override;
-    }
+    final String? expressionAsset =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId]?.expression?.asset;
+    if (expressionAsset != null) return expressionAsset;
     return _isLillianWalking
         ? 'assets/images/lillian_walk.gif'
         : 'assets/images/lillian_idle.gif';
@@ -573,7 +552,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
     _lillianStairsAnimation = TweenSequence<Offset>([
       TweenSequenceItem(
-        tween: Tween<Offset>(begin: _stairsOffscreenPoint, end: _stairsTopPoint),
+        tween: Tween<Offset>(
+          begin: _stairsOffscreenPoint,
+          end: _stairsTopPoint,
+        ),
         weight: climbDist,
       ),
       TweenSequenceItem(

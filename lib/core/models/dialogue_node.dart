@@ -13,6 +13,20 @@ class DialogueSpan {
   DialogueSpan({required this.text, this.color, this.bold = false, this.size});
 }
 
+// 릴리안 표현(스프라이트) 오버라이드. asset만 있으면 정지 이미지, durationMs/autoAdvance까지 있으면
+// GIF 재생 후 자동으로 다음 노드로 넘어가는 경우 (scene_dialogue_controller.dart에서 사용)
+class DialogueExpression {
+  final String asset;
+  final int? durationMs;
+  final bool autoAdvance;
+
+  DialogueExpression({
+    required this.asset,
+    this.durationMs,
+    this.autoAdvance = false,
+  });
+}
+
 // choice 노드의 선택지 하나
 class DialogueOption {
   final String text;
@@ -33,6 +47,7 @@ class DialogueNode {
   final String? next; // type == 'line'일 때만. null이면 대화 종료
   final List<DialogueOption> options; // type == 'choice'일 때만
   final String? animation; // type == 'line'일 때만. 캐릭터 모션 트리거용 (예: "lillian_hop")
+  final DialogueExpression? expression; // type == 'line'일 때만. 릴리안 스프라이트 오버라이드
 
   DialogueNode({
     required this.id,
@@ -43,6 +58,7 @@ class DialogueNode {
     this.next,
     this.options = const [],
     this.animation,
+    this.expression,
   });
 
   factory DialogueNode.fromJson(String id, Map<String, dynamic> json) {
@@ -100,6 +116,19 @@ class DialogueNode {
     String? next = json['next'] as String?;
     if (next == 'null') next = null;
 
+    // 문자열이면 정지 이미지, 객체({asset, durationMs, autoAdvance})면 GIF+자동진행 표현
+    DialogueExpression? expression;
+    final rawExpression = json['expression'];
+    if (rawExpression is String) {
+      expression = DialogueExpression(asset: rawExpression);
+    } else if (rawExpression is Map) {
+      expression = DialogueExpression(
+        asset: rawExpression['asset'] as String,
+        durationMs: (rawExpression['durationMs'] as num?)?.toInt(),
+        autoAdvance: rawExpression['autoAdvance'] == true,
+      );
+    }
+
     return DialogueNode(
       id: id,
       type: type,
@@ -108,6 +137,7 @@ class DialogueNode {
       temperatureEffect: temperatureEffect,
       next: next,
       animation: json['animation'] as String?,
+      expression: expression,
     );
   }
 }

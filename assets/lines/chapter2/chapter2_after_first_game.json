@@ -11,18 +11,18 @@
     "line_002": {
       "type": "line",
       "speaker": "lillian",
-      "text": "빵을 만들어보니 어땠나요?",
+      "text": "생각보다 간단하죠?",
       "next": "choice_001"
     },
     "choice_001": {
       "type": "choice",
       "options": [
         {
-          "text": "생각보다 만들 만했어요.",
+          "text": "네, 간단하네요.",
           "next": "line_003a1"
         },
         {
-          "text": "너무 어려웠어요...",
+          "text": "아뇨, 어려웠어요.",
           "next": "line_003b1"
         }
       ]
@@ -30,13 +30,13 @@
     "line_003a1": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "생각보다 만들 만했어요.",
+      "text": "네, 간단하네요.",
       "next": "line_003a2"
     },
     "line_003b1": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "너무 어려웠어요...",
+      "text": "아뇨, 어려웠어요.",
       "next": "line_003b2"
     },
     "line_003a2": {
@@ -48,7 +48,7 @@
     "line_003b2": {
       "type": "line",
       "speaker": "lillian",
-      "text": "저도 처음엔 그랬어요. 생각보다 손이 많이 가죠.",
+      "text": "저도 처음엔 그랬어요. 간단하지만 정성이 필요하죠.",
       "next": "line_003b3"
     },
     "line_003a3": {
@@ -80,40 +80,10 @@
     "line_004": {
       "type": "line",
       "speaker": "lillian",
-      "text": [
-        { "text": "이번에 완성된 건" },
-        { "text": " 따뜻한 빵", "color": "#FF7100" },
-        { "text": "이네요!" }
-      ],
+      "text": "그럼 먹어볼까요?",
       "next": "line_005"
     },
     "line_005": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": [
-        { "text": "긍정적인 기억이 담기면" },
-        { "text": " 따뜻한 빵", "color": "#FF7100" },
-        { "text": "이 되고," }
-      ],
-      "next": "line_006"
-    },
-    "line_006": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": [
-        { "text": "부정적인 기억이 담기면" },
-        { "text": " 차가운 빵", "color": "#FF7100" },
-        { "text": "이 되거든요." }
-      ],
-      "next": "line_007"
-    },
-    "line_007": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": "그럼 먹어볼까요?",
-      "next": "line_008"
-    },
-    "line_008": {
       "type": "line",
       "speaker": "lillian",
       "text": "식기 전에 먹어봐요.",

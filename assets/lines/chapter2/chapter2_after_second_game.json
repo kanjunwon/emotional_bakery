@@ -12,7 +12,7 @@
     "line_002": {
       "type": "line",
       "speaker": "lillian",
-      "text": "빵을 먹어보니까 어떤가요?",
+      "text": "어때요? 감정이 느껴지나요?",
       "next": "line_003"
     },
     "line_003": {
@@ -30,7 +30,7 @@
     "line_005": {
       "type": "line",
       "speaker": "lillian",
-      "text": "감정이 돌아오고 있다는 신호에요.",
+      "text": "좋아요!!!!! 감정이 돌아오기 있다는 신호에요!",
       "next": "line_006"
     },
     "line_006": {
@@ -63,22 +63,40 @@
     "line_010": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "감사해요.",
+      "text": "빨리 감정을 되찾고 싶어요.",
       "next": "line_011"
     },
     "line_011": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "오늘은 이만 돌아갈게요.",
+      "text": "다음 빵을 바로 만들어도 될까요?",
       "next": "line_012"
     },
     "line_012": {
       "type": "line",
       "speaker": "lillian",
-      "text": "그래요! 감정을 되찾을 때까지는",
+      "text": "엇! 오늘은 이정도면 충분한 거 같아요.",
       "next": "line_013"
     },
     "line_013": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "감정은 과하면 감당하기 힘들거든요.",
+      "next": "line_014"
+    },
+    "line_014": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "아... 그럼 오늘은 이만 돌아가볼게요.",
+      "next": "line_015"
+    },
+    "line_015": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "그래요! 감정을 되찾을 때까지는",
+      "next": "line_016"
+    },
+    "line_016": {
       "type": "line",
       "speaker": "lillian",
       "text": "언제든 찾아와도 돼요!",

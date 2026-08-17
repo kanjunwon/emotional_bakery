@@ -5,7 +5,13 @@
     "line_q1_intro": {
       "type": "line",
       "speaker": "lillian",
-      "text": "크흠! 시작하죠! 평소 좋아하는 건 어떤 거죠?",
+      "text": "...크흠! 그~러면",
+      "next": "line_q.1"
+    },
+    "line_q.1": {
+      "type": "line",
+      "speaker": "lillian",
+      "text": "평소 좋아하는 건 뭐에요~?",
       "next": "choice_q1"
     },
     "choice_q1": {

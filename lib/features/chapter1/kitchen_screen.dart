@@ -364,20 +364,11 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
   }
 
-  // kitchen_arrival.json(챕터1 엔딩) 진행 중이거나 챕터2 대화 진행 중이고 현재 노드에
-  // 오버라이드가 있으면 그 표정으로, 아니면 기본 idle GIF로. 챕터2 대화 파일들끼리 같은
-  // 노드 ID를 공유할 수 있어서, dialogueId로 지금 정확히 어느 대화가 로드돼 있는지 확인함
+  // 현재 노드에 expression이 있으면 그 표정으로, 없으면 기본 idle GIF로
   String _resolveLillianSprite(String? sceneNodeId) {
-    if (widget.mode == KitchenScreenMode.chapter1End) {
-      final String? override =
-          widgets.kitchenArrivalLillianSpriteOverrides[sceneNodeId];
-      if (override != null) return override;
-    } else {
-      final String? dialogueId = _sceneController.sceneDialogue?.dialogueId;
-      final String? override = widgets
-          .chapter2LillianSpriteOverridesByDialogueId[dialogueId]?[sceneNodeId];
-      if (override != null) return override;
-    }
+    final String? expressionAsset =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId]?.expression?.asset;
+    if (expressionAsset != null) return expressionAsset;
     return 'assets/images/lillian_idle.gif';
   }
 

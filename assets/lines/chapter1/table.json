@@ -11,7 +11,7 @@
     "line_002": {
       "type": "line",
       "speaker": "lillian",
-      "text": "즐거운 기억을 느낄 수 있을 거예요.",
+      "text": "즐거운 기억의 감정을 느낄 수 있을 거예요.",
       "next": "line_003"
     },
     "line_003": {
@@ -36,7 +36,7 @@
     "line_004b": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "음...",
+      "text": ".....",
       "next": "line_004b1"
     },
     "line_004b1": {
@@ -50,7 +50,8 @@
       "speaker": "lillian",
       "text": [
         { "text": "좋아요~" },
-        { "text": "과하게 먹으면 탈 나요!", "color": "#FF7100" }
+        { "text": "과하게 먹으면 안되니까 조금씩", "color": "#FF7100" },
+        { "text": "!" }
       ],
       "effect": { "temperature": 1 },
       "next": "line_004b_eat"
@@ -72,7 +73,7 @@
       "text": "먹어볼게요.",
       "next": "line_004a1_eat"
     },
-        "line_004a1_eat": {
+    "line_004a1_eat": {
       "type": "line",
       "speaker": "chaeon",
       "next": "line_004a2"
@@ -80,10 +81,8 @@
     "line_004a2": {
       "type": "line",
       "speaker": "lillian",
-      "text": [
-        { "text": "!", "color": "#FF0509", "bold": true },
-        { "text": " 한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." }
-      ],
+      "text": { "text": "! 한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." },
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_004a3"
     },
 
@@ -92,6 +91,7 @@
       "speaker": "chaeon",
       "text": "어, 어라... 어... 하하... 하하하!!!!! 안 멈춰요!",
       "effect": { "temperature": -1 },
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_004a4"
     },
     "line_004a4": {
@@ -102,9 +102,10 @@
         { "text": "감정은 과하면 안 돼요", "color": "#FF7100" },
         { "text": ". 조금씩 먹어야 해요..." }
       ],
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_004a5"
     },
-        "line_004a5": {
+    "line_004a5": {
       "type": "line",
       "speaker": "chaeon",
       "text": "어...?",
