@@ -42,6 +42,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그래요?",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_011"
     },
     "line_011": {
@@ -54,6 +55,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "아마도 그건 그리움일 거예요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_013"
     },
     "line_013": {
@@ -132,6 +134,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그래도 그건...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_028"
     },
     "line_028": {
@@ -146,5 +149,5 @@
       "text": "오늘 감사했어요.",
       "next": "null"
     }
-}
+  }
 }

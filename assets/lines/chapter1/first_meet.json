@@ -112,7 +112,7 @@
       "speaker": "lillian",
       "text": [
         { "text": "오직" },
-        { "text": "감정을 잃은 사람만", "color": "#FF7100" },
+        { "text": " 감정을 잃은 사람만", "color": "#FF7100" },
         { "text": "이 찾을 수 있는 곳이거든요." }
       ],
       "next": "line_008.5"
@@ -134,19 +134,10 @@
       "speaker": "lillian",
       "text": [
         { "text": "네! 저는" },
-        { "text": "감정을 담은 빵", "color": "#FF7100" },
+        { "text": " 감정을 담은 빵", "color": "#FF7100" },
         { "text": "을 만든답니다!" }
       ],
-      "next": "line_008.8"
-    },
-    "line_008.8": {
-      "type": "line",
-      "speaker": "lillian",
-      "text": [
-        { "text": "감정을 담은 빵", "color": "#FF7100" },
-        { "text": "을 만든답니다!" }
-      ],
-      "expression": "lillian_happy.png",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_008.9"
     },
     "line_008.9": {

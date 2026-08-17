@@ -32,13 +32,15 @@
       "type": "line",
       "speaker": "lillian",
       "text": "왜요?",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_002a2"
-    }, 
+    },
     "line_002b1": {
       "type": "line",
       "speaker": "lillian",
       "text": "그럴 줄 알았어요!",
       "effect": { "temperature": 1 },
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_002b2"
     },
     "line_002a2": {
@@ -51,12 +53,13 @@
       "type": "line",
       "speaker": "lillian",
       "text": "제가 볼 땐 잘 어울리는데요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_002b3"
     },
     "line_002a3": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "...아...그런가요?",
+      "text": "...네...",
       "next": "line_003"
     },
     "line_003": {
@@ -131,6 +134,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "알람시계라... 어떤 기억이 담겨 있어요?",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_011"
     },
     "line_011": {
@@ -177,6 +181,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "무척 따뜻한 기억이네요~",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_018"
     },
     "line_018": {

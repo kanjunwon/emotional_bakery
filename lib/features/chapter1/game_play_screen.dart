@@ -157,9 +157,13 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _game.lillianArrivalX = null;
             _game.startCameraCatchUp();
             break;
+          case DialoguePhase.kitchenApproach:
+            // kitchenApproach 단계에서 로드되는 JSON 대사는 지금 chapter3_door.json 하나뿐이라
+            // 여기로 오면 그 대사가 끝난 거임. 이동 잠금 풀어주면 나머지(계단 트리거)는 알아서 이어짐
+            _game.isMovementBlocked = false;
+            break;
           case DialoguePhase.none:
           case DialoguePhase.memoryFlashback:
-          case DialoguePhase.kitchenApproach:
             break;
         }
       },
@@ -208,6 +212,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       if (_dialoguePhase != DialoguePhase.kitchenApproach) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _triggerChaeonStairsDescent();
+      });
+    };
+
+    // skipChapter1Events 모드에서 계단 가는 길목에 도달하면 chapter3_door.json 대사 로드.
+    // isMovementBlocked/movePlayer(0)은 BakeryGame 쪽 트리거에서 이미 처리하고 넘어옴
+    _game.onReachChapter3Door = () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _sceneController.loadDialogue(
+            'assets/lines/chapter3/chapter3_door.json',
+          );
+        }
       });
     };
 

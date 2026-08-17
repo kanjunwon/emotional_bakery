@@ -5,8 +5,7 @@
     "line_001": {
       "type": "line",
       "speaker": "chaeon",
-      "text": [
-        { "text": "!!", "color": "#FF0509", "bold": true, "size": 18 }],
+      "text": [{ "text": "!!", "color": "#FF0509", "bold": true, "size": 18 }],
       "next": "line_002"
     },
     "line_002": {
@@ -40,6 +39,7 @@
         { "text": "색", "color": "#FF7100" },
         { "text": "도 조금 돌아온 것 같은데요?" }
       ],
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_007"
     },
     "line_007": {
@@ -76,6 +76,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "엇! 오늘은 이정도면 충분한 거 같아요.",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_013"
     },
     "line_013": {

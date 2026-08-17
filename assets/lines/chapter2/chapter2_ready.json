@@ -74,6 +74,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그렇군요! 그럼 지금도 빵을 만들고 싶어요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_003a8"
     },
     "line_003a8": {
@@ -117,6 +118,7 @@
       "speaker": "lillian",
       "text": "아.... 좋아하진... 않는구나......",
       "effect": { "temperature": -1 },
+      "expression": "assets/images/lillian_grieve.png",
       "next": "line_003b2"
     },
     "line_003b2": {
@@ -141,6 +143,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "하하! 제가 만든 빵이 맛있긴 하죠!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_003b6"
     },
     "line_003b6": {
@@ -192,32 +195,34 @@
       "type": "line",
       "speaker": "lillian",
       "text": "아니라니까 참~ 마음대로 생각해요~",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_007.3"
-    },   
+    },
     "line_007.3": {
       "type": "line",
       "speaker": "chaeon",
       "text": "근데 마법의 재료는 왜 필요해요?",
       "next": "line_007.4"
-    },   
+    },
     "line_007.4": {
       "type": "line",
       "speaker": "lillian",
       "text": "아무거나 쓰면 안되는거에요?",
       "next": "line_007.5"
-    },  
+    },
     "line_007.5": {
       "type": "line",
       "speaker": "lillian",
       "text": "사람마다 자신에게 잘 맞는 재료가 있어요.",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_007.6"
-    }, 
+    },
     "line_007.6": {
       "type": "line",
       "speaker": "lillian",
       "text": "그 재료를 빵에 넣어야 감정을 되찾을 수 있어요.",
       "next": "line_008"
-    },  
+    },
     "line_008": {
       "type": "line",
       "speaker": "lillian",
@@ -234,6 +239,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "근데 혹시 음악 좀 틀고 해도 돼요? 신나게!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_012"
     },
     "line_012": {
@@ -246,6 +252,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "아... 아...쉽...네...요...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_014"
     },
     "line_014": {
@@ -270,6 +277,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "20살??",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_018"
     },
     "line_018": {
@@ -282,6 +290,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "농담이에요 농담~ 그러면 제 나이는요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "choice_002"
     },
     "choice_002": {
@@ -302,11 +311,12 @@
       "speaker": "chaeon",
       "text": "100살?",
       "next": "line_021a1"
-    },    
+    },
     "line_021a1": {
       "type": "line",
       "speaker": "lillian",
       "text": "네??? 100살이요???",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_021a2"
     },
     "line_021a2": {
@@ -314,6 +324,14 @@
       "speaker": "lillian",
       "text": "저 그 정도는 아니거든요!!",
       "effect": { "temperature": -1 },
+      "expression": "assets/images/lillian_grudge.png",
+      "next": "line_021a3"
+    },
+    "line_021a3": {
+      "type": "line",
+      "speaker": "chaeon",
+      "text": "마녀라서 그정도일줄....",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "null"
     },
     "line_021b": {
@@ -326,12 +344,14 @@
       "type": "line",
       "speaker": "lillian",
       "text": "어머... 어머머...!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_021b2"
     },
     "line_021b2": {
       "type": "line",
       "speaker": "lillian",
       "text": "아이 참... 뭐 비슷하긴 한데~",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_021b3"
     },
     "line_021b3": {
@@ -339,6 +359,7 @@
       "speaker": "lillian",
       "text": "제가 좀 관리가 잘 된 편이라~ 하핫!",
       "effect": { "temperature": 1 },
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_021b4"
     },
     "line_021b4": {
@@ -369,6 +390,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "...그러시구나...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "null"
     }
   }

@@ -6,6 +6,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "오! 왔어요? 기다리고 있었어요~",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_002"
     },
     "line_002": {
@@ -18,6 +19,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "음~ 감정을 완전히 되찾으려면, 추억이 더 필요해요.",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_005"
     },
 
@@ -73,6 +75,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "희생이라고 생각하면 감정은 영원히 찾을 수 없어요.",
+      "expression": "assets/images/lillian_thinking1.png",
       "next": "line_009a6"
     },
     "line_009a6": {
@@ -97,6 +100,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "용기와 희생이 필요한 일이지만, 분명 도움이 될 거에요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_013"
     },
     "line_013": {
@@ -117,4 +121,5 @@
       "text": "음....",
       "next": "null"
     }
-}}
+  }
+}

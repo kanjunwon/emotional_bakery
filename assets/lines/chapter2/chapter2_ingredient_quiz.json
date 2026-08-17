@@ -38,6 +38,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "제빵사도 그래서 한 거예요! 빵을 잔뜩 먹고 싶어서요~",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_q2_intro"
     },
     "line_q1b": {
@@ -55,7 +56,8 @@
     "line_q1b2": {
       "type": "line",
       "speaker": "lillian",
-      "text": "푹 자면 너무 좋죠! ",
+      "text": "푹 자면 너무 좋죠!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_q1b3"
     },
     "line_q1b3": {
@@ -86,6 +88,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "아~ 참새랑 대화! \"짹짹\"이라고 하시나요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_q1c3c"
     },
     "line_q1c3c": {
@@ -144,6 +147,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "...아?...",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_q3_intro"
     },
     "line_q2b": {
@@ -162,6 +166,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "오! 좋은 접근! 그렇다면 저는 빵으로 도와드릴게요~!",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_q3_intro"
     },
     "line_q2c": {
@@ -180,6 +185,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "음~ 좋지만 너무 무리는 안 했으면 좋겠어요!",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_q3_intro"
     },
     "line_q3_intro": {

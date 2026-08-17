@@ -36,6 +36,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "앗...! 죄송해요...",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_008"
     },
     "line_008": {
@@ -60,6 +61,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "고생했어요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_012"
     },
     "line_012": {

@@ -96,6 +96,7 @@
       "speaker": "lillian",
       "text": "...음악 싫어하신다면서요?",
       "effect": { "temperature": -1 },
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_002a6"
     },
     "line_002b5": {
@@ -162,18 +163,21 @@
       "type": "line",
       "speaker": "lillian",
       "text": "버린다고 생각하지 말고 마음속에 간직한다고 생각해요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_002c9"
     },
     "line_002a9": {
       "type": "line",
       "speaker": "lillian",
       "text": "...힘든 건 알지만...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_002a10"
     },
     "line_002b9": {
       "type": "line",
       "speaker": "lillian",
       "text": "지금은 없는 물건인가요?",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_002b10"
     },
     "line_002c9": {
@@ -186,6 +190,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "감정을 되찾기 위해서는 정말",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_002a11"
     },
     "line_002b10": {
@@ -204,6 +209,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "결심을 해주셔야 해요...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_002a12"
     },
     "line_002b11": {
@@ -229,6 +235,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "글씨에도 추억이 남거든요!",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_002b13"
     },
     "line_002b13": {
@@ -349,12 +356,14 @@
       "type": "line",
       "speaker": "lillian",
       "text": "...!",
+      "expression": "assets/images/lillian_surprise.png",
       "next": "line_023"
     },
     "line_023": {
       "type": "line",
       "speaker": "lillian",
       "text": "그건... 그렇긴 하지만...",
+      "expression": "assets/images/lillian_thinking1.png",
       "next": "line_024"
     },
     "line_024": {
@@ -373,6 +382,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "네...",
+      "expression": "assets/images/lillian_thinking2.png",
       "next": "line_028"
     },
     "line_028": {

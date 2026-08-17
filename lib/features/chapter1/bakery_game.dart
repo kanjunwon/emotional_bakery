@@ -11,6 +11,10 @@ import 'package:emotional_bakery/core/services/interaction_loader.dart';
 // 하강 애니메이션 시작 위치가 어긋나서, 채온이가 순간적으로 뒤로(왼쪽으로) 튕기는 것처럼 보임
 const double kitchenStairsTriggerX = 1680;
 
+// 챕터3 재진입 모드(skipChapter1Events) 전용 트리거. 계단 가는 길목에 chapter3_door.json
+// 대사 한 번 끼워넣는 지점. 임시값, 실제로는 이보다 좀 더 뒤쪽이어야 함 - 화면 보면서 조정 예정
+const double kChapter3DoorTriggerX = 650;
+
 class BakeryGame extends FlameGame {
   BakeryGame({this.skipChapter1Events = false}) {
     // 챕터3 빵집 재진입 모드: 가이드 대사(x=650)/릴리안 등장(x=1305) 트리거를 처음부터
@@ -34,6 +38,8 @@ class BakeryGame extends FlameGame {
   bool _hasTriggeredGuide = false;
   bool _hasTriggeredPostSceneEnd = false;
   bool _hasTriggeredStairs = false;
+  // skipChapter1Events 모드에서만 쓰는 chapter3_door.json 트리거용 1회성 플래그
+  bool _hasTriggeredChapter3Door = false;
   // game_play_screen에서 DialoguePhase.kitchenApproach가 됐을 때만 true로 켜줌.
   // 이 플래그가 켜지기 전까진 계단 트리거 체크 자체를 안 해서, chaeon 위치가 이전 단계에서
   // 어쩌다 계단 트리거 좌표를 넘겨버려도 _hasTriggeredStairs가 미리 소모되지 않게 막는 안전장치
@@ -61,6 +67,8 @@ class BakeryGame extends FlameGame {
   Function(String)? onInteract; // 배경 오브젝트 클릭 시 팝업 표시
   Function()? onReachPostSceneEnd; // 첫 만남 대사 후 채온이가 1200 지점 도착 시
   Function()? onReachStairs; // 계단 근처 도달 시 (주방으로 내려가는 연출 트리거)
+  Function()?
+  onReachChapter3Door; // skipChapter1Events 모드에서 chapter3_door.json 트리거 지점 도달 시
 
   @override
   Future<void> onLoad() async {
@@ -182,6 +190,20 @@ class BakeryGame extends FlameGame {
       ]);
 
       print("x=650 지점 도달");
+    }
+
+    // skipChapter1Events 모드 전용: 계단 가는 길목에서 chapter3_door.json 대사 한 번 트리거.
+    // 일반 챕터1 최초 플레이 경로(skipChapter1Events=false)에서는 절대 발동 안 함
+    if (skipChapter1Events &&
+        chaeon != null &&
+        !_hasTriggeredChapter3Door &&
+        chaeon!.isMounted &&
+        chaeon!.position.x >= kChapter3DoorTriggerX) {
+      _hasTriggeredChapter3Door = true;
+      isMovementBlocked = true;
+      movePlayer(0);
+      onReachChapter3Door?.call();
+      print("chapter3 door 트리거 도달: x=${chaeon!.position.x}");
     }
 
     // 첫 만남 대사 이후 다시 걸을 수 있게 된 구간에서, 채온이가 1200 지점에 도착하면

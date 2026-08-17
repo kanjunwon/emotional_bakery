@@ -41,6 +41,10 @@ const Offset _stairsAscentStart = Offset(60, 235);
 const Offset _stairsAscentEnd = Offset(-120, 154);
 const Duration _stairsAscentDuration = Duration(milliseconds: 700);
 
+// chapter2_making_bread.json 끝나고 잠깐 암전 유지하는 시간. 임시값, 나중에 실제 연출
+// 보면서 조정 예정
+const Duration _memoryBlackoutHoldDuration = Duration(seconds: 2);
+
 // 이 화면이 챕터1 엔딩용인지 챕터2 시작용인지 구분. 배경/캐릭터는 같은 주방을 재사용하고
 // 이동 가능 여부, 처음 로드하는 대사만 다름
 enum KitchenScreenMode {
@@ -108,6 +112,13 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showBreadPopup = false;
   // 빵 팝업 닫고 chapter2_after_first_game.json을 이미 이어붙였는지
   bool _hasLoadedAfterFirstGameDialogue = false;
+  // 빵 팝업 닫고 chapter2_making_bread.json을 이미 로드했는지. 이 대사가 끝나야
+  // 암전을 거쳐서 chapter2_after_first_game.json으로 이어짐
+  bool _hasLoadedMakingBreadDialogue = false;
+  // chapter2_making_bread.json 끝나고 chapter2_after_first_game.json 로드하기 전
+  // 잠깐 화면을 덮는 암전
+  bool _showMemoryBlackout = false;
+  Timer? _memoryBlackoutTimer;
   // chaeon_0_eat.gif 노출이 끝나면 뜨는 시계 맞추기 미니게임. 끝나면(onComplete) 임시 종료 화면으로 넘어감
   bool _showClockMinigame = false;
   // 시계 맞추기 미니게임이 끝나면, chapter2_after_second_game.json을 로드하기 전에
@@ -164,10 +175,17 @@ class _KitchenScreenState extends State<KitchenScreen>
             // line_ingredient_reveal 대사가 끝나면(next: null) 여기로 옴.
             // 선택한 재료 이미지 팝업을 띄우고, 팝업을 닫으면 다음 대사(after_quiz)로 이어짐
             setState(() => _showIngredientPopup = true);
+          } else if (_hasLoadedMakingBreadDialogue &&
+              !_hasLoadedAfterFirstGameDialogue) {
+            // chapter2_making_bread.json이 끝나면(line_001) 여기로 옴. 암전 잠깐 띄웠다가
+            // after_first_game.json으로 이어짐. 실제 로드는 _startMemoryBlackout에서 처리
+            _startMemoryBlackout();
           } else if (!_hasLoadedAfterFirstGameDialogue) {
             // chapter2_after_quiz.json이 끝나면(line_021) 여기로 옴. 빵만들기 미니게임 시작.
             // 미니게임 완료 -> 빵 팝업 -> after_first_game.json 로드까지는 미니게임/팝업
             // 쪽 콜백(onComplete, 빵 팝업 onTap)에서 처리함
+            // (참고: 빵 팝업 onTap은 이제 making_bread.json을 먼저 로드하고, 그 대사가 끝나면
+            // 위 _hasLoadedMakingBreadDialogue 분기가 암전 거쳐서 after_first_game.json을 로드함)
             setState(() => _showBreadMakingGame = true);
           } else if (!_hasLoadedAfterSecondGameDialogue) {
             // chapter2_after_first_game.json이 끝나면(line_008) 여기로 옴.
@@ -242,6 +260,20 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
   }
 
+  // chapter2_making_bread.json 끝나면 화면을 잠깐 암전시켰다가 after_first_game.json으로
+  // 넘어감. 대기 시간은 _memoryBlackoutHoldDuration 임시값, 나중에 실제 연출 보면서 조정 예정
+  void _startMemoryBlackout() {
+    setState(() => _showMemoryBlackout = true);
+    _memoryBlackoutTimer = Timer(_memoryBlackoutHoldDuration, () {
+      if (!mounted) return;
+      setState(() => _showMemoryBlackout = false);
+      _hasLoadedAfterFirstGameDialogue = true;
+      _sceneController.loadDialogue(
+        'assets/lines/chapter2/chapter2_after_first_game.json',
+      );
+    });
+  }
+
   // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행
   @override
   void didChangeDependencies() {
@@ -276,6 +308,7 @@ class _KitchenScreenState extends State<KitchenScreen>
     _moveTimer?.cancel();
     _chaeonEatingTimer?.cancel();
     _chaeonEmotion0to20Timer?.cancel();
+    _memoryBlackoutTimer?.cancel();
     _stairsUpController.dispose();
     _sceneController.removeListener(_onSceneControllerChanged);
     _sceneController.dispose();
@@ -797,9 +830,11 @@ class _KitchenScreenState extends State<KitchenScreen>
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     setState(() => _showBreadPopup = false);
-                    _hasLoadedAfterFirstGameDialogue = true;
+                    // after_first_game.json으로 바로 안 가고 making_bread.json부터 거침.
+                    // 끝나면 onDialogueEnd의 _hasLoadedMakingBreadDialogue 분기가 이어받음
+                    _hasLoadedMakingBreadDialogue = true;
                     _sceneController.loadDialogue(
-                      'assets/lines/chapter2/chapter2_after_first_game.json',
+                      'assets/lines/chapter2/chapter2_making_bread.json',
                     );
                   },
                   child: Container(
@@ -854,6 +889,15 @@ class _KitchenScreenState extends State<KitchenScreen>
                     _loadSecondGameDialogueAfterEmotionGif();
                   },
                 ),
+              ),
+
+            // 9-6층: chapter2_making_bread.json 끝나고 after_first_game.json 로드하기 전
+            // 잠깐 띄우는 암전. memory_flashback_scene.dart / clock_minigame_scene.dart에서
+            // 쓰는 검은 Container + Timer 패턴 그대로 씀. 대기 시간은 _memoryBlackoutHoldDuration
+            if (_showMemoryBlackout)
+              Positioned.fill(
+                key: const ValueKey('memory_blackout'),
+                child: Container(color: Colors.black),
               ),
 
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라
