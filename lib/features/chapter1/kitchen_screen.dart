@@ -14,6 +14,7 @@ import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter2/bread_making_scene.dart';
 import 'package:emotional_bakery/features/chapter2/clock_minigame_scene.dart';
+import 'package:emotional_bakery/features/chapter3/diary_puzzle_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
@@ -44,6 +45,17 @@ const Duration _stairsAscentDuration = Duration(milliseconds: 700);
 // chapter2_making_bread.json 끝나고 잠깐 암전 유지하는 시간. 임시값, 나중에 실제 연출
 // 보면서 조정 예정
 const Duration _memoryBlackoutHoldDuration = Duration(seconds: 2);
+
+// 챕터3 일기장 퍼즐 시퀀스(chapter3_after_first_game.json 끝난 뒤) 단계별 대기 시간.
+// chapter3_making_bread 암전이랑 별개로 여기 전용 상수로 분리함
+// 이 값을 조정하면 chapter3_after_first_game.json 대화가 끝나고 화면이 암전됐다가
+// 일기장 인트로 이미지(chapter3_diary_intro.png)가 뜨기까지의 대기 시간이 바뀜
+const Duration _chapter3DiaryBlackoutHoldDuration = Duration(seconds: 3);
+const Duration _chapter3DiaryIntroHoldDuration = Duration(seconds: 2);
+const Duration _chapter3DiarySuccessAfterHoldDuration = Duration(seconds: 1);
+// 이 값을 조정하면 퍼즐 결과 이미지(chapter3_diary_success_after.png) 노출이 끝나고
+// 암전됐다가 chapter3_after_eat.json 대화가 시작되기까지의 대기 시간이 바뀜
+const Duration _chapter3DiaryEndBlackoutHoldDuration = Duration(seconds: 3);
 
 // 이 화면이 챕터1 엔딩용인지 챕터2 시작용인지 구분. 배경/캐릭터는 같은 주방을 재사용하고
 // 이동 가능 여부, 처음 로드하는 대사만 다름
@@ -106,8 +118,24 @@ class _KitchenScreenState extends State<KitchenScreen>
   // 챕터3 빵만들기 미니게임에서 완성된 반죽 화면을 탭하면(BreadMakingScene.onComplete) 뜨는,
   // 완성된 빵(onion_bread) 팝업. 챕터2 _showBreadPopup이랑 동일한 패턴. 탭하면 닫힘
   bool _showChapter3BreadPopup = false;
-  // 챕터3 빵만들기 미니게임 끝나고 chapter3_after_fitsrt_game.json을 이미 이어붙였는지
+  // 챕터3 빵만들기 미니게임 끝나고 chapter3_after_first_game.json을 이미 이어붙였는지
   bool _hasLoadedChapter3AfterFirstGameDialogue = false;
+  // chapter3_after_first_game.json 끝나고 일기장 퍼즐 시퀀스 시작 전 뜨는 첫 암전
+  bool _showChapter3DiaryBlackout = false;
+  Timer? _chapter3DiaryBlackoutTimer;
+  // 첫 암전 끝나고 뜨는 일기장 인트로 이미지(chapter3_diary_intro.png)
+  bool _showChapter3DiaryIntro = false;
+  Timer? _chapter3DiaryIntroTimer;
+  // 인트로 끝나고 뜨는 사진 조각 맞추기 미니게임(DiaryPuzzleScene)
+  bool _showChapter3DiaryPuzzle = false;
+  // 퍼즐 완성 후 뜨는 결과 이미지(chapter3_diary_success_after.png)
+  bool _showChapter3DiarySuccessAfter = false;
+  Timer? _chapter3DiarySuccessAfterTimer;
+  // 결과 이미지 끝나고 chapter3_after_eat.json 로드하기 전 뜨는 두 번째 암전
+  bool _showChapter3DiaryEndBlackout = false;
+  Timer? _chapter3DiaryEndBlackoutTimer;
+  // 일기장 퍼즐 시퀀스 끝나고 chapter3_after_eat.json을 이미 이어붙였는지
+  bool _hasLoadedChapter3AfterEatDialogue = false;
   // chapter2_ingredient_quiz.json의 재료 이름 대사(line_ingredient_reveal)가 끝나고 탭하면 뜨는,
   // 선택한 재료 이미지 팝업. 탭하면 닫힘
   bool _showIngredientPopup = false;
@@ -223,12 +251,17 @@ class _KitchenScreenState extends State<KitchenScreen>
             );
           } else if (!_hasLoadedChapter3AfterFirstGameDialogue) {
             // chapter3_before_game.json이 끝나면(line_028, "그럼 만들어볼까요?") 여기로 옴.
-            // 빵만들기 미니게임 시작. 미니게임 완료 -> after_fitsrt_game.json 로드까지는
+            // 빵만들기 미니게임 시작. 미니게임 완료 -> after_first_game.json 로드까지는
             // 미니게임 쪽 콜백(onComplete)에서 처리함
             setState(() => _showChapter3BreadMakingGame = true);
+          } else if (!_hasLoadedChapter3AfterEatDialogue) {
+            // chapter3_after_first_game.json이 끝나면(line_014, 릴리안 빵 먹는 GIF까지) 여기로
+            // 옴. 일기장 퍼즐 시퀀스 시작(암전 -> 인트로 -> 퍼즐 -> 결과 이미지 -> 암전 ->
+            // chapter3_after_eat.json). 실제 로드는 _startChapter3DiarySequence 체인 끝에서 처리
+            _startChapter3DiarySequence();
           } else {
-            // (참고: 이제 이 분기는 chapter3_before_game.json이 아니라 빵만들기 미니게임 이후
-            // chapter3_after_fitsrt_game.json이 끝나면 옴. 미니게임 붙기 전까지는 여기가 마지막이었음)
+            // (참고: 이제 이 분기는 빵만들기 미니게임도, chapter3_after_first_game.json도 아니라
+            // 일기장 퍼즐 시퀀스 끝에 로드되는 chapter3_after_eat.json이 끝나면 옴)
             // chapter3_before_game.json이 끝나면(line_029, "네!") 여기로 옴. 임시 종료 화면 표시
             setState(() => _showChapterEndPlaceholder = true);
           }
@@ -291,6 +324,57 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
   }
 
+  // chapter3_after_first_game.json 끝나면 시작되는 일기장 퍼즐 시퀀스 앞부분: 암전 ->
+  // 일기장 인트로 이미지 -> DiaryPuzzleScene 순으로 이어짐. 퍼즐 완성 이후는
+  // _onChapter3DiaryPuzzleComplete에서 이어받음
+  void _startChapter3DiarySequence() {
+    setState(() => _showChapter3DiaryBlackout = true);
+    _chapter3DiaryBlackoutTimer = Timer(_chapter3DiaryBlackoutHoldDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _showChapter3DiaryBlackout = false;
+        _showChapter3DiaryIntro = true;
+      });
+      _chapter3DiaryIntroTimer = Timer(_chapter3DiaryIntroHoldDuration, () {
+        if (!mounted) return;
+        setState(() {
+          _showChapter3DiaryIntro = false;
+          _showChapter3DiaryPuzzle = true;
+        });
+      });
+    });
+  }
+
+  // DiaryPuzzleScene.onComplete에서 호출됨: 완성 결과 이미지 -> 암전 ->
+  // chapter3_after_eat.json 로드 순으로 이어짐
+  void _onChapter3DiaryPuzzleComplete() {
+    setState(() {
+      _showChapter3DiaryPuzzle = false;
+      _showChapter3DiarySuccessAfter = true;
+    });
+    _chapter3DiarySuccessAfterTimer = Timer(
+      _chapter3DiarySuccessAfterHoldDuration,
+      () {
+        if (!mounted) return;
+        setState(() {
+          _showChapter3DiarySuccessAfter = false;
+          _showChapter3DiaryEndBlackout = true;
+        });
+        _chapter3DiaryEndBlackoutTimer = Timer(
+          _chapter3DiaryEndBlackoutHoldDuration,
+          () {
+            if (!mounted) return;
+            setState(() => _showChapter3DiaryEndBlackout = false);
+            _hasLoadedChapter3AfterEatDialogue = true;
+            _sceneController.loadDialogue(
+              'assets/lines/chapter3/chapter3_after_eat.json',
+            );
+          },
+        );
+      },
+    );
+  }
+
   // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행
   @override
   void didChangeDependencies() {
@@ -326,6 +410,10 @@ class _KitchenScreenState extends State<KitchenScreen>
     _chaeonEatingTimer?.cancel();
     _chaeonEmotion0to20Timer?.cancel();
     _memoryBlackoutTimer?.cancel();
+    _chapter3DiaryBlackoutTimer?.cancel();
+    _chapter3DiaryIntroTimer?.cancel();
+    _chapter3DiarySuccessAfterTimer?.cancel();
+    _chapter3DiaryEndBlackoutTimer?.cancel();
     _stairsUpController.dispose();
     _sceneController.removeListener(_onSceneControllerChanged);
     _sceneController.dispose();
@@ -413,10 +501,25 @@ class _KitchenScreenState extends State<KitchenScreen>
 
   // 현재 노드에 expression이 있으면 그 표정으로, 없으면 기본 idle GIF로
   String _resolveLillianSprite(String? sceneNodeId) {
-    final String? expressionAsset =
-        _sceneController.sceneDialogue?.nodes[sceneNodeId]?.expression?.asset;
+    final DialogueNode? node =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId];
+    // speaker가 lillian인 노드의 expression만 반영함. 안 그러면 채온이 대사 노드에 달린
+    // expression(예: chapter3_after_first_game.json의 빵 먹는 GIF)까지 릴리안한테 새어감
+    final String? expressionAsset = node?.speaker == 'lillian'
+        ? node?.expression?.asset
+        : null;
     if (expressionAsset != null) return expressionAsset;
     return 'assets/images/lillian_idle.gif';
+  }
+
+  // 채온이 대사 노드에 expression이 있으면(예: chapter3_after_first_game.json의 빵 먹는
+  // GIF) 그 에셋을, 없으면 null을 반환. null이면 호출부의 기존 삼항연산자 체인을
+  // 그대로 타서 원래대로(_showChaeonEating 등 플래그 기반) 표시됨
+  String? _resolveChaeonExpressionSprite(String? sceneNodeId) {
+    final DialogueNode? node =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId];
+    if (node?.speaker != 'chaeon') return null;
+    return node?.expression?.asset;
   }
 
   // 뒤로가기 버튼: 타이핑 중이면 텍스트 다 보여주고, 아니면 이전 대사로 되돌아감
@@ -532,15 +635,18 @@ class _KitchenScreenState extends State<KitchenScreen>
                   // 다른 상태와 무관하게 우선 보여줌. 계단을 올라가는 중엔 그 시점
                   // _chaeonState와 무관하게 항상 apron_idle.gif로 고정
                   // (game_play_screen.dart의 하강 연출과 동일한 규칙)
-                  _showChaeonEating
-                      ? 'assets/images/chaeon_0_eat.gif'
-                      : _showChaeonEmotion0to20
-                      ? 'assets/images/chaeon_emotion_0to20.gif'
-                      : _showChaeon20
-                      ? 'assets/images/chaeon_20.gif'
-                      : _isChaeonAscendingStairs || _chaeonState == 'walk'
-                      ? 'assets/images/chaeon_apron_idle.gif'
-                      : 'assets/images/chaeon_apron_putting_on.gif',
+                  // 채온이 대사 노드에 expression이 있으면(예: chapter3_after_first_game.json의
+                  // 빵 먹는 GIF) 이 체인보다도 우선순위 높게 그걸 먼저 보여줌
+                  _resolveChaeonExpressionSprite(sceneNodeId) ??
+                      (_showChaeonEating
+                          ? 'assets/images/chaeon_0_eat.gif'
+                          : _showChaeonEmotion0to20
+                          ? 'assets/images/chaeon_emotion_0to20.gif'
+                          : _showChaeon20
+                          ? 'assets/images/chaeon_20.gif'
+                          : _isChaeonAscendingStairs || _chaeonState == 'walk'
+                          ? 'assets/images/chaeon_apron_idle.gif'
+                          : 'assets/images/chaeon_apron_putting_on.gif'),
                   width: wSize(172),
                   height: wSize(172),
                   fit: BoxFit.contain,
@@ -925,6 +1031,10 @@ class _KitchenScreenState extends State<KitchenScreen>
               Positioned.fill(
                 key: const ValueKey('chapter3_bread_making_game'),
                 child: BreadMakingScene(
+                  // 챕터3는 SUCCESS 배너를 좀 더 오래 보여줌(챕터2 800ms + 1초)
+                  successHoldDurationOverride: const Duration(
+                    milliseconds: 1800,
+                  ),
                   onComplete: () {
                     setState(() {
                       _showChapter3BreadMakingGame = false;
@@ -936,7 +1046,7 @@ class _KitchenScreenState extends State<KitchenScreen>
 
             // 9-8층: 완성된 빵(onion_bread) 팝업. 챕터2 9-4층(bread_popup_layer)이랑 동일한
             // 연출(검은 50% 배경 + tutorial_dialogue_box 570x300 + 이미지 300x300).
-            // 탭하면 닫히고 chapter3_after_fitsrt_game.json으로 이어짐
+            // 탭하면 닫히고 chapter3_after_first_game.json으로 이어짐
             if (_showChapter3BreadPopup)
               Positioned.fill(
                 key: const ValueKey('chapter3_bread_popup_layer'),
@@ -946,7 +1056,7 @@ class _KitchenScreenState extends State<KitchenScreen>
                     setState(() => _showChapter3BreadPopup = false);
                     _hasLoadedChapter3AfterFirstGameDialogue = true;
                     _sceneController.loadDialogue(
-                      'assets/lines/chapter3/chapter3_after_fitsrt_game.json',
+                      'assets/lines/chapter3/chapter3_after_first_game.json',
                     );
                   },
                   child: Container(
@@ -983,6 +1093,56 @@ class _KitchenScreenState extends State<KitchenScreen>
                     ),
                   ),
                 ),
+              ),
+
+            // 9-9층: chapter3_after_first_game.json 끝나고 일기장 퍼즐 시퀀스 시작할 때 뜨는
+            // 첫 암전. 9-6층 memory_blackout이랑 동일한 검은 Container 패턴, 대기 시간만 다름
+            if (_showChapter3DiaryBlackout)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_blackout'),
+                child: Container(color: Colors.black),
+              ),
+
+            // 9-10층: 일기장 인트로 이미지. 암전 끝나고 약 2초간 보여준 뒤 퍼즐 미니게임으로 넘어감
+            if (_showChapter3DiaryIntro)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_intro'),
+                child: Image.asset(
+                  'assets/images/chapter3_diary_intro.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+
+            // 9-11층: 챕터3 두 번째 미니게임(일기장 사진 조각 맞추기). 인트로 끝나면 뜨고,
+            // 최상단에서 화면을 전부 덮음. 완성되면(onComplete) 결과 이미지 -> 암전 ->
+            // chapter3_after_eat.json 순으로 이어짐(_onChapter3DiaryPuzzleComplete에서 처리)
+            if (_showChapter3DiaryPuzzle)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_puzzle'),
+                child: DiaryPuzzleScene(
+                  onComplete: _onChapter3DiaryPuzzleComplete,
+                ),
+              ),
+
+            // 9-12층: 퍼즐 완성 결과 이미지. 1초간 보여준 뒤 암전으로 넘어감
+            if (_showChapter3DiarySuccessAfter)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_success_after'),
+                child: Image.asset(
+                  'assets/images/chapter3_diary_success_after.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+
+            // 9-13층: 결과 이미지 끝나고 chapter3_after_eat.json 로드하기 전 뜨는 두 번째 암전
+            if (_showChapter3DiaryEndBlackout)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_end_blackout'),
+                child: Container(color: Colors.black),
               ),
 
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라

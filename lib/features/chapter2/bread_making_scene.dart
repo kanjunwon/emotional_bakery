@@ -51,6 +51,7 @@ class BreadMakingScene extends StatefulWidget {
     super.key,
     required this.onComplete,
     this.forcedCompletedDoughAsset,
+    this.successHoldDurationOverride,
   });
 
   // 완성된 반죽 화면을 탭하면 호출됨. 주방 화면으로 돌아가서 빵 팝업을 띄우는 건
@@ -60,6 +61,10 @@ class BreadMakingScene extends StatefulWidget {
   // 완성 반죽 이미지를 재료 조합과 무관하게 고정하고 싶을 때 씀 (예: 챕터3에서 이 미니게임
   // 재사용). null이면 기존처럼 StoryState.resolveCompletedDoughImage()로 결정됨
   final String? forcedCompletedDoughAsset;
+
+  // 성공 배너 노출 유지 시간을 다르게 주고 싶을 때 씀 (예: 챕터3). null이면 기존처럼
+  // _successHoldDuration(800ms)을 그대로 씀
+  final Duration? successHoldDurationOverride;
 
   @override
   State<BreadMakingScene> createState() => _BreadMakingSceneState();
@@ -196,9 +201,13 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
                       // 방금 넣은 게 마지막 재료였으면, 구름 치우기 게임이랑 동일한 대기
                       // 시간(800ms) 뒤 자동으로 onComplete를 불러 다음으로 넘어감
                       if (_consumedIngredients.length >= totalIngredients) {
-                        _successTimer = Timer(_successHoldDuration, () {
-                          if (mounted) widget.onComplete();
-                        });
+                        _successTimer = Timer(
+                          widget.successHoldDurationOverride ??
+                              _successHoldDuration,
+                          () {
+                            if (mounted) widget.onComplete();
+                          },
+                        );
                       }
                     },
                     builder: (context, candidateData, rejectedData) {

@@ -1,13 +1,7 @@
 {
   "dialogue_id": "chapter3_after_eat",
-  "start": "line_001",
+  "start": "line_002",
   "nodes": {
-    "line_001": {
-      "type": "line",
-      "speaker": "chaeon",
-      "text": ".....먹어볼게요.",
-      "next": "line_002"
-    },
     "line_002": {
       "type": "line",
       "speaker": "chaeon",
@@ -68,7 +62,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "행복한 기억인데 왜 그리운 거죠?",
-      "next": "line_015"
+      "next": "line_016"
     },
     "line_016": {
       "type": "line",
