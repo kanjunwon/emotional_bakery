@@ -37,6 +37,10 @@ const double kRoomDoorHeight = 250;
 // tutorial_screen.dart의 빵집 문 isNearDoor 체크랑 동일한 패턴. 임시 값, 문 위치 확정되면 같이 조정 필요
 const double kRoomDoorNearMinX = 620;
 const double kRoomDoorNearMaxX = 700;
+// 캐릭터 크기 보정 배수. worldScale이 456 기준으로 계산되는데, 빵집(game_play_screen.dart)의
+// zoom은 402 기준(h/402)이라 같은 "172"를 써도 이 화면 쪽이 더 작게 렌더링됨.
+// kitchen_screen.dart의 kKitchenCharacterSizeCorrection과 동일한 목적
+const double kRoomCharacterSizeCorrection = 456 / 402;
 
 class ChaeonRoomScreen extends StatefulWidget {
   const ChaeonRoomScreen({super.key, this.initialTemperature = 3});
@@ -165,6 +169,11 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     double wX(double px) => worldOffsetX + px * worldScale;
     double wY(double px) => worldOffsetY + px * worldScale;
     double wSize(double px) => px * worldScale;
+    // 채온이 전용 크기: 빵집과 최종 픽셀 크기가 같아 보이도록 kRoomCharacterSizeCorrection만큼
+    // 추가로 키움. top은 그대로 두면 커진 만큼 발이 바닥 아래로 파고들어 보이므로, 늘어난 높이의
+    // 절반만큼 위로 당겨서 발 위치가 원래 자리에 맞도록 보정함 (kitchen_screen.dart와 동일 패턴)
+    final double characterSize = wSize(172) * kRoomCharacterSizeCorrection;
+    final double characterTopShift = (characterSize - wSize(172)) / 2;
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;
@@ -173,8 +182,8 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
         ? sceneDialogue.nodes[sceneNodeId]
         : null;
 
-    final double chaeonCenterX = wX(_chaeonX) + wSize(172) / 2;
-    final double chaeonSpriteTopY = wY(kChaeonRoomTopY);
+    final double chaeonCenterX = wX(_chaeonX) + characterSize / 2;
+    final double chaeonSpriteTopY = wY(kChaeonRoomTopY) - characterTopShift;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -196,15 +205,15 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
             Positioned(
               key: const ValueKey('chaeon_room_chaeon'),
               left: wX(_chaeonX),
-              top: wY(kChaeonRoomTopY),
+              top: wY(kChaeonRoomTopY) - characterTopShift,
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
                 child: Image.asset(
                   _chaeonState == 'walk'
                       ? 'assets/images/chaeon_walk_right.gif'
                       : 'assets/images/chaeon_idle_right.gif',
-                  width: wSize(172),
-                  height: wSize(172),
+                  width: characterSize,
+                  height: characterSize,
                   fit: BoxFit.contain,
                 ),
               ),

@@ -50,7 +50,7 @@
       "speaker": "lillian",
       "text": [
         { "text": "좋아요~" },
-        { "text": "과하게 먹으면 안되니까 조금씩", "color": "#FF7100" },
+        { "text": "과하게 먹으면 안 되니까 조금씩", "color": "#FF7100" },
         { "text": "!" }
       ],
       "effect": { "temperature": 1 },
@@ -81,7 +81,7 @@
     "line_004a2": {
       "type": "line",
       "speaker": "lillian",
-      "text": { "text": "! 한 번에 다 먹으면 안 돼요! 무리하지 말... 아..." },
+      "text":"! 한 번에 다 먹으면 안 돼요! 무리하지 말... 아...",
       "expression": "assets/images/lillian_surprise.png",
       "next": "line_004a3"
     },
@@ -98,7 +98,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": [
-        { "text": "하아..." },
+        { "text": "하아... " },
         { "text": "감정은 과하면 안 돼요", "color": "#FF7100" },
         { "text": ". 조금씩 먹어야 해요..." }
       ],

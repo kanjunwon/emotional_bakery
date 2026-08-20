@@ -823,6 +823,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                   key: const ValueKey('chaeon_eating_closeup'),
                   child: widgets.EatingCloseupOverlay(
                     onFinished: _sceneController.advanceScene,
+                    // line_004a 분기(A)에서만 eating_1/eating_2 사이클을 두 번 반복
+                    repeatCount: isEatingCloseupActiveA ? 2 : 1,
                   ),
                 )
               else if (chaeonStairsDescentPos != null)
