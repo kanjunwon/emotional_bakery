@@ -206,7 +206,7 @@
     },
     "line_007.4": {
       "type": "line",
-      "speaker": "lillian",
+      "speaker": "chaeon",
       "text": "아무거나 쓰면 안되는거에요?",
       "next": "line_007.5"
     },
@@ -283,7 +283,7 @@
     "line_018": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "네? ... 12살이거든요...",
+      "text": "네?... 12살이거든요...",
       "next": "line_019"
     },
     "line_019": {
@@ -331,7 +331,6 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "마녀라서 그정도일줄....",
-      "expression": "assets/images/lillian_thinking2.png",
       "next": "null"
     },
     "line_021b": {

@@ -421,7 +421,7 @@
       "speaker": "lillian",
       "expression": {
         "asset": "assets/images/lillian_eating_bread.gif",
-        "durationMs": 2000,
+        "durationMs": 1200,
         "autoAdvance": true
       },
       "next": "line_029a6_cry"

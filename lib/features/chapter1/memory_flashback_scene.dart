@@ -103,7 +103,7 @@ const Duration _cloudEntryDuration = Duration(milliseconds: 3000);
 const Duration _cloudHintDelay = Duration(milliseconds: 800);
 
 // 힌트 구름을 위치는 그대로 두고, 이만큼 드래그하면 치워진 것으로 처리 (실제 화면 px 기준)
-const double _cloudDismissDragThreshold = 40.0;
+const double _cloudDismissDragThreshold = 160.0;
 // 구름이 치워질 때 작아지며 사라지는 애니메이션 시간
 const Duration _cloudDismissAnimDuration = Duration(milliseconds: 250);
 // 모든 구름을 다 치운 뒤 minigame_success를 띄워두는 시간. 이후 memory_car_smooth로 전환

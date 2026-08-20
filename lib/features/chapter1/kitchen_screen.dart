@@ -22,12 +22,16 @@ import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
 const double kChaeonKitchenStartX = 60;
-const double kChaeonKitchenTopY = 235;
+const double kChaeonKitchenTopY = 220;
 // 릴리안이 고정으로 서있는 위치 (실측값)
 const double kLillianKitchenX = 467;
-const double kLillianKitchenTopY = 228;
+const double kLillianKitchenTopY = 213;
 // 채온이가 이 위치 이상 도달하면 이동이 잠기고 kitchen_arrival.json 대사가 자동으로 시작됨
 const double kKitchenDialogueTriggerX = 232;
+// 주방 캐릭터(채온/릴리안) 크기 보정 배수. worldScale이 464 기준(w/874 vs h/464 중 큰 쪽)으로
+// 계산되는데, 빵집(game_play_screen.dart)의 zoom은 402 기준(h/402)이라 같은 "172"를 써도
+// 주방 쪽이 더 작게 렌더링됨. 두 화면에서 캐릭터 최종 픽셀 크기가 같아 보이도록 그 비율만큼 키움
+const double kKitchenCharacterSizeCorrection = 464 / 402;
 // 채온이가 좌우로 움직일 수 있는 범위 (배경 밖으로 안 나가게)
 const double kChaeonKitchenMinX = 60;
 const double kChaeonKitchenMaxX = 814;
@@ -38,13 +42,15 @@ const Duration _moveTickInterval = Duration(milliseconds: 40);
 // 계단을 다시 올라가 빵집으로 돌아가는 연출: 내려올 때(game_play_screen.dart의
 // _triggerChaeonStairsDescent)와 동일한 패턴으로, kitchen_main.png 좌표계(874x464) 기준
 // 시작/끝 지점과 재생 시간을 지정
-const Offset _stairsAscentStart = Offset(60, 235);
+const Offset _stairsAscentStart = Offset(60, 220);
 const Offset _stairsAscentEnd = Offset(-120, 154);
 const Duration _stairsAscentDuration = Duration(milliseconds: 700);
 
-// chapter2_making_bread.json 끝나고 잠깐 암전 유지하는 시간. 임시값, 나중에 실제 연출
-// 보면서 조정 예정
+// chapter2_making_bread.json 끝나고 암전 페이드인/유지/페이드아웃 타이밍.
+// 유지 시간은 임시값, 나중에 실제 연출 보면서 조정 예정
+const Duration _memoryBlackoutFadeInDuration = Duration(milliseconds: 300);
 const Duration _memoryBlackoutHoldDuration = Duration(seconds: 2);
+const Duration _memoryBlackoutFadeOutDuration = Duration(milliseconds: 300);
 
 // 챕터3 일기장 퍼즐 시퀀스(chapter3_after_first_game.json 끝난 뒤) 단계별 대기 시간.
 // chapter3_making_bread 암전이랑 별개로 여기 전용 상수로 분리함
@@ -143,17 +149,18 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _hasLoadedAfterQuizDialogue = false;
   // chapter2_after_quiz.json 대화가 끝나면 뜨는 빵만들기 미니게임
   bool _showBreadMakingGame = false;
-  // 빵만들기 미니게임에서 완성된 반죽 화면을 탭하면(BreadMakingScene.onComplete) 뜨는,
-  // 완성된 빵(salt_bread) 팝업. 탭하면 닫힘
+  // chapter2_making_bread.json 대사가 끝나고, 암전 -> 재점등 후에 뜨는 완성된 빵(salt_bread)
+  // 팝업. 탭하면 닫히고 chapter2_after_first_game.json으로 이어짐
   bool _showBreadPopup = false;
   // 빵 팝업 닫고 chapter2_after_first_game.json을 이미 이어붙였는지
   bool _hasLoadedAfterFirstGameDialogue = false;
-  // 빵 팝업 닫고 chapter2_making_bread.json을 이미 로드했는지. 이 대사가 끝나야
-  // 암전을 거쳐서 chapter2_after_first_game.json으로 이어짐
+  // 빵만들기 미니게임 완료 직후(BreadMakingScene.onComplete) chapter2_making_bread.json을
+  // 이미 로드했는지. 이 대사가 끝나야 암전 -> 재점등을 거쳐서 빵 팝업이 뜸
   bool _hasLoadedMakingBreadDialogue = false;
-  // chapter2_making_bread.json 끝나고 chapter2_after_first_game.json 로드하기 전
-  // 잠깐 화면을 덮는 암전
+  // chapter2_making_bread.json 끝나고 빵 팝업(salt_bread) 뜨기 전 잠깐 화면을 덮는 암전.
+  // 페이드인/아웃은 _memoryBlackoutOpacity를 AnimatedOpacity로 애니메이션함
   bool _showMemoryBlackout = false;
+  double _memoryBlackoutOpacity = 0.0;
   Timer? _memoryBlackoutTimer;
   // chaeon_0_eat.gif 노출이 끝나면 뜨는 시계 맞추기 미니게임. 끝나면(onComplete) 임시 종료 화면으로 넘어감
   bool _showClockMinigame = false;
@@ -198,9 +205,9 @@ class _KitchenScreenState extends State<KitchenScreen>
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
         // 챕터2 모드는 ready -> ingredient_quiz -> (재료 팝업) -> after_quiz ->
-        // (빵만들기 미니게임) -> (빵 팝업) -> after_first_game 순서로 자동 이어붙이고
-        // (table.json -> 회상컷씬 -> first_bread.json처럼 대화 끝나면 다음 대화 자동 로드하는
-        // 패턴), 그 다음에 끝나면 임시 안내 화면을 띄움
+        // (빵만들기 미니게임) -> making_bread -> (암전/재점등) -> (빵 팝업) -> after_first_game
+        // 순서로 자동 이어붙이고(table.json -> 회상컷씬 -> first_bread.json처럼 대화 끝나면
+        // 다음 대화 자동 로드하는 패턴), 그 다음에 끝나면 임시 안내 화면을 띄움
         if (widget.mode == KitchenScreenMode.chapter2Start) {
           if (!_hasLoadedIngredientQuiz) {
             _hasLoadedIngredientQuiz = true;
@@ -214,14 +221,13 @@ class _KitchenScreenState extends State<KitchenScreen>
           } else if (_hasLoadedMakingBreadDialogue &&
               !_hasLoadedAfterFirstGameDialogue) {
             // chapter2_making_bread.json이 끝나면(line_001) 여기로 옴. 암전 잠깐 띄웠다가
-            // after_first_game.json으로 이어짐. 실제 로드는 _startMemoryBlackout에서 처리
+            // 재점등 후 salt_bread 팝업을 띄움. 실제 처리는 _startMemoryBlackout에서 함
             _startMemoryBlackout();
           } else if (!_hasLoadedAfterFirstGameDialogue) {
             // chapter2_after_quiz.json이 끝나면(line_021) 여기로 옴. 빵만들기 미니게임 시작.
-            // 미니게임 완료 -> 빵 팝업 -> after_first_game.json 로드까지는 미니게임/팝업
-            // 쪽 콜백(onComplete, 빵 팝업 onTap)에서 처리함
-            // (참고: 빵 팝업 onTap은 이제 making_bread.json을 먼저 로드하고, 그 대사가 끝나면
-            // 위 _hasLoadedMakingBreadDialogue 분기가 암전 거쳐서 after_first_game.json을 로드함)
+            // 미니게임 완료(BreadMakingScene.onComplete) -> chapter2_making_bread.json 로드까지는
+            // 미니게임 콜백에서 처리하고, 그 대사가 끝나면 위 _hasLoadedMakingBreadDialogue
+            // 분기가 암전 -> 재점등 -> salt_bread 팝업으로 이어받음
             setState(() => _showBreadMakingGame = true);
           } else if (!_hasLoadedAfterSecondGameDialogue) {
             // chapter2_after_first_game.json이 끝나면(line_008) 여기로 옴.
@@ -310,17 +316,32 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
   }
 
-  // chapter2_making_bread.json 끝나면 화면을 잠깐 암전시켰다가 after_first_game.json으로
-  // 넘어감. 대기 시간은 _memoryBlackoutHoldDuration 임시값, 나중에 실제 연출 보면서 조정 예정
+  // chapter2_making_bread.json 끝나면 화면을 페이드인으로 암전시켰다가, 잠깐 유지 후
+  // 페이드아웃으로 다시 밝아지면서 salt_bread 팝업을 띄움. 유지 시간은 _memoryBlackoutHoldDuration
+  // 임시값, 나중에 실제 연출 보면서 조정 예정. game_play_screen.dart의
+  // _transitionToMemoryFlashback과 동일한 페이드 패턴
   void _startMemoryBlackout() {
-    setState(() => _showMemoryBlackout = true);
-    _memoryBlackoutTimer = Timer(_memoryBlackoutHoldDuration, () {
+    setState(() {
+      _showMemoryBlackout = true;
+      _memoryBlackoutOpacity = 0.0;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() => _showMemoryBlackout = false);
-      _hasLoadedAfterFirstGameDialogue = true;
-      _sceneController.loadDialogue(
-        'assets/lines/chapter2/chapter2_after_first_game.json',
-      );
+      setState(() => _memoryBlackoutOpacity = 1.0);
+    });
+    _memoryBlackoutTimer = Timer(_memoryBlackoutFadeInDuration, () {
+      if (!mounted) return;
+      _memoryBlackoutTimer = Timer(_memoryBlackoutHoldDuration, () {
+        if (!mounted) return;
+        setState(() => _memoryBlackoutOpacity = 0.0);
+        _memoryBlackoutTimer = Timer(_memoryBlackoutFadeOutDuration, () {
+          if (!mounted) return;
+          setState(() {
+            _showMemoryBlackout = false;
+            _showBreadPopup = true;
+          });
+        });
+      });
     });
   }
 
@@ -562,6 +583,11 @@ class _KitchenScreenState extends State<KitchenScreen>
     double wX(double px) => worldOffsetX + px * worldScale;
     double wY(double px) => worldOffsetY + px * worldScale;
     double wSize(double px) => px * worldScale;
+    // 채온/릴리안 전용 크기: 빵집과 최종 픽셀 크기가 같아 보이도록 kKitchenCharacterSizeCorrection만큼
+    // 추가로 키움. top은 그대로 두면 커진 만큼 발이 바닥 아래로 파고들어 보이므로, 늘어난 높이의
+    // 절반만큼 위로 당겨서 발 위치(세로 중심 기준)가 원래 자리에 맞도록 보정함
+    final double characterSize = wSize(172) * kKitchenCharacterSizeCorrection;
+    final double characterTopShift = (characterSize - wSize(172)) / 2;
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;
@@ -572,11 +598,14 @@ class _KitchenScreenState extends State<KitchenScreen>
 
     // 채온이/릴리안 둘 다 Positioned의 left가 스프라이트 왼쪽 끝 기준이라(중앙 기준 보정 없음),
     // 말풍선 가로 중심은 거기에 스프라이트 폭의 절반을 더해야 실제 캐릭터 중심과 맞음
-    final double chaeonCenterX = wX(_chaeonX) + wSize(172) / 2;
-    final double lillianCenterX = wX(kLillianKitchenX) + wSize(172) / 2;
-    // 말풍선 앵커: 각 캐릭터가 실제로 서있는 kitchen_main.png 좌표(wY) 기준
-    final double chaeonSpriteTopY = wY(kChaeonKitchenTopY);
-    final double lillianSpriteTopY = wY(kLillianKitchenTopY);
+    final double chaeonCenterX = wX(_chaeonX) + characterSize / 2;
+    final double lillianCenterX = wX(kLillianKitchenX) + characterSize / 2;
+    // 말풍선 앵커: 각 캐릭터가 실제로 서있는 kitchen_main.png 좌표(wY) 기준.
+    // 캐릭터 렌더링 top과 동일하게 characterTopShift만큼 위로 보정해야 커진 스프라이트
+    // 머리 위치랑 어긋나지 않음
+    final double chaeonSpriteTopY = wY(kChaeonKitchenTopY) - characterTopShift;
+    final double lillianSpriteTopY =
+        wY(kLillianKitchenTopY) - characterTopShift;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -602,11 +631,11 @@ class _KitchenScreenState extends State<KitchenScreen>
             Positioned(
               key: const ValueKey('kitchen_lillian'),
               left: wX(kLillianKitchenX),
-              top: wY(kLillianKitchenTopY),
+              top: wY(kLillianKitchenTopY) - characterTopShift,
               child: Image.asset(
                 _resolveLillianSprite(sceneNodeId),
-                width: wSize(172),
-                height: wSize(172),
+                width: characterSize,
+                height: characterSize,
                 fit: BoxFit.contain,
               ),
             ),
@@ -622,11 +651,13 @@ class _KitchenScreenState extends State<KitchenScreen>
                     ? (_stairsUpAnimation?.value.dx ?? _chaeonX)
                     : _chaeonX,
               ),
-              top: wY(
-                _isChaeonAscendingStairs
-                    ? (_stairsUpAnimation?.value.dy ?? kChaeonKitchenTopY)
-                    : kChaeonKitchenTopY,
-              ),
+              top:
+                  wY(
+                    _isChaeonAscendingStairs
+                        ? (_stairsUpAnimation?.value.dy ?? kChaeonKitchenTopY)
+                        : kChaeonKitchenTopY,
+                  ) -
+                  characterTopShift,
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
                 child: Image.asset(
@@ -647,8 +678,8 @@ class _KitchenScreenState extends State<KitchenScreen>
                           : _isChaeonAscendingStairs || _chaeonState == 'walk'
                           ? 'assets/images/chaeon_apron_idle.gif'
                           : 'assets/images/chaeon_apron_putting_on.gif'),
-                  width: wSize(172),
-                  height: wSize(172),
+                  width: characterSize,
+                  height: characterSize,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -926,23 +957,27 @@ class _KitchenScreenState extends State<KitchenScreen>
 
             // 9-3층: 빵만들기 미니게임. chapter2_after_quiz.json 대화가 끝나면 뜨고,
             // 최상단에서 화면을 전부 덮음. 완성된 반죽 화면을 탭하면 주방으로 돌아가고
-            // 빵 팝업이 뜸(onComplete)
+            // 바로 chapter2_making_bread.json 대사가 이어짐(onComplete). 그 대사가 끝나면
+            // onDialogueEnd의 _hasLoadedMakingBreadDialogue 분기가 암전 -> 재점등 ->
+            // salt_bread 팝업으로 이어받음
             if (_showBreadMakingGame)
               Positioned.fill(
                 key: const ValueKey('bread_making_game'),
                 child: BreadMakingScene(
                   onComplete: () {
-                    setState(() {
-                      _showBreadMakingGame = false;
-                      _showBreadPopup = true;
-                    });
+                    setState(() => _showBreadMakingGame = false);
+                    _hasLoadedMakingBreadDialogue = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter2/chapter2_making_bread.json',
+                    );
                   },
                 ),
               ),
 
-            // 9-4층: 완성된 빵(salt_bread) 팝업. 빵만들기 게임에서 완성 화면을 탭해 주방으로
-            // 돌아오면 뜸. 재료 획득 팝업이랑 동일한 연출(검은 50% 배경 + tutorial_dialogue_box
-            // 570x300 + 이미지 300x300). 탭하면 닫히고 chapter2_after_first_game.json으로 이어짐
+            // 9-4층: 완성된 빵(salt_bread) 팝업. chapter2_making_bread.json 대사 ->
+            // 암전 -> 재점등 후에 뜸(_startMemoryBlackout). 재료 획득 팝업이랑 동일한 연출
+            // (검은 50% 배경 + tutorial_dialogue_box 570x300 + 이미지 300x300).
+            // 탭하면 닫히고 chapter2_after_first_game.json으로 이어짐
             if (_showBreadPopup)
               Positioned.fill(
                 key: const ValueKey('bread_popup_layer'),
@@ -950,11 +985,9 @@ class _KitchenScreenState extends State<KitchenScreen>
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     setState(() => _showBreadPopup = false);
-                    // after_first_game.json으로 바로 안 가고 making_bread.json부터 거침.
-                    // 끝나면 onDialogueEnd의 _hasLoadedMakingBreadDialogue 분기가 이어받음
-                    _hasLoadedMakingBreadDialogue = true;
+                    _hasLoadedAfterFirstGameDialogue = true;
                     _sceneController.loadDialogue(
-                      'assets/lines/chapter2/chapter2_making_bread.json',
+                      'assets/lines/chapter2/chapter2_after_first_game.json',
                     );
                   },
                   child: Container(
@@ -1011,13 +1044,21 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
-            // 9-6층: chapter2_making_bread.json 끝나고 after_first_game.json 로드하기 전
-            // 잠깐 띄우는 암전. memory_flashback_scene.dart / clock_minigame_scene.dart에서
-            // 쓰는 검은 Container + Timer 패턴 그대로 씀. 대기 시간은 _memoryBlackoutHoldDuration
+            // 9-6층: chapter2_making_bread.json 끝나고 salt_bread 팝업 뜨기 전 잠깐 띄우는
+            // 암전. game_play_screen.dart의 memory_fade_overlay(20층)와 동일한
+            // AnimatedOpacity 페이드인/아웃 패턴
             if (_showMemoryBlackout)
               Positioned.fill(
                 key: const ValueKey('memory_blackout'),
-                child: Container(color: Colors.black),
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _memoryBlackoutOpacity,
+                    duration: _memoryBlackoutOpacity == 1.0
+                        ? _memoryBlackoutFadeInDuration
+                        : _memoryBlackoutFadeOutDuration,
+                    child: Container(color: Colors.black),
+                  ),
+                ),
               ),
 
             // 9-7층: 챕터3 첫 번째 미니게임. chapter3_before_game.json이 끝나면 뜨고, 최상단에서

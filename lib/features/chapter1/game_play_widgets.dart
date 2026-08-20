@@ -170,10 +170,12 @@ chapter2LillianSpriteOverridesByDialogueId = {
 };
 
 class EatingCloseupOverlay extends StatefulWidget {
-  const EatingCloseupOverlay({super.key, this.onFinished});
+  const EatingCloseupOverlay({super.key, this.onFinished, this.repeatCount = 1});
 
   // eating_1 -> eating_2 순서로 한 번씩 보여준 뒤 호출되는 콜백 (다음 대사로 자동 진행용)
   final VoidCallback? onFinished;
+  // eating_1 -> eating_2 사이클을 몇 번 반복할지 (기본 1번)
+  final int repeatCount;
 
   @override
   State<EatingCloseupOverlay> createState() => _EatingCloseupOverlayState();
@@ -185,18 +187,31 @@ class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
   static const Duration _frame2HoldDuration = Duration(milliseconds: 500);
 
   int _frameIndex = 0;
+  int _completedCycles = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // eating_1을 500ms 그대로 보여준 뒤 eating_2로 전환 시작
+    _playCycle();
+  }
+
+  // eating_1을 500ms 그대로 보여준 뒤 eating_2로 전환. 크로스페이드(600ms) + eating_2
+  // 유지(500ms)까지 끝나면 한 사이클 완료. repeatCount만큼 다 돌면 완료 콜백 호출,
+  // 아니면 eating_1로 되돌아가 다시 반복
+  void _playCycle() {
     _timer = Timer(_frame1HoldDuration, () {
       if (!mounted) return;
       setState(() => _frameIndex = 1);
-      // 크로스페이드(600ms) + eating_2 유지(500ms) 후 완료 콜백 호출
       _timer = Timer(_crossfadeDuration + _frame2HoldDuration, () {
-        widget.onFinished?.call();
+        if (!mounted) return;
+        _completedCycles++;
+        if (_completedCycles >= widget.repeatCount) {
+          widget.onFinished?.call();
+        } else {
+          setState(() => _frameIndex = 0);
+          _playCycle();
+        }
       });
     });
   }

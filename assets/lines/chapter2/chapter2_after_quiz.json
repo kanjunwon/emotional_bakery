@@ -41,20 +41,20 @@
       "text": "그럴 줄 알았어요!",
       "effect": { "temperature": 1 },
       "expression": "assets/images/lillian_happy.png",
-      "next": "line_002b2"
+      "next": "line_004"
     },
     "line_002a2": {
       "type": "line",
       "speaker": "chaeon",
       "text": "그냥... 저랑 마법은 안 어울리는거 같아요...",
-      "next": "line_002a3"
+      "next": "line_002b2"
     },
     "line_002b2": {
       "type": "line",
       "speaker": "lillian",
       "text": "제가 볼 땐 잘 어울리는데요?",
       "expression": "assets/images/lillian_happy.png",
-      "next": "line_002b3"
+      "next": "line_002a3"
     },
     "line_002a3": {
       "type": "line",
