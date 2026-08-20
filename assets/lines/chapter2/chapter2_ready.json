@@ -37,7 +37,7 @@
     "line_003a1": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "어렸을 때, 빵을  만들고 싶다고 생각한 적이 있었어요.",
+      "text": "어렸을 때, 빵을  만들고 싶다고 생각한 적이 있어요.",
       "next": "line_003a2"
     },
     "line_003a2": {
@@ -207,7 +207,7 @@
     "line_007.4": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "아무거나 쓰면 안되는거에요?",
+      "text": "아무거나 쓰면 안 되는 거예요?",
       "next": "line_007.5"
     },
     "line_007.5": {
@@ -220,7 +220,7 @@
     "line_007.6": {
       "type": "line",
       "speaker": "lillian",
-      "text": "그 재료를 빵에 넣어야 감정을 되찾을 수 있어요.",
+      "text": "그 재료를 빵에 넣어야 감정을 되찾을 수 있답니다~",
       "next": "line_008"
     },
     "line_008": {
@@ -330,7 +330,7 @@
     "line_021a3": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "마녀라서 그정도일줄....",
+      "text": "마녀라서 그 정도일 줄....",
       "next": "null"
     },
     "line_021b": {
@@ -343,6 +343,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "어머... 어머머...!",
+      "effect": { "temperature": 1 },
       "expression": "assets/images/lillian_happy.png",
       "next": "line_021b2"
     },
@@ -357,7 +358,6 @@
       "type": "line",
       "speaker": "lillian",
       "text": "제가 좀 관리가 잘 된 편이라~ 하핫!",
-      "effect": { "temperature": 1 },
       "expression": "assets/images/lillian_happy.png",
       "next": "line_021b4"
     },
