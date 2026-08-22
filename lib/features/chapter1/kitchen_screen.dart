@@ -55,8 +55,10 @@ const Duration _memoryBlackoutFadeOutDuration = Duration(milliseconds: 300);
 // 챕터3 일기장 퍼즐 시퀀스(chapter3_after_first_game.json 끝난 뒤) 단계별 대기 시간.
 // chapter3_making_bread 암전이랑 별개로 여기 전용 상수로 분리함
 // 이 값을 조정하면 chapter3_after_first_game.json 대화가 끝나고 화면이 암전됐다가
-// 일기장 인트로 이미지(chapter3_diary_intro.png)가 뜨기까지의 대기 시간이 바뀜
-const Duration _chapter3DiaryBlackoutHoldDuration = Duration(seconds: 3);
+// 일기장 인트로 이미지(chapter3_diary_intro.png)가 뜨기까지의 대기 시간이 바뀜.
+// 챕터1 먹구름 미니게임 전환 암전(game_play_screen.dart의 _memoryFadeInDuration +
+// _memoryFadeHoldDuration + _memoryFadeOutDuration = 300+1000+300ms)과 동일한 총 시간
+const Duration _chapter3DiaryBlackoutHoldDuration = Duration(milliseconds: 1600);
 const Duration _chapter3DiaryIntroHoldDuration = Duration(seconds: 2);
 const Duration _chapter3DiarySuccessAfterHoldDuration = Duration(seconds: 1);
 // 이 값을 조정하면 퍼즐 결과 이미지(chapter3_diary_success_after.png) 노출이 끝나고
@@ -407,6 +409,11 @@ class _KitchenScreenState extends State<KitchenScreen>
         'assets/images/chaeon_apron_putting_on.gif',
         'assets/images/chaeon_apron_idle.gif',
         'assets/images/lillian_idle.gif',
+        // 챕터3 일기장 퍼즐 시퀀스 앞뒤로 뜨는 인트로/결과 이미지. 프리캐싱이 안 돼있으면
+        // Image.asset이 디코딩 끝날 때까지 몇 프레임 동안 아무것도 안 그려서 그 밑에 깔려있던
+        // 이전 화면이 잠깐 비쳐 보임(부자연스러운 화면 전환의 원인)
+        'assets/images/chapter3_diary_intro.png',
+        'assets/images/chapter3_diary_success_after.png',
       ];
       for (final asset in assetsToPrecache) {
         precacheImage(AssetImage(asset), context);
@@ -473,11 +480,12 @@ class _KitchenScreenState extends State<KitchenScreen>
   }
 
   // 왼쪽 끝(계단 있는 곳)까지 계속 왼쪽으로 이동하려 하면 다시 계단을 올라가 빵집으로 돌아감.
-  // 챕터1 모드(GamePlayScreen에서 push된 경우)에서만 돌아갈 화면이 있으므로 그때만 동작
+  // chapter1End/chapter3Start 둘 다 GamePlayScreen에서 Navigator.push로 열린 경우라
+  // 돌아갈 화면이 있으므로 둘 다 동작함. chapter2Start는 그렇지 않아서 제외
   bool _hasTriggeredStairsUp = false;
   void _checkStairsUpTrigger(double delta) {
     if (_hasTriggeredStairsUp) return;
-    if (widget.mode != KitchenScreenMode.chapter1End) return;
+    if (widget.mode == KitchenScreenMode.chapter2Start) return;
     if (delta < 0 && _chaeonX <= kChaeonKitchenMinX) {
       _hasTriggeredStairsUp = true;
       _moveTimer?.cancel();
@@ -541,6 +549,50 @@ class _KitchenScreenState extends State<KitchenScreen>
         _sceneController.sceneDialogue?.nodes[sceneNodeId];
     if (node?.speaker != 'chaeon') return null;
     return node?.expression?.asset;
+  }
+
+  // 채온이 스프라이트 위젯. expression이 있을 때만 PopInImage로 부드럽게 전환하고,
+  // 그 외(걷기/정지 등 기본 상태)는 즉시 바뀌는 Image.asset을 씀. 걷기는 dpad에 바로
+  // 반응해야 자연스러워서, 표정 전환에만 페이드를 걸고 걷기 전환은 그대로 즉시 바뀌게 함
+  Widget _buildChaeonSprite({
+    required String? sceneNodeId,
+    required double size,
+  }) {
+    // chapter2_after_first_game.json 종료 직후엔 chaeon_0_eat.gif, 시계 미니게임 이후엔
+    // chaeon_emotion_0to20.gif -> chaeon_20.gif 순으로, 다른 상태와 무관하게 우선 보여줌.
+    // 계단을 올라가는 중엔 그 시점 _chaeonState와 무관하게 항상 apron_idle.gif로 고정
+    // (game_play_screen.dart의 하강 연출과 동일한 규칙)
+    final String defaultSprite = _showChaeonEating
+        ? 'assets/images/chaeon_0_eat.gif'
+        : _showChaeonEmotion0to20
+        ? 'assets/images/chaeon_emotion_0to20.gif'
+        : _showChaeon20
+        ? 'assets/images/chaeon_20.gif'
+        // 챕터3 주방(kitchen_main)에서는 idle 기본값을 chaeon_20.gif로,
+        // 걷는 중/계단 올라가는 중엔 chaeon_apron_20.gif로 씀
+        // (계단 내려가는 쪽은 game_play_screen.dart에서 chaeon_20_normal_walk.gif)
+        : widget.mode == KitchenScreenMode.chapter3Start
+        ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
+              ? 'assets/images/chaeon_apron_20.gif'
+              : 'assets/images/chaeon_20.gif')
+        : _isChaeonAscendingStairs || _chaeonState == 'walk'
+        ? 'assets/images/chaeon_apron_idle.gif'
+        : 'assets/images/chaeon_apron_putting_on.gif';
+
+    // 채온이 대사 노드에 expression이 있으면(예: chapter3_after_first_game.json의
+    // 빵 먹는 GIF) 이 체인보다도 우선순위 높게 그걸 먼저 보여줌
+    final String? expressionSprite = _resolveChaeonExpressionSprite(
+      sceneNodeId,
+    );
+    if (expressionSprite != null) {
+      return PopInImage(
+        imagePath: expressionSprite,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+    }
+    return Image.asset(defaultSprite, width: size, height: size, fit: BoxFit.contain);
   }
 
   // 뒤로가기 버튼: 타이핑 중이면 텍스트 다 보여주고, 아니면 이전 대사로 되돌아감
@@ -632,8 +684,8 @@ class _KitchenScreenState extends State<KitchenScreen>
               key: const ValueKey('kitchen_lillian'),
               left: wX(kLillianKitchenX),
               top: wY(kLillianKitchenTopY) - characterTopShift,
-              child: Image.asset(
-                _resolveLillianSprite(sceneNodeId),
+              child: PopInImage(
+                imagePath: _resolveLillianSprite(sceneNodeId),
                 width: characterSize,
                 height: characterSize,
                 fit: BoxFit.contain,
@@ -660,27 +712,9 @@ class _KitchenScreenState extends State<KitchenScreen>
                   characterTopShift,
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
-                child: Image.asset(
-                  // chapter2_after_first_game.json 종료 직후엔 chaeon_0_eat.gif, 시계
-                  // 미니게임 이후엔 chaeon_emotion_0to20.gif -> chaeon_20.gif 순으로,
-                  // 다른 상태와 무관하게 우선 보여줌. 계단을 올라가는 중엔 그 시점
-                  // _chaeonState와 무관하게 항상 apron_idle.gif로 고정
-                  // (game_play_screen.dart의 하강 연출과 동일한 규칙)
-                  // 채온이 대사 노드에 expression이 있으면(예: chapter3_after_first_game.json의
-                  // 빵 먹는 GIF) 이 체인보다도 우선순위 높게 그걸 먼저 보여줌
-                  _resolveChaeonExpressionSprite(sceneNodeId) ??
-                      (_showChaeonEating
-                          ? 'assets/images/chaeon_0_eat.gif'
-                          : _showChaeonEmotion0to20
-                          ? 'assets/images/chaeon_emotion_0to20.gif'
-                          : _showChaeon20
-                          ? 'assets/images/chaeon_20.gif'
-                          : _isChaeonAscendingStairs || _chaeonState == 'walk'
-                          ? 'assets/images/chaeon_apron_idle.gif'
-                          : 'assets/images/chaeon_apron_putting_on.gif'),
-                  width: characterSize,
-                  height: characterSize,
-                  fit: BoxFit.contain,
+                child: _buildChaeonSprite(
+                  sceneNodeId: sceneNodeId,
+                  size: characterSize,
                 ),
               ),
             ),
@@ -1136,16 +1170,11 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
-            // 9-9층: chapter3_after_first_game.json 끝나고 일기장 퍼즐 시퀀스 시작할 때 뜨는
-            // 첫 암전. 9-6층 memory_blackout이랑 동일한 검은 Container 패턴, 대기 시간만 다름
-            if (_showChapter3DiaryBlackout)
-              Positioned.fill(
-                key: const ValueKey('chapter3_diary_blackout'),
-                child: Container(color: Colors.black),
-              ),
-
-            // 9-10층: 일기장 인트로 이미지. 암전 끝나고 약 2초간 보여준 뒤 퍼즐 미니게임으로 넘어감
-            if (_showChapter3DiaryIntro)
+            // 9-9층: 일기장 인트로 이미지. 암전 단계(9-9-1)에서부터 이미 마운트해둬서(안 보이게
+            // 암전 밑에 깔림) Image 위젯이 미리 프레임을 그려둔 상태로 대기하게 함. 그렇게
+            // 안 하면 암전이 꺼지는 순간 이 이미지가 막 마운트되면서 첫 프레임을 그리기까지
+            // 한 프레임 정도 아무것도 안 그려서, 그 사이 밑에 깔린 주방이 잠깐 비쳐 보였음
+            if (_showChapter3DiaryBlackout || _showChapter3DiaryIntro)
               Positioned.fill(
                 key: const ValueKey('chapter3_diary_intro'),
                 child: Image.asset(
@@ -1156,19 +1185,19 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
-            // 9-11층: 챕터3 두 번째 미니게임(일기장 사진 조각 맞추기). 인트로 끝나면 뜨고,
-            // 최상단에서 화면을 전부 덮음. 완성되면(onComplete) 결과 이미지 -> 암전 ->
-            // chapter3_after_eat.json 순으로 이어짐(_onChapter3DiaryPuzzleComplete에서 처리)
-            if (_showChapter3DiaryPuzzle)
+            // 9-9-1층: chapter3_after_first_game.json 끝나고 일기장 퍼즐 시퀀스 시작할 때 뜨는
+            // 첫 암전. 9-6층 memory_blackout이랑 동일한 검은 Container 패턴, 대기 시간만 다름.
+            // 위 인트로 이미지보다 나중에(위에) 그려야 암전 중엔 인트로가 안 보이고 가려짐
+            if (_showChapter3DiaryBlackout)
               Positioned.fill(
-                key: const ValueKey('chapter3_diary_puzzle'),
-                child: DiaryPuzzleScene(
-                  onComplete: _onChapter3DiaryPuzzleComplete,
-                ),
+                key: const ValueKey('chapter3_diary_blackout'),
+                child: Container(color: Colors.black),
               ),
 
-            // 9-12층: 퍼즐 완성 결과 이미지. 1초간 보여준 뒤 암전으로 넘어감
-            if (_showChapter3DiarySuccessAfter)
+            // 9-11층: 퍼즐 완성 결과 이미지. 퍼즐 단계(9-11-1)에서부터 이미 마운트해둬서(안
+            // 보이게 퍼즐 화면 밑에 깔림) 위 인트로 이미지와 동일한 이유로 미리 프레임을
+            // 그려둔 상태로 대기하게 함
+            if (_showChapter3DiaryPuzzle || _showChapter3DiarySuccessAfter)
               Positioned.fill(
                 key: const ValueKey('chapter3_diary_success_after'),
                 child: Image.asset(
@@ -1176,6 +1205,18 @@ class _KitchenScreenState extends State<KitchenScreen>
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
+                ),
+              ),
+
+            // 9-11-1층: 챕터3 두 번째 미니게임(일기장 사진 조각 맞추기). 인트로 끝나면 뜨고,
+            // 최상단에서 화면을 전부 덮음. 완성되면(onComplete) 결과 이미지 -> 암전 ->
+            // chapter3_after_eat.json 순으로 이어짐(_onChapter3DiaryPuzzleComplete에서 처리).
+            // 위 결과 이미지보다 나중에(위에) 그려야 퍼즐 중엔 결과 이미지가 안 보이고 가려짐
+            if (_showChapter3DiaryPuzzle)
+              Positioned.fill(
+                key: const ValueKey('chapter3_diary_puzzle'),
+                child: DiaryPuzzleScene(
+                  onComplete: _onChapter3DiaryPuzzleComplete,
                 ),
               ),
 

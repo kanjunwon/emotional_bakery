@@ -13,7 +13,7 @@ class DialogueSpan {
   DialogueSpan({required this.text, this.color, this.bold = false, this.size});
 }
 
-// 릴리안 표현(스프라이트) 오버라이드. asset만 있으면 정지 이미지, durationMs/autoAdvance까지 있으면
+// 캐릭터 표현(스프라이트) 오버라이드. asset만 있으면 정지 이미지, durationMs/autoAdvance까지 있으면
 // GIF 재생 후 자동으로 다음 노드로 넘어가는 경우 (scene_dialogue_controller.dart에서 사용)
 class DialogueExpression {
   final String asset;
@@ -25,6 +25,20 @@ class DialogueExpression {
     this.durationMs,
     this.autoAdvance = false,
   });
+
+  // 문자열이면 정지 이미지, 객체({asset, durationMs, autoAdvance})면 GIF+자동진행 표현.
+  // 둘 다 아니면(필드 자체가 없으면) null
+  static DialogueExpression? fromJson(dynamic raw) {
+    if (raw is String) return DialogueExpression(asset: raw);
+    if (raw is Map) {
+      return DialogueExpression(
+        asset: raw['asset'] as String,
+        durationMs: (raw['durationMs'] as num?)?.toInt(),
+        autoAdvance: raw['autoAdvance'] == true,
+      );
+    }
+    return null;
+  }
 }
 
 // choice 노드의 선택지 하나
@@ -48,6 +62,9 @@ class DialogueNode {
   final List<DialogueOption> options; // type == 'choice'일 때만
   final String? animation; // type == 'line'일 때만. 캐릭터 모션 트리거용 (예: "lillian_hop")
   final DialogueExpression? expression; // type == 'line'일 때만. 릴리안 스프라이트 오버라이드
+  // 채온이 스프라이트 오버라이드. expression과 별도 필드라 한 노드에서 둘 다(릴리안+채온이)
+  // 동시에 다르게 지정 가능. 기존 파일들은 이 필드가 없어도 그대로 동작함(마이그레이션 불필요)
+  final DialogueExpression? chaeonExpression;
 
   DialogueNode({
     required this.id,
@@ -59,6 +76,7 @@ class DialogueNode {
     this.options = const [],
     this.animation,
     this.expression,
+    this.chaeonExpression,
   });
 
   factory DialogueNode.fromJson(String id, Map<String, dynamic> json) {
@@ -116,18 +134,13 @@ class DialogueNode {
     String? next = json['next'] as String?;
     if (next == 'null') next = null;
 
-    // 문자열이면 정지 이미지, 객체({asset, durationMs, autoAdvance})면 GIF+자동진행 표현
-    DialogueExpression? expression;
-    final rawExpression = json['expression'];
-    if (rawExpression is String) {
-      expression = DialogueExpression(asset: rawExpression);
-    } else if (rawExpression is Map) {
-      expression = DialogueExpression(
-        asset: rawExpression['asset'] as String,
-        durationMs: (rawExpression['durationMs'] as num?)?.toInt(),
-        autoAdvance: rawExpression['autoAdvance'] == true,
-      );
-    }
+    // expression은 릴리안, chaeonExpression은 채온이 스프라이트 오버라이드
+    final DialogueExpression? expression = DialogueExpression.fromJson(
+      json['expression'],
+    );
+    final DialogueExpression? chaeonExpression = DialogueExpression.fromJson(
+      json['chaeonExpression'],
+    );
 
     return DialogueNode(
       id: id,
@@ -138,6 +151,7 @@ class DialogueNode {
       next: next,
       animation: json['animation'] as String?,
       expression: expression,
+      chaeonExpression: chaeonExpression,
     );
   }
 }

@@ -18,7 +18,7 @@ import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
 // room_bg.png 실측 좌표 기준 (874x456 캔버스)
 // 채온이가 방 안에 서있는 위치
 const double kChaeonRoomX = 240;
-const double kChaeonRoomTopY = 220;
+const double kChaeonRoomTopY = 210;
 
 // 채온이가 좌우로 움직일 수 있는 범위. 정확한 값은 나중에 화면 보면서 조정 필요
 const double kChaeonRoomMinX = 60;
@@ -153,6 +153,15 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     _sceneController.goBackScene();
   }
 
+  // 현재 노드가 채온이 대사고 expression이 있으면 그 이미지를 우선 보여줌
+  // (kitchen_screen.dart의 _resolveChaeonExpressionSprite와 동일한 패턴)
+  String? _resolveChaeonExpressionSprite(String? sceneNodeId) {
+    final DialogueNode? node =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId];
+    if (node?.speaker != 'chaeon') return null;
+    return node?.expression?.asset;
+  }
+
   @override
   Widget build(BuildContext context) {
     final double w = MediaQuery.of(context).size.width;
@@ -201,20 +210,38 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
               child: Image.asset('assets/images/room_bg.png', fit: BoxFit.fill),
             ),
 
-            // 2층: 채온이. 나중에 20% 흑백 에셋으로 교체 예정, 지금은 기본 idle/walk 스프라이트로 둠
+            // 2층: 채온이. 챕터3 기본 상태는 chaeon_20_normal(_walk).gif(20% 상태 에셋)를 쓰고,
+            // 현재 대사 노드에 expression이 있으면(채온이 대사일 때만) 그 이미지를 우선 보여줌
             Positioned(
               key: const ValueKey('chaeon_room_chaeon'),
               left: wX(_chaeonX),
               top: wY(kChaeonRoomTopY) - characterTopShift,
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
-                child: Image.asset(
-                  _chaeonState == 'walk'
-                      ? 'assets/images/chaeon_walk_right.gif'
-                      : 'assets/images/chaeon_idle_right.gif',
-                  width: characterSize,
-                  height: characterSize,
-                  fit: BoxFit.contain,
+                child: Builder(
+                  builder: (context) {
+                    final String? expressionSprite =
+                        _resolveChaeonExpressionSprite(sceneNodeId);
+                    final String defaultSprite = _chaeonState == 'walk'
+                        ? 'assets/images/chaeon_20_normal_walk.gif'
+                        : 'assets/images/chaeon_20_normal.gif';
+                    // expression이 있을 때만 부드럽게 전환하고, 걷기/정지 전환은 dpad에
+                    // 바로 반응해야 자연스러워서 즉시 바뀌는 Image.asset을 씀
+                    if (expressionSprite != null) {
+                      return PopInImage(
+                        imagePath: expressionSprite,
+                        width: characterSize,
+                        height: characterSize,
+                        fit: BoxFit.contain,
+                      );
+                    }
+                    return Image.asset(
+                      defaultSprite,
+                      width: characterSize,
+                      height: characterSize,
+                      fit: BoxFit.contain,
+                    );
+                  },
                 ),
               ),
             ),

@@ -132,11 +132,14 @@ class SceneDialogueController extends ChangeNotifier {
       final String? delayGifAsset = graph.dialogueId == _bubbleDelayDialogueId
           ? _bubbleDelayGifByNodeId[nodeId]
           : null;
-      // node.expression에 autoAdvance가 켜져 있으면 대사 없이 GIF만 재생 후 탭 없이 다음 노드로 넘어감
-      // (예: first_meet.json의 line_029a6_eat/line_029a6_cry)
+      // node.expression이나 node.chaeonExpression에 autoAdvance가 켜져 있으면 대사 없이
+      // GIF만 재생 후 탭 없이 다음 노드로 넘어감
+      // (예: first_meet.json의 line_029a6_eat/line_029a6_cry, table.json의 line_004a2_laugh)
       final DialogueExpression? autoAdvanceExpression =
           (node.expression != null && node.expression!.autoAdvance)
           ? node.expression
+          : (node.chaeonExpression != null && node.chaeonExpression!.autoAdvance)
+          ? node.chaeonExpression
           : null;
       if (delayGifAsset != null) {
         bubbleRevealed = false;
@@ -188,6 +191,7 @@ class SceneDialogueController extends ChangeNotifier {
       options: node.options,
       animation: node.animation,
       expression: node.expression,
+      chaeonExpression: node.chaeonExpression,
     );
     graph.nodes[nodeId] = resolvedNode;
     return resolvedNode;

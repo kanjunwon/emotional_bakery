@@ -226,16 +226,15 @@ class _EatingCloseupOverlayState extends State<EatingCloseupOverlay> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      // 화면을 꽉 채우도록 BoxFit.cover 적용
-      child: AnimatedSwitcher(
+      // 화면을 꽉 채우도록 BoxFit.cover 적용. AnimatedSwitcher(양쪽 다 반투명해지는 크로스페이드)
+      // 대신 PopInImage를 써서, 검은 배경 위에서 두 이미지가 동시에 옅어지며 검은 화면이
+      // 살짝 비치는("번쩍") 현상 없이 새 프레임만 이전 프레임 위에서 페이드인되게 함
+      child: PopInImage(
+        imagePath: eatingCloseupFrames[_frameIndex],
         duration: _crossfadeDuration,
-        child: Image.asset(
-          eatingCloseupFrames[_frameIndex],
-          key: ValueKey(eatingCloseupFrames[_frameIndex]),
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        ),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
       ),
     );
   }

@@ -186,3 +186,94 @@ class DpadButton extends StatelessWidget {
     );
   }
 }
+
+// 이미지 경로가 바뀔 때, 이전 이미지는 완전히 불투명하게 그대로 둔 채 새 이미지만 그 위에서
+// 서서히 나타나게 하는 위젯(릴리안/채온이 표정 전환용). 일반 크로스페이드(AnimatedSwitcher
+// 기본 동작)는 신구 이미지가 동시에 반투명해지는데, 배경이 투명한 캐릭터 PNG에서는 그 순간
+// 두 장이 흐릿하게 겹쳐 비치면서 캐릭터가 옅어졌다 사라지는 것처럼 보임. 이전 이미지를 안
+// 흐리고 새 이미지만 덮어씌우듯 페이드인하면 그 문제가 없음
+class PopInImage extends StatefulWidget {
+  const PopInImage({
+    super.key,
+    required this.imagePath,
+    this.width,
+    this.height,
+    this.fit,
+    this.duration = const Duration(milliseconds: 120),
+  });
+
+  final String imagePath;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+  final Duration duration;
+
+  @override
+  State<PopInImage> createState() => _PopInImageState();
+}
+
+class _PopInImageState extends State<PopInImage>
+    with SingleTickerProviderStateMixin {
+  late String _currentPath = widget.imagePath;
+  // 새 이미지가 완전히 덮을 때까지만 밑에 깔아두는 이전 이미지. 애니메이션 끝나면 비워서
+  // 불필요하게 계속 들고 있지 않게 함
+  String? _previousPath;
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..value = 1.0
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() => _previousPath = null);
+        }
+      });
+  }
+
+  @override
+  void didUpdateWidget(covariant PopInImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.imagePath != _currentPath) {
+      setState(() {
+        _previousPath = _currentPath;
+        _currentPath = widget.imagePath;
+      });
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        if (_previousPath != null)
+          Image.asset(
+            _previousPath!,
+            width: widget.width,
+            height: widget.height,
+            fit: widget.fit,
+            gaplessPlayback: true,
+          ),
+        FadeTransition(
+          opacity: _controller,
+          child: Image.asset(
+            _currentPath,
+            width: widget.width,
+            height: widget.height,
+            fit: widget.fit,
+            gaplessPlayback: true,
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -1,7 +1,17 @@
 {
   "dialogue_id": "chapter3_after_eat",
-  "start": "line_002",
+  "start": "line_001",
   "nodes": {
+      "line_001": {
+      "type": "line",
+      "speaker": "chaeon",
+      "expression": {
+        "asset": "assets/images/chaeon_emotion_20to50.gif",
+        "durationMs": 1000,
+        "autoAdvance": true
+      },
+      "next": "line_002"
+    },
     "line_002": {
       "type": "line",
       "speaker": "chaeon",

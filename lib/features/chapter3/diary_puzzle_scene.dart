@@ -151,6 +151,27 @@ class _DiaryPuzzleSceneState extends State<DiaryPuzzleScene> {
   bool _isSuccessActive = false;
   Timer? _completedHoldTimer;
   Timer? _successTimer;
+  bool _imagesPrecached = false;
+
+  // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행. 안 하면 Image.asset이 디코딩 끝날 때까지
+  // 몇 프레임 동안 아무것도 안 그려서, 이 화면이 뜨는 순간 그 밑에 깔려있던 이전 화면(암전 등)이
+  // 잠깐 비쳐 보이는 부자연스러운 전환이 생김
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      _imagesPrecached = true;
+      const List<String> assetsToPrecache = [
+        'assets/images/diary_puzzle_bg.png',
+        'assets/images/diary_puzzle_completed.png',
+        'assets/images/minigame_success.png',
+        ..._pieceAssets,
+      ];
+      for (final asset in assetsToPrecache) {
+        precacheImage(AssetImage(asset), context);
+      }
+    }
+  }
 
   @override
   void dispose() {

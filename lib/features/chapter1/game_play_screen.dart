@@ -75,6 +75,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   double _lillianTargetX = 900.0; // 걸어와서 멈출 좌표
   bool _isLillianWalking = false; // 릴리안이 현재 걷는 중인지 여부
   bool _isLillianVisible = false; // 릴리안이 화면에 등장했는지 여부
+  // 릴리안 스프라이트를 좌우 반전할지. lillian_walk.gif 원본은 오른쪽을 보고 있는데,
+  // 등장 연출 두 종류(_triggerLillianWalk, _triggerLillianStairsEntrance) 모두 채온이보다
+  // 오른쪽에서 시작해 왼쪽(채온이 쪽)으로 걸어오므로 등장 트리거 시점에 true로 바뀜.
+  // 예전엔 _isLillianWalking에 그대로 묶어서 걷는 동안만 반전시켰는데, 그러면 도착한 순간
+  // 반전이 풀리면서 방향이 홱 바뀌는 것처럼 보여서 지금은 도착 후에도 계속 true로 유지함
+  bool _isLillianFacingLeft = false;
 
   // 릴리안 두 번째 등장(계단을 올라와 채온이 앞까지 걸어옴)
   late AnimationController _lillianStairsController;
@@ -310,13 +316,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         await Navigator.push(
           context,
           fadeThroughBlackRoute(
-            const TutorialScreen(
+            TutorialScreen(
               initialStep: 2,
               initialPlayerX: 1500,
               initialFacingLeft: true,
               // 마을(튜토리얼)에서 빵집 문으로 다시 들어오면 새 GamePlayScreen을 만들지 않고
               // pop해서 지금 이 화면(대사/이동 진행 상태 그대로)으로 돌아오게 함
               returnToExistingGame: true,
+              // 챕터3 재진입 상태면 마을에서도 채온이가 20% 평상복 스프라이트로 나오게
+              // chapter3Reentry를 그대로 넘겨줌 (안 넘기면 기본값 false라 항상 챕터1 스프라이트로 나왔음)
+              chapter3Reentry: widget.skipChapter1Events,
             ),
           ),
         );
@@ -454,11 +463,23 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     });
   }
 
-  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로와 세로 위치 보정값을 결정.
+  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로와 세로 위치 보정값, 그리고 이 스프라이트가
+  // 표정(override) 때문에 바뀐 건지(true면 PopInImage로 부드럽게, false면 즉시 전환)를 결정.
   // first_bread.json 단계면 chaeonSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle로 복귀),
   // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
   // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
-  (String, double) _resolveChaeonSprite(String? sceneNodeId) {
+  (String, double, bool) _resolveChaeonSprite(String? sceneNodeId) {
+    // 계단 하강 중엔 그 시점 _chaeonState(walk/idle)와 무관하게 항상 한 스프라이트로 고정.
+    // 챕터1은 apron_idle.gif, 챕터3 재진입 모드는 chaeon_20_normal_walk.gif
+    if (_isChaeonDescendingStairs) {
+      return (
+        widget.skipChapter1Events
+            ? 'assets/images/chaeon_20_normal_walk.gif'
+            : 'assets/images/chaeon_apron_idle.gif',
+        0,
+        false,
+      );
+    }
     // 챕터3 재진입 모드는 kitchenApproach 단계로 시작해도 아직 앞치마 입기 전(지하 내려가기 전)
     // 상태라서, 아래 kitchenApproach 앞치마 분기보다 먼저 여기서 20% 평상복 스프라이트로 처리함
     if (widget.skipChapter1Events) {
@@ -467,7 +488,15 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             ? 'assets/images/chaeon_20_normal_walk.gif'
             : 'assets/images/chaeon_20_normal.gif',
         0,
+        false,
       );
+    }
+    // 현재 노드에 chaeonExpression이 있으면(예: table.json의 line_004a2_laugh/line_004a3)
+    // 아래 단계별 기본 로직보다 우선해서 그걸 보여줌
+    final String? chaeonExpressionAsset =
+        _sceneController.sceneDialogue?.nodes[sceneNodeId]?.chaeonExpression?.asset;
+    if (chaeonExpressionAsset != null) {
+      return (chaeonExpressionAsset, 0, true);
     }
     if (_dialoguePhase == DialoguePhase.firstBread) {
       final widgets.ChaeonSpriteOverride? override =
@@ -476,18 +505,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         if (_sceneController.bubbleRevealed) {
           final String? afterReveal = override.afterReveal;
           if (afterReveal != null) {
-            return (afterReveal, override.afterRevealVerticalOffsetPx);
+            return (afterReveal, override.afterRevealVerticalOffsetPx, true);
           }
           // afterReveal이 따로 없으면 기본 idle로 폴백
-          return ('assets/images/chaeon_idle_right.gif', 0);
+          return ('assets/images/chaeon_idle_right.gif', 0, false);
         }
-        return (override.beforeReveal, override.beforeRevealVerticalOffsetPx);
+        return (
+          override.beforeReveal,
+          override.beforeRevealVerticalOffsetPx,
+          true,
+        );
       }
-      return ('assets/images/chaeon_idle_right.gif', 0);
-    }
-    // 계단 하강 중엔 그 시점 _chaeonState(walk/idle)와 무관하게 항상 apron_idle.gif로 고정
-    if (_isChaeonDescendingStairs) {
-      return ('assets/images/chaeon_apron_idle.gif', 0);
+      return ('assets/images/chaeon_idle_right.gif', 0, false);
     }
     // 앞치마 착용 후 주방으로 내려가는 연출 단계(kitchenApproach)에서는, walk 상태면 apron_idle.gif
     // TODO: 나중에 앞치마 입고 걷는 walk 전용 에셋 나오면 _chaeonState 보고 분기하도록 교체할 예정
@@ -497,28 +526,39 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             ? 'assets/images/chaeon_apron_idle.gif'
             : 'assets/images/chaeon_apron_putting_on.gif',
         0,
+        false,
       );
     }
     if (_hasEatenBread) {
-      return ('assets/images/chaeon_holding_bread.png', 0);
+      return ('assets/images/chaeon_holding_bread.png', 0, false);
     }
     return (
       _chaeonState == 'walk'
           ? 'assets/images/chaeon_walk_right.gif'
           : 'assets/images/chaeon_idle_right.gif',
       0,
+      false,
     );
   }
 
   // 현재 씬 노드에 맞춰 릴리안 스프라이트 경로를 결정. 노드에 expression이 있으면 그걸 쓰고,
-  // 없으면 기존처럼 걷는 중인지 여부로 결정
-  String _resolveLillianSprite(String? sceneNodeId) {
+  // 없으면 기존처럼 걷는 중인지 여부로 결정.
+  // 두번째 값은 좌우 반전(_isLillianFacingLeft) 적용 여부: 옆모습 걷기 스프라이트
+  // (lillian_walk.gif)만 반전 대상이고, idle/expression은 전부 정면 구도라 절대 반전 안 함.
+  // 세번째 값은 PopInImage로 페이드할지 여부: walk<->idle 전환에 페이드를 쓰면, 크로스페이드 중
+  // 잠깐 화면에 같이 남아있는 이전 프레임(walk, 반전됨)이 반전 꺼진 상태로 그려져서 순간적으로
+  // "반전됐다가 돌아오는" 것처럼 보이는 문제가 있었음. 그래서 walk/idle 전환은 즉시 스왑(페이드 없음)
+  // 하고, 실제 서사적 표정 변화(expression)에만 페이드를 적용함
+  (String asset, bool shouldFlip, bool isExpression) _resolveLillianSprite(
+    String? sceneNodeId,
+  ) {
     final String? expressionAsset =
         _sceneController.sceneDialogue?.nodes[sceneNodeId]?.expression?.asset;
-    if (expressionAsset != null) return expressionAsset;
-    return _isLillianWalking
-        ? 'assets/images/lillian_walk.gif'
-        : 'assets/images/lillian_idle.gif';
+    if (expressionAsset != null) return (expressionAsset, false, true);
+    if (_isLillianWalking) {
+      return ('assets/images/lillian_walk.gif', true, false);
+    }
+    return ('assets/images/lillian_idle.gif', false, false);
   }
 
   // 짧게 위로 튀었다가 바운스감 있게 제자리로 돌아오는 오프셋 애니메이션 생성
@@ -548,6 +588,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       _isDialogueActive = false; // 대화창 끄기
       _isLillianVisible = true; // 대화가 끝났으니 이제부터 릴리안 등장
       _isLillianWalking = true; // 릴리안 걷기 상태 돌입
+      // lillian_walk.gif 원본은 오른쪽을 보고 있는데, 릴리안은 항상 채온이보다 오른쪽(x=1500)에서
+      // 왼쪽(x=900, 채온이는 x=650)으로 걸어오므로 반전(flip)해야 진행 방향(왼쪽)을 보며 걷고,
+      // 도착 후에도 왼쪽에 있는 채온이를 바라보는 방향과 일치함. 그래서 걷는 중/도착 후 모두 true로 고정
+      // (전에 false로 고정했다가 걷는 방향과 반대로 뒷걸음질 치는 것처럼 보이는 문제가 있었음)
+      _isLillianFacingLeft = true;
 
       // 채온이는 항상 x=650에서 멈추므로, 릴리안의 도착 좌표도 고정값 사용
       _lillianTargetX = 900.0;
@@ -602,6 +647,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       _isLillianSecondEntranceActive = true;
       _isLillianVisible = true;
       _isLillianWalking = true;
+      // 이번에도 계단 꼭대기(x=1680)에서 채온이 앞(chaeonX+280, 채온이보다 오른쪽)까지
+      // 왼쪽으로 걸어오므로, 첫 등장 때와 같은 이유로 반전(왼쪽을 보게) 시켜야 함
+      _isLillianFacingLeft = true;
     });
 
     _lillianStairsController.forward(from: 0);
@@ -756,8 +804,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;
-    final (String chaeonSpriteAsset, double chaeonSpriteVerticalOffsetPx) =
-        _resolveChaeonSprite(sceneNodeId);
+    final (
+      String chaeonSpriteAsset,
+      double chaeonSpriteVerticalOffsetPx,
+      bool isChaeonSpriteExpression,
+    ) = _resolveChaeonSprite(sceneNodeId);
     final DialogueNode? currentSceneNode =
         (sceneDialogue != null && sceneNodeId != null)
         ? sceneDialogue.nodes[sceneNodeId]
@@ -841,12 +892,19 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     ),
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
-                      child: Image.asset(
-                        chaeonSpriteAsset,
-                        width: chaeonDisplaySize,
-                        height: chaeonDisplaySize,
-                        fit: BoxFit.contain,
-                      ),
+                      child: isChaeonSpriteExpression
+                          ? PopInImage(
+                              imagePath: chaeonSpriteAsset,
+                              width: chaeonDisplaySize,
+                              height: chaeonDisplaySize,
+                              fit: BoxFit.contain,
+                            )
+                          : Image.asset(
+                              chaeonSpriteAsset,
+                              width: chaeonDisplaySize,
+                              height: chaeonDisplaySize,
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   ),
                 )
@@ -863,35 +921,60 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     ),
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
-                      child: Image.asset(
-                        chaeonSpriteAsset,
-                        width: chaeonDisplaySize,
-                        height: chaeonDisplaySize,
-                        fit: BoxFit.contain,
-                      ),
+                      child: isChaeonSpriteExpression
+                          ? PopInImage(
+                              imagePath: chaeonSpriteAsset,
+                              width: chaeonDisplaySize,
+                              height: chaeonDisplaySize,
+                              fit: BoxFit.contain,
+                            )
+                          : Image.asset(
+                              chaeonSpriteAsset,
+                              width: chaeonDisplaySize,
+                              height: chaeonDisplaySize,
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   ),
                 ),
 
             // 3층: 릴리안 GIF (먹는 클로즈업 중에는 페이드 없이 즉시 숨김)
             if (_isLillianVisible && !isEatingCloseupActive)
-              Positioned(
-                key: const ValueKey('lillian'),
-                left: renderLillianX,
-                top: lillianTopValue, // 튜토리얼 채온이와 동일한 바닥선 기준
-                height: lillianDisplaySize,
-                child: Transform.translate(
-                  offset: Offset(0, _lillianHopOffset.value),
-                  child: Transform.flip(
-                    flipX: _isLillianWalking,
-                    child: Image.asset(
-                      _resolveLillianSprite(sceneNodeId),
-                      width: lillianDisplaySize,
-                      height: lillianDisplaySize,
-                      fit: BoxFit.contain,
+              Builder(
+                builder: (context) {
+                  final (
+                    String lillianSpriteAsset,
+                    bool shouldApplyLillianFacingFlip,
+                    bool isLillianSpriteExpression,
+                  ) = _resolveLillianSprite(sceneNodeId);
+                  return Positioned(
+                    key: const ValueKey('lillian'),
+                    left: renderLillianX,
+                    top: lillianTopValue, // 튜토리얼 채온이와 동일한 바닥선 기준
+                    height: lillianDisplaySize,
+                    child: Transform.translate(
+                      offset: Offset(0, _lillianHopOffset.value),
+                      child: Transform.flip(
+                        flipX:
+                            shouldApplyLillianFacingFlip &&
+                            _isLillianFacingLeft,
+                        child: isLillianSpriteExpression
+                            ? PopInImage(
+                                imagePath: lillianSpriteAsset,
+                                width: lillianDisplaySize,
+                                height: lillianDisplaySize,
+                                fit: BoxFit.contain,
+                              )
+                            : Image.asset(
+                                lillianSpriteAsset,
+                                width: lillianDisplaySize,
+                                height: lillianDisplaySize,
+                                fit: BoxFit.contain,
+                              ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
 
             // 3-2층: 빵 접시. table.json 대사가 시작되는 시점부터 테이블 상판 위에 표시.

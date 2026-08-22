@@ -77,13 +77,15 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
         height: h,
         child: Stack(
           children: [
-            // 1층: 스토리 일러스트 레이어
-            Align(
-              alignment: const Alignment(0, -0.2),
+            // 1층: 스토리 일러스트 레이어. 다른 화면들(빵만들기, 시계 미니게임 등)과 동일하게
+            // BoxFit.cover로 화면을 항상 빈틈없이 채움. fitWidth를 쓰면 창을 세로로 늘렸을 때
+            // 이미지 원본 비율 때문에 위아래에 빈 공간이 생겼음
+            Positioned.fill(
               child: Image.asset(
                 'assets/images/${currentData["image"]}',
-                width: rW(350),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
               ),
             ),
 
@@ -93,8 +95,8 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
               left: 0,
               right: 0,
               child: Container(
-                height: rH(100),
-                color: Colors.black.withOpacity(0.8), // 대사창 가독성을 위한 반투명 박스
+                height: rH(80),
+                color: Colors.black.withOpacity(0.6), // 대사창 가독성을 위한 반투명 박스
                 padding: EdgeInsets.symmetric(
                   horizontal: rW(50),
                   vertical: rH(20),
@@ -107,10 +109,12 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
                     Expanded(
                       child: Text(
                         currentData["text"]!,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: rW(16),
+                          fontSize: rW(18),
                           fontWeight: FontWeight.w400,
+                          fontFamily: 'SCDream',
                         ),
                       ),
                     ),

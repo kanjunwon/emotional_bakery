@@ -18,12 +18,14 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "이렇게...?",
+      "expression": "assets/images/chaeon_20_smile_left.png",
       "next": "line_004"
     },
     "line_004": {
       "type": "line",
       "speaker": "chaeon",
       "text": "아니면 이렇게...?",
+      "expression": "assets/images/chaeon_20_smile_right.png",
       "next": "line_005"
     },
     "line_005": {

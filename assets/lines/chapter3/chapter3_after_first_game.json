@@ -74,16 +74,6 @@
       "type": "line",
       "speaker": "chaeon",
       "text": ".....먹어볼게요.",
-      "next": "line_014"
-    },
-    "line_014": {
-      "type": "line",
-      "speaker": "chaeon",
-      "expression": {
-        "asset": "assets/images/chaeon_emotion_0to100.gif",
-        "durationMs": 1000,
-        "autoAdvance": true
-      },
       "next": "null"
     }
   }

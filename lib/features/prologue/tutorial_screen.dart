@@ -204,10 +204,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       child: Transform.flip(
                         flipX: _isLookingLeft, // true일 때 이미지 반전
                         child: Image.asset(
-                          // 오른쪽 에셋 2개만 가지고 walk와 idle을 스위칭함
-                          _currentAction == 'walk'
-                              ? 'assets/images/chaeon_walk_right.gif'
-                              : 'assets/images/chaeon_idle_right.gif',
+                          // 오른쪽 에셋 2개만 가지고 walk와 idle을 스위칭함.
+                          // 챕터3 재진입(chapter3Reentry)일 때는 20% 상태 에셋을 씀
+                          widget.chapter3Reentry
+                              ? (_currentAction == 'walk'
+                                    ? 'assets/images/chaeon_20_normal_walk.gif'
+                                    : 'assets/images/chaeon_20_normal.gif')
+                              : (_currentAction == 'walk'
+                                    ? 'assets/images/chaeon_walk_right.gif'
+                                    : 'assets/images/chaeon_idle_right.gif'),
                           // 챕터1의 채온이(172 * zoom, zoom = h/402)와 동일한 크기 공식
                           width: zW(172),
                           height: rH(172),

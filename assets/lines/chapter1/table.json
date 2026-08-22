@@ -83,6 +83,18 @@
       "speaker": "lillian",
       "text":"! 한 번에 다 먹으면 안 돼요! 무리하지 말... 아...",
       "expression": "assets/images/lillian_surprise.png",
+      "next": "line_004a2_laugh"
+    },
+
+    "line_004a2_laugh": {
+      "type": "line",
+      "speaker": "chaeon",
+      "expression": {
+        "asset": "assets/images/lillian_surprise.png",
+        "durationMs": 1900,
+        "autoAdvance": true
+      },
+      "chaeonExpression": "assets/images/chaeon_laughing.gif",
       "next": "line_004a3"
     },
 
@@ -92,6 +104,7 @@
       "text": "어, 어라... 어... 하하... 하하하!!!!! 안 멈춰요!",
       "effect": { "temperature": -1 },
       "expression": "assets/images/lillian_surprise.png",
+      "chaeonExpression": "assets/images/chaeon_laughing.png",
       "next": "line_004a4"
     },
     "line_004a4": {
