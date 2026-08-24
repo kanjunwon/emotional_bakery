@@ -42,10 +42,14 @@ class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
   // 챕터3 재진입 모드: true면 가이드 대사/table.json/first_bread.json 단계를 전부 건너뛰고,
   final bool skipChapter1Events;
+  // 챕터3 재진입 시 방/골목길에서 이어받아 온도계에 표시할 시작 온도.
+  // chaeon_room_screen.dart처럼 이전 화면의 _sceneController.temperature를 그대로 넘겨받음
+  final int initialTemperature;
   const GamePlayScreen({
     super.key,
     this.isPrologue = false,
     this.skipChapter1Events = false,
+    this.initialTemperature = 3,
   });
 
   @override
@@ -135,6 +139,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     }
 
     _sceneController = SceneDialogueController(
+      initialTemperature: widget.initialTemperature,
       onDialogueEnd: () {
         switch (_dialoguePhase) {
           case DialoguePhase.firstMeet:
@@ -326,6 +331,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               // 챕터3 재진입 상태면 마을에서도 채온이가 20% 평상복 스프라이트로 나오게
               // chapter3Reentry를 그대로 넘겨줌 (안 넘기면 기본값 false라 항상 챕터1 스프라이트로 나왔음)
               chapter3Reentry: widget.skipChapter1Events,
+              // 온도계 값도 이어받아서 마을에서 표시되는 온도가 끊기지 않게 함
+              initialTemperature: _sceneController.temperature,
             ),
           ),
         );
@@ -463,8 +470,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     });
   }
 
-  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로와 세로 위치 보정값, 그리고 이 스프라이트가
-  // 표정(override) 때문에 바뀐 건지(true면 PopInImage로 부드럽게, false면 즉시 전환)를 결정.
+  // 현재 씬 노드에 맞춰 채온이 스프라이트 경로와 세로 위치 보정값, 그리고 이 스프라이트
+  // 전환에 PopInImage 페이드(50ms)를 걸지(true) 즉시 전환(false, duration: Duration.zero)할지를
+  // 결정. 렌더링은 항상 PopInImage 하나로 통일돼있고, chaeonExpression이어도
+  // widgets.chaeonEatingSprites(빵 먹는 진행 단계 GIF)면 false를 반환해 페이드 없이 즉시
+  // 전환됨(자세 차이가 커서 페이드가 어색해 보임).
   // first_bread.json 단계면 chaeonSpriteOverrides부터 확인하고(해당 노드 아니면 기본 idle로 복귀),
   // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
   // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
@@ -496,7 +506,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     final String? chaeonExpressionAsset =
         _sceneController.sceneDialogue?.nodes[sceneNodeId]?.chaeonExpression?.asset;
     if (chaeonExpressionAsset != null) {
-      return (chaeonExpressionAsset, 0, true);
+      // widgets.chaeonEatingSprites(빵 먹는 진행 단계 GIF, 0%->20%->50%->80%)로 바뀔 땐
+      // 자세 차이가 커서 크로스페이드가 어색해 보이므로 페이드 없이 즉시 전환함
+      final bool shouldFade = !widgets.chaeonEatingSprites.contains(
+        chaeonExpressionAsset,
+      );
+      return (chaeonExpressionAsset, 0, shouldFade);
     }
     if (_dialoguePhase == DialoguePhase.firstBread) {
       final widgets.ChaeonSpriteOverride? override =
@@ -545,10 +560,13 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 없으면 기존처럼 걷는 중인지 여부로 결정.
   // 두번째 값은 좌우 반전(_isLillianFacingLeft) 적용 여부: 옆모습 걷기 스프라이트
   // (lillian_walk.gif)만 반전 대상이고, idle/expression은 전부 정면 구도라 절대 반전 안 함.
-  // 세번째 값은 PopInImage로 페이드할지 여부: walk<->idle 전환에 페이드를 쓰면, 크로스페이드 중
-  // 잠깐 화면에 같이 남아있는 이전 프레임(walk, 반전됨)이 반전 꺼진 상태로 그려져서 순간적으로
-  // "반전됐다가 돌아오는" 것처럼 보이는 문제가 있었음. 그래서 walk/idle 전환은 즉시 스왑(페이드 없음)
-  // 하고, 실제 서사적 표정 변화(expression)에만 페이드를 적용함
+  // 세번째 값은 PopInImage로 페이드할지 여부(렌더링에서 이 값에 따라 PopInImage/Image.asset
+  // 위젯 자체를 다르게 씀): walk<->idle 전환에 PopInImage(크로스페이드)를 쓰면, duration을
+  // 0으로 줘도 전환 시작 프레임에서 이전 이미지(walk, 반전됨)가 바깥쪽 Transform.flip의
+  // 새 상태(반전 안 함)를 물려받아 순간적으로 "반전됐다가 돌아오는" 것처럼 보이는 문제가
+  // 있었음(duration과 무관하게 PopInImage 구조상 피할 수 없음, 실제로 재현됨). 그래서
+  // walk/idle 전환은 Image.asset으로 즉시 스왑(크로스페이드 위젯 자체를 안 씀)하고, 실제
+  // 서사적 표정 변화(expression)에만 PopInImage 페이드를 적용함
   (String asset, bool shouldFlip, bool isExpression) _resolveLillianSprite(
     String? sceneNodeId,
   ) {
@@ -892,19 +910,24 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     ),
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
-                      child: isChaeonSpriteExpression
-                          ? PopInImage(
-                              imagePath: chaeonSpriteAsset,
-                              width: chaeonDisplaySize,
-                              height: chaeonDisplaySize,
-                              fit: BoxFit.contain,
-                            )
-                          : Image.asset(
-                              chaeonSpriteAsset,
-                              width: chaeonDisplaySize,
-                              height: chaeonDisplaySize,
-                              fit: BoxFit.contain,
-                            ),
+                      // 릴리안(_resolveLillianSprite)과 달리 예전엔 표정(expression)일 때만
+                      // PopInImage, 아니면 Image.asset으로 위젯 타입 자체가 바뀌었음. 위젯
+                      // 타입이 바뀌면 Flutter가 이전 PopInImage를 버리고 새로 만들어서,
+                      // 표정으로 처음 들어가는 순간 크로스페이드 없이 뚝 튀어 나타나는 문제가
+                      // 있었음(kitchen_screen.dart의 채온이 스프라이트에서 고친 것과 동일한
+                      // 문제). 이제 항상 PopInImage 하나로 그리고, duration으로 표정
+                      // 전환(페이드)과 걷기/idle 전환(즉시)을 구분함
+                      child: PopInImage(
+                        imagePath: chaeonSpriteAsset,
+                        width: chaeonDisplaySize,
+                        height: chaeonDisplaySize,
+                        fit: BoxFit.contain,
+                        // 120ms는 팔을 내린/올린 자세처럼 포즈 차이가 큰 표정 사이에서
+                        // 크로스페이드가 눈에 띄게 느적거려 보여서 50ms로 줄임
+                        duration: isChaeonSpriteExpression
+                            ? const Duration(milliseconds: 50)
+                            : Duration.zero,
+                      ),
                     ),
                   ),
                 )
@@ -921,19 +944,24 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     ),
                     child: Transform.flip(
                       flipX: !_isChaeonFacingRight,
-                      child: isChaeonSpriteExpression
-                          ? PopInImage(
-                              imagePath: chaeonSpriteAsset,
-                              width: chaeonDisplaySize,
-                              height: chaeonDisplaySize,
-                              fit: BoxFit.contain,
-                            )
-                          : Image.asset(
-                              chaeonSpriteAsset,
-                              width: chaeonDisplaySize,
-                              height: chaeonDisplaySize,
-                              fit: BoxFit.contain,
-                            ),
+                      // 릴리안(_resolveLillianSprite)과 달리 예전엔 표정(expression)일 때만
+                      // PopInImage, 아니면 Image.asset으로 위젯 타입 자체가 바뀌었음. 위젯
+                      // 타입이 바뀌면 Flutter가 이전 PopInImage를 버리고 새로 만들어서,
+                      // 표정으로 처음 들어가는 순간 크로스페이드 없이 뚝 튀어 나타나는 문제가
+                      // 있었음(kitchen_screen.dart의 채온이 스프라이트에서 고친 것과 동일한
+                      // 문제). 이제 항상 PopInImage 하나로 그리고, duration으로 표정
+                      // 전환(페이드)과 걷기/idle 전환(즉시)을 구분함
+                      child: PopInImage(
+                        imagePath: chaeonSpriteAsset,
+                        width: chaeonDisplaySize,
+                        height: chaeonDisplaySize,
+                        fit: BoxFit.contain,
+                        // 120ms는 팔을 내린/올린 자세처럼 포즈 차이가 큰 표정 사이에서
+                        // 크로스페이드가 눈에 띄게 느적거려 보여서 50ms로 줄임
+                        duration: isChaeonSpriteExpression
+                            ? const Duration(milliseconds: 50)
+                            : Duration.zero,
+                      ),
                     ),
                   ),
                 ),
@@ -958,6 +986,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                         flipX:
                             shouldApplyLillianFacingFlip &&
                             _isLillianFacingLeft,
+                        // "항상 PopInImage + duration: Duration.zero" 시도는 실제로
+                        // 반전 버그가 재발해서 되돌림: PopInImage는 전환 시작 순간
+                        // _previousPath(이전 이미지)를 최소 1프레임 붙들고 있는데, 그
+                        // 프레임에서 바깥쪽 Transform.flip은 이미 새 상태(반전 안 함)로
+                        // 넘어가 있어서, duration이 0이어도 "이전 프레임이 새 반전 상태를
+                        // 물려받는" 순간 자체는 피할 수 없었음. 그래서 walk<->idle 전환은
+                        // 다시 Image.asset으로 즉시 스왑(크로스페이드 위젯 자체를 안 씀)하고,
+                        // 실제 표정 변화에만 PopInImage 크로스페이드를 적용함
                         child: isLillianSpriteExpression
                             ? PopInImage(
                                 imagePath: lillianSpriteAsset,
@@ -994,7 +1030,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               ),
 
             // 4층: 온도계 (먹는 클로즈업 중에는 페이드 없이 즉시 숨김)
-            if (_isGuidePhaseStarted &&
+            // skipChapter1Events(챕터3 재진입) 모드는 x=650 가이드 대사를 거치지 않아
+            // _isGuidePhaseStarted가 계속 false로 남으므로 dpad와 동일하게 별도 분기
+            if ((widget.skipChapter1Events || _isGuidePhaseStarted) &&
                 !(_isDialogueActive && _dialogueStep == 0) &&
                 !isEatingCloseupActive)
               widgets.buildThermometer(
@@ -1214,7 +1252,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
             // 14층: 뒤로가기 버튼 (가이드 대사/선택지 중엔 4-3층 흐릿한 버튼이 대신 나오므로 여기선 안 그림)
             // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
-            if (_isGuidePhaseStarted &&
+            // skipChapter1Events(챕터3 재진입) 모드는 _isGuidePhaseStarted가 false로 남으므로 별도 분기
+            if ((widget.skipChapter1Events || _isGuidePhaseStarted) &&
                 !_isDialogueActive &&
                 !isEatingCloseupActive)
               widgets.buildBackButton(
@@ -1239,7 +1278,8 @@ class _GamePlayScreenState extends State<GamePlayScreen>
 
             // 16층: 설정(옵션) 버튼. 15층 안내 배지보다 위에 있어야 배지가 버튼에 안 가려짐
             // 먹는 클로즈업 중에는 페이드 없이 즉시 숨김
-            if (_isGuidePhaseStarted &&
+            // skipChapter1Events(챕터3 재진입) 모드는 _isGuidePhaseStarted가 false로 남으므로 별도 분기
+            if ((widget.skipChapter1Events || _isGuidePhaseStarted) &&
                 !_isDialogueActive &&
                 !isEatingCloseupActive)
               widgets.buildSettingButton(

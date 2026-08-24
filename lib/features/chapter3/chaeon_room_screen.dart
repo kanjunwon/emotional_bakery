@@ -37,11 +37,6 @@ const double kRoomDoorHeight = 250;
 // tutorial_screen.dart의 빵집 문 isNearDoor 체크랑 동일한 패턴. 임시 값, 문 위치 확정되면 같이 조정 필요
 const double kRoomDoorNearMinX = 620;
 const double kRoomDoorNearMaxX = 700;
-// 캐릭터 크기 보정 배수. worldScale이 456 기준으로 계산되는데, 빵집(game_play_screen.dart)의
-// zoom은 402 기준(h/402)이라 같은 "172"를 써도 이 화면 쪽이 더 작게 렌더링됨.
-// kitchen_screen.dart의 kKitchenCharacterSizeCorrection과 동일한 목적
-const double kRoomCharacterSizeCorrection = 456 / 402;
-
 class ChaeonRoomScreen extends StatefulWidget {
   const ChaeonRoomScreen({super.key, this.initialTemperature = 3});
 
@@ -144,7 +139,11 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     Navigator.push(
       context,
       fadeThroughBlackRoute(
-        const TutorialScreen(initialStep: 2, chapter3Reentry: true),
+        TutorialScreen(
+          initialStep: 2,
+          chapter3Reentry: true,
+          initialTemperature: _sceneController.temperature,
+        ),
       ),
     );
   }
@@ -178,11 +177,16 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     double wX(double px) => worldOffsetX + px * worldScale;
     double wY(double px) => worldOffsetY + px * worldScale;
     double wSize(double px) => px * worldScale;
-    // 채온이 전용 크기: 빵집과 최종 픽셀 크기가 같아 보이도록 kRoomCharacterSizeCorrection만큼
-    // 추가로 키움. top은 그대로 두면 커진 만큼 발이 바닥 아래로 파고들어 보이므로, 늘어난 높이의
-    // 절반만큼 위로 당겨서 발 위치가 원래 자리에 맞도록 보정함 (kitchen_screen.dart와 동일 패턴)
-    final double characterSize = wSize(172) * kRoomCharacterSizeCorrection;
-    final double characterTopShift = (characterSize - wSize(172)) / 2;
+    // 채온이 전용 크기: 배경(room_bg.png)을 채우는 worldScale이 아니라 game_play_screen.dart
+    // (빵집)와 동일하게 화면 높이에만 비례하는 rH를 그대로 씀. worldScale을 쓰면 화면 비율에
+    // 따라 가로 기준으로 걸릴 때(가로가 넓은 화면) 빵집보다 채온이가 더 크게 보이는 문제가
+    // 있었음(kitchen_screen.dart에서 고친 것과 동일한 문제). kChaeonRoomTopY는 캐릭터가
+    // wSize(172) 크기로 그려질 때를 기준으로 맞춰둔 발(바닥) 위치라서, characterSize가
+    // 그보다 커지거나 작아진 만큼 top을 위/아래로 당겨야 발이 바닥에 그대로 붙어 보임.
+    // 차이의 "절반"만 당기면 발이 계속 뜨거나 파고들어 보이므로(세로 중심만 맞고 발
+    // 위치는 안 맞음), 차이 전체를 당겨야 함
+    final double characterSize = rH(172);
+    final double characterTopShift = characterSize - wSize(172);
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;

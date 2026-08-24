@@ -1,6 +1,8 @@
 // lib/core/widgets/shared_ui.dart
 // 튜토리얼/챕터1 화면에서 같이 쓰는 대사창, 가상 패드 버튼 공용 위젯
 
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 // 페이드아웃 300ms -> 완전 검은 화면 유지 1000ms -> 페이드인 300ms, 총 1600ms
@@ -58,6 +60,181 @@ PageRouteBuilder fadeThroughBlackRoute(Widget page) {
 // 늘어나는 중앙 영역으로 취급돼서 두께가 들쑥날쑥해짐)
 const Rect tutorialDialogueBoxCenterSlice = Rect.fromLTRB(31, 31, 1088, 252);
 
+// ScaledNineSliceImage 테두리 두께 공식: dst = 원본두께(31px 등) * kDialogueBoxBorderThicknessRatio
+// * scale(화면 배율). "scale이 1.0 넘으면 원본으로 고정" 같은 클램프를 예전엔 뒀었는데,
+// 그러면 기준 해상도(874x402) 바로 위(예: 896x414)에서 배율이 1.0에 걸려 갑자기
+// "원본 그대로"로 튀어버리고, 바로 아래(예: 667x375)에서만 매끄럽게 얇아지는 부자연스러운
+// 경계가 생겼음(896x414이 667x375보다 살짝만 큰데 테두리는 3배 가까이 두꺼워짐). 그래서
+// 클램프 없이 모든 해상도에서 똑같이 선형으로 스케일하고, 절대적인 두께 자체가 다른 UI
+// 요소(패딩 rW(20), 글자 rW(13) 등)에 비해 너무 두꺼웠던 것을 이 비율로 낮춤. 값은
+// "667x375에서 의도한 대로 보인다"는 피드백을 기준으로 역산한 값(0.763배율일 때
+// 31*0.45*0.763≈10.6px가 되도록). 여전히 두껍거나 얇으면 이 숫자만 조정하면 됨
+const double kDialogueBoxBorderThicknessRatio = 0.45;
+
+// Flutter의 DecorationImage(centerSlice: ...) / drawImageNine은 모서리(테두리) 영역을
+// 항상 "원본 이미지 픽셀 크기 그대로" 그리고, 상자가 커지거나 작아져도 그 두께가 화면
+// 배율(rW/rH)에 맞춰 얇아지지 않는다(가운데 영역만 늘어남). 그래서 화면이 작아져서
+// 상자 전체가 작아져도 테두리는 그대로라 상대적으로 두꺼워 보이는 문제가 있었음. 이
+// 위젯은 9개 조각을 직접 canvas.drawImageRect로 그려서, 테두리 두께(destLeft/Right/
+// Top/Bottom)를 화면 배율에 맞춰 클램프 없이 선형으로 스케일함(자세한 설명은
+// kDialogueBoxBorderThicknessRatio 주석 참고)
+class ScaledNineSliceImage extends StatefulWidget {
+  const ScaledNineSliceImage({
+    super.key,
+    required this.imagePath,
+    required this.sourceCenterSlice,
+    required this.scaleX,
+    required this.scaleY,
+  });
+
+  final String imagePath;
+  // 9-slice 기준 영역. 원본 이미지 픽셀 좌표
+  final Rect sourceCenterSlice;
+  // 테두리 두께에 곱할 배율(가로/세로 따로). rW(1)/rH(1)을 넘기면 다른 UI 요소와 동일한
+  // 기준으로 스케일됨
+  final double scaleX;
+  final double scaleY;
+
+  @override
+  State<ScaledNineSliceImage> createState() => _ScaledNineSliceImageState();
+}
+
+class _ScaledNineSliceImageState extends State<ScaledNineSliceImage> {
+  ui.Image? _image;
+  ImageStream? _imageStream;
+  late ImageStreamListener _imageStreamListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageStreamListener = ImageStreamListener((info, _) {
+      if (mounted) setState(() => _image = info.image);
+    });
+    _resolveImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant ScaledNineSliceImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imagePath != widget.imagePath) _resolveImage();
+  }
+
+  void _resolveImage() {
+    _imageStream?.removeListener(_imageStreamListener);
+    _imageStream = AssetImage(
+      widget.imagePath,
+    ).resolve(const ImageConfiguration());
+    _imageStream!.addListener(_imageStreamListener);
+  }
+
+  @override
+  void dispose() {
+    _imageStream?.removeListener(_imageStreamListener);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ui.Image? image = _image;
+    if (image == null) return const SizedBox.shrink();
+    return CustomPaint(
+      painter: _NineSlicePainter(
+        image: image,
+        centerSlice: widget.sourceCenterSlice,
+        scaleX: widget.scaleX,
+        scaleY: widget.scaleY,
+      ),
+    );
+  }
+}
+
+class _NineSlicePainter extends CustomPainter {
+  _NineSlicePainter({
+    required this.image,
+    required this.centerSlice,
+    required this.scaleX,
+    required this.scaleY,
+  });
+
+  final ui.Image image;
+  final Rect centerSlice;
+  final double scaleX;
+  final double scaleY;
+
+  // 인접한 조각끼리 이 값만큼(destination 기준) 살짝 겹치게 그려서, 서브픽셀 반올림으로
+  // 생기는 1px 미만의 이음새 틈을 메움. 조각 하나하나가 이만큼 더 넓게 그려질 뿐이라
+  // 육안으로는 안 보임
+  static const double _seamBleed = 0.75;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double srcW = image.width.toDouble();
+    final double srcH = image.height.toDouble();
+    final double leftSrc = centerSlice.left;
+    final double topSrc = centerSlice.top;
+    final double rightSrc = srcW - centerSlice.right;
+    final double bottomSrc = srcH - centerSlice.bottom;
+
+    // 테두리 두께 = 원본두께 * kDialogueBoxBorderThicknessRatio * scale. 클램프나 지수
+    // 없이 모든 해상도에서 동일하게 선형 스케일(자세한 설명은 파일 상단
+    // kDialogueBoxBorderThicknessRatio 주석 참고). scaleX/scaleY를 각각 따로 쓰면 화면
+    // 비율이 874:402(기준 캔버스 비율)랑 다를 때 좌우/상하 테두리 두께가 서로 많이
+    // 달라져서 비대칭으로 이상하게 보이므로, 둘 중 더 작은 쪽(min) 하나로 통일해서
+    // 네 변 전부 같은 두께로 그림
+    final double scale =
+        math.min(scaleX, scaleY) * kDialogueBoxBorderThicknessRatio;
+    final double leftDst = (leftSrc * scale).clamp(0.0, size.width / 2);
+    final double rightDst = (rightSrc * scale).clamp(0.0, size.width / 2);
+    final double topDst = (topSrc * scale).clamp(0.0, size.height / 2);
+    final double bottomDst = (bottomSrc * scale).clamp(0.0, size.height / 2);
+
+    final List<double> srcXs = [0, leftSrc, centerSlice.right, srcW];
+    final List<double> srcYs = [0, topSrc, centerSlice.bottom, srcH];
+    final List<double> dstXs = [0, leftDst, size.width - rightDst, size.width];
+    final List<double> dstYs = [
+      0,
+      topDst,
+      size.height - bottomDst,
+      size.height,
+    ];
+
+    // FilterQuality.medium(이중선형 보간)을 쓰면 조각과 조각이 맞닿는 경계에서 인접
+    // 조각의 픽셀이 살짝 섞여 들어와 가느다란 이음새 선이 보이는 문제가 있었음.
+    // FilterQuality.none(최근접 샘플링)으로 바꾸면 각 조각이 자기 영역 밖 픽셀을
+    // 절대 참조하지 않아서 필터링으로 인한 이음새는 안 생김(다만 서브픽셀 반올림으로
+    // 인한 1px 미만 틈은 별도로 _seamBleed가 메워줌)
+    final Paint paint = Paint()..filterQuality = FilterQuality.none;
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        final Rect src = Rect.fromLTRB(
+          srcXs[col],
+          srcYs[row],
+          srcXs[col + 1],
+          srcYs[row + 1],
+        );
+        // 바깥쪽 가장자리(0 또는 size)는 그대로 두고, 다른 조각과 맞닿는 안쪽 경계만
+        // bleed만큼 늘려서 겹치게 함
+        final double left = dstXs[col] - (col > 0 ? _seamBleed : 0);
+        final double top = dstYs[row] - (row > 0 ? _seamBleed : 0);
+        final double right = dstXs[col + 1] + (col < 2 ? _seamBleed : 0);
+        final double bottom = dstYs[row + 1] + (row < 2 ? _seamBleed : 0);
+        final Rect dst = Rect.fromLTRB(left, top, right, bottom);
+        if (src.width <= 0 || src.height <= 0) continue;
+        if (dst.width <= 0 || dst.height <= 0) continue;
+        canvas.drawImageRect(image, src, dst, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _NineSlicePainter oldDelegate) {
+    return oldDelegate.image != image ||
+        oldDelegate.centerSlice != centerSlice ||
+        oldDelegate.scaleX != scaleX ||
+        oldDelegate.scaleY != scaleY;
+  }
+}
+
 // 대사창 텍스트 공통 스타일
 TextStyle dialogueTextStyle(double Function(double) rW) {
   return TextStyle(
@@ -84,42 +261,64 @@ class DialogueBoxFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 배경(9-slice)은 바깥 Stack에 Positioned.fill로만 얹고, 텍스트/화살표/패딩 구조는
+    // 예전(centerSlice 직접 쓰던 시절) Container(padding:, decoration:, child: Stack(...))
+    // 그대로 유지함. 예전엔 IntrinsicWidth가 "Container(네이티브 padding 포함)"의 고유
+    // 너비를 기준으로 상자 크기를 정했는데, 배경 분리 작업 때 padding을 별도 Padding
+    // 위젯 + 중첩 Stack으로 바꿨더니 상자 크기 계산이 미묘하게 달라져서 화살표가
+    // 마지막 글자 옆이 아니라 상자 가운데 쪽으로 어긋나 보이는 해상도가 생겼음. 지금처럼
+    // "Container가 네이티브 padding으로 직접 크기를 정하고, 배경은 그 바깥 Stack에서
+    // Positioned.fill로 크기만 따라감" 구조로 두면 크기 계산 기준이 예전과 완전히 같아짐
     return IntrinsicWidth(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: rW(20), vertical: rH(15)),
-        constraints: BoxConstraints(
-          minWidth: rW(180),
-          maxWidth: rW(500),
-          minHeight: rH(70),
-        ),
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/tutorial_dialogue_box.png'),
-            fit: BoxFit.fill,
-            centerSlice: tutorialDialogueBoxCenterSlice,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: ScaledNineSliceImage(
+              imagePath: 'assets/images/tutorial_dialogue_box.png',
+              sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+              scaleX: rW(1),
+              scaleY: rH(1),
+            ),
           ),
-        ),
-        // 텍스트와 화살표를 겹치지 않게 배치
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // 텍스트 위젯
-            Padding(
-              padding: EdgeInsets.fromLTRB(rW(20), 0, rW(20), 0),
-              child: textWidget,
+          Container(
+            // 세로 패딩/minHeight도 rW 기준으로 씀. 글자 크기(fontSize: rW(13))와 상자
+            // 너비가 전부 rW(화면 가로 기준)로 스케일되는데, 세로 패딩/minHeight만 rH
+            // (화면 세로 기준)를 쓰면 화면 비율이 기준 캔버스(874x402)와 많이 다를 때
+            // (예: 태블릿처럼 가로 대비 세로가 긴 화면) 글자 크기는 그대로인데
+            // minHeight만 훨씬 커져서 상자가 글자에 비해 과도하게 높아 보이는 문제가
+            // 있었음. 전부 rW로 통일하면 글자/패딩/최소너비/최소높이가 항상 같은
+            // 비율로 같이 커지고 작아짐
+            padding: EdgeInsets.symmetric(horizontal: rW(20), vertical: rW(19)),
+            constraints: BoxConstraints(
+              minWidth: rW(180),
+              maxWidth: rW(500),
+              minHeight: rW(70),
             ),
-            Positioned(
-              right: rW(0),
-              bottom: rH(7),
-              child: Image.asset(
-                'assets/images/tutorial_arrow.png',
-                width: rW(12),
-                height: rH(10),
-                fit: BoxFit.contain,
-              ),
+            // 텍스트와 화살표를 겹치지 않게 배치
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 텍스트 위젯
+                Padding(
+                  padding: EdgeInsets.fromLTRB(rW(20), 0, rW(20), 0),
+                  child: textWidget,
+                ),
+                Positioned(
+                  right: rW(0),
+                  // 세로 위치/크기도 rW 기준으로 통일(위 padding/minHeight랑 동일한 이유)
+                  bottom: rW(7),
+                  child: Image.asset(
+                    'assets/images/tutorial_arrow.png',
+                    width: rW(12),
+                    height: rW(10),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -236,6 +435,11 @@ class _PopInImageState extends State<PopInImage>
   void didUpdateWidget(covariant PopInImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.imagePath != _currentPath) {
+      // duration은 initState에서 한 번만 넘겨지는 게 아니라 매 전환마다 새로 반영해야
+      // 함(예: kitchen_screen.dart의 채온이 스프라이트처럼 "표정 전환은 페이드,
+      // 걷기/정지 전환은 즉시"를 같은 PopInImage 하나로 표현하려고 duration을 상황에
+      // 따라 다르게 넘기는 경우)
+      _controller.duration = widget.duration;
       setState(() {
         _previousPath = _currentPath;
         _currentPath = widget.imagePath;

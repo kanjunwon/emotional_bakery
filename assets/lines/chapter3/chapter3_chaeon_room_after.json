@@ -26,7 +26,7 @@
     "line_005": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "빵을 더 만들고 싶어요... ",
+      "text": "빵을 더 만들고 싶어요...",
       "next": "line_006"
     },
     "line_006": {
@@ -56,7 +56,7 @@
     "line_009a2": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "물건이 사라지는게 아쉬워서...",
+      "text": "물건이 사라지는 게 아쉬워서...",
       "next": "line_009a3"
     },
     "line_009a3": {
@@ -99,7 +99,7 @@
     "line_012": {
       "type": "line",
       "speaker": "lillian",
-      "text": "용기와 희생이 필요한 일이지만, 분명 도움이 될 거에요.",
+      "text": "용기와 희생이 필요한 일이지만, 분명 도움이 될 거예요.",
       "expression": "assets/images/lillian_happy.png",
       "next": "line_013"
     },
@@ -112,7 +112,7 @@
     "line_016": {
       "type": "line",
       "speaker": "lillian",
-      "text": "이번엔 어떤 추억의 물건을 넣을 거예요?",
+      "text": "이번엔 어떤 추억을 넣을 거예요?",
       "next": "line_017"
     },
     "line_017": {

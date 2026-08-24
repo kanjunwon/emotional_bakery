@@ -52,7 +52,7 @@
     "line_002c2": {
       "type": "line",
       "speaker": "lillian",
-      "text": "어떤걸요?",
+      "text": "어떤 걸요?",
       "next": "line_002c3"
     },
     "line_002a3": {
@@ -65,6 +65,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "네, 엄마가 선물해 준 연필이에요.",
+      "effect": { "temperature": 1 },
       "next": "line_002b4"
     },
     "line_002c3": {
@@ -75,7 +76,7 @@
     },
     "line_002a4": {
       "type": "line",
-      "speaker": "chaeon",
+      "speaker": "chaeon", 
       "text": "그런...",
       "next": "line_002a5"
     },
@@ -89,6 +90,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "대체 어떤 걸 버려야 하는지...",
+      "effect": { "temperature": -1 },
       "next": "line_002c5"
     },
     "line_002a5": {
@@ -216,7 +218,6 @@
       "type": "line",
       "speaker": "lillian",
       "text": "흠~ 혹시 그 연필로 무언가 썼던 것은 없나요?",
-      "effect": { "temperature": 1 },
       "next": "line_002b12"
     },
     "line_002c11": {

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'dart:async'; // 연속 이동 (화살표 꾹 누르기)
 import '../chapter1/game_play_screen.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
+    as widgets;
 
 // 마을 상호작용 구역 하나 (1~4번 집, 빵집 문)
 class _HouseZone {
@@ -106,6 +108,9 @@ class TutorialScreen extends StatefulWidget {
   // true면 챕터3 채온이 방에서 나와 골목길을 거쳐 온 경우라는 뜻. 이땐 빵집 문으로 들어갈 때
   // GamePlayScreen을 skipChapter1Events 모드로 켜서 push함 (챕터1 이벤트 다 건너뛰고 계단으로 직행)
   final bool chapter3Reentry;
+  // 챕터3 재진입 시 방/이전 화면에서 이어받아 온도계에 표시할 시작 온도.
+  // chapter3Reentry일 때만 온도계 자체가 노출되므로 그 외에는 쓰이지 않음
+  final int initialTemperature;
   const TutorialScreen({
     super.key,
     this.initialStep = 0,
@@ -113,6 +118,7 @@ class TutorialScreen extends StatefulWidget {
     this.initialFacingLeft = false,
     this.returnToExistingGame = false,
     this.chapter3Reentry = false,
+    this.initialTemperature = 3,
   });
 
   @override
@@ -131,6 +137,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
   Timer? _moveTimer;
   String _currentAction = 'idle';
   late bool _isLookingLeft = widget.initialFacingLeft; // 왼쪽인지 확인 여부
+  bool _isSettingOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -223,6 +230,30 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   ],
                 ),
               ),
+
+              // 1-1층: 온도계/뒤로가기/설정 버튼. 챕터3 재진입(chapter3Reentry)일 때만 노출.
+              // 원래 프롤로그 튜토리얼(첫 플레이)에서는 온도/대사 진행 상태 자체가 없어서 의미가 없음
+              if (widget.chapter3Reentry) ...[
+                widgets.buildThermometer(
+                  key: 'tutorial_thermometer',
+                  rW: rW,
+                  rH: rH,
+                  temperature: widget.initialTemperature,
+                  temperatureChangeText: null,
+                ),
+                widgets.buildBackButton(
+                  key: 'tutorial_back',
+                  rW: rW,
+                  rH: rH,
+                  onTap: () => Navigator.pop(context),
+                ),
+                widgets.buildSettingButton(
+                  key: 'tutorial_setting',
+                  rW: rW,
+                  rH: rH,
+                  onTap: () => setState(() => _isSettingOpen = true),
+                ),
+              ],
 
               // 2층: 가상 패드 및 유동 대사창 UI 레이어
               Positioned(
@@ -377,6 +408,68 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   rW: rW,
                   rH: rH,
                 ),
+
+              // 설정 팝업. chaeon_room_screen.dart와 동일한 패턴
+              if (_isSettingOpen)
+                Builder(
+                  builder: (context) {
+                    double popupW = w * 0.8;
+                    double popupH = h * 0.8;
+
+                    const double imageAspect = 650 / 343;
+                    double renderedW, renderedH;
+                    if (imageAspect > popupW / popupH) {
+                      renderedW = popupW;
+                      renderedH = popupW / imageAspect;
+                    } else {
+                      renderedH = popupH;
+                      renderedW = popupH * imageAspect;
+                    }
+                    double offsetX = (popupW - renderedW) / 2;
+                    double offsetY = (popupH - renderedH) / 2;
+
+                    return Positioned.fill(
+                      key: const ValueKey('tutorial_setting_popup'),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {},
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          child: Center(
+                            child: SizedBox(
+                              width: popupW,
+                              height: popupH,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: offsetX,
+                                    top: offsetY,
+                                    width: renderedW,
+                                    height: renderedH,
+                                    child: Image.asset(
+                                      'assets/images/main_setting_ex.png',
+                                      fit: BoxFit.fill,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: offsetX + renderedW * (5 / 650),
+                                    top: offsetY + renderedH * (5 / 343),
+                                    width: renderedW * (45 / 650),
+                                    height: renderedH * (45 / 343),
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _isSettingOpen = false),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -417,6 +510,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       fadeThroughBlackRoute(
                         GamePlayScreen(
                           skipChapter1Events: widget.chapter3Reentry,
+                          initialTemperature: widget.initialTemperature,
                         ),
                       ),
                     );

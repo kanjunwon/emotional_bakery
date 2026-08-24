@@ -77,6 +77,39 @@ class _BreadMakingSceneState extends State<BreadMakingScene> {
   final Set<int> _consumedIngredients = {};
   // 재료를 다 넣은 뒤 성공 배너를 잠깐 보여주다가 자동으로 onComplete를 부르는 타이머
   Timer? _successTimer;
+  bool _imagesPrecached = false;
+
+  // 이미지 프리캐싱: 첫 빌드 시점에 한 번만 실행. 다른 미니게임들(clock_minigame_scene.dart,
+  // memory_flashback_scene.dart, diary_puzzle_scene.dart)은 다 이 처리를 하는데 이 파일만
+  // 빠져있어서, minigame_success.png 등이 처음 뜰 때마다 디코딩 끝날 때까지 몇 프레임 동안
+  // 안 그려져서 번쩍이며 나타나는 문제가 있었음. completedDoughAsset은 재료 조합에 따라
+  // 여러 이미지 중 하나로 갈리는데, 이 시점엔 이미 StoryState.vars가 채워져 있어서
+  // resolveCompletedDoughImage()로 "이번 판에 실제로 보여줄" 이미지 하나만 정확히 골라
+  // 프리캐싱하면 됨(9가지 조합 전부를 미리 캐싱할 필요 없음)
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      _imagesPrecached = true;
+      final String completedDoughAsset =
+          widget.forcedCompletedDoughAsset ??
+          StoryState.resolveCompletedDoughImage() ??
+          'assets/images/dough_crystal_red.png';
+      final List<String> assetsToPrecache = [
+        'assets/images/dough_basic.png',
+        completedDoughAsset,
+        'assets/images/bread_choice.png',
+        'assets/images/minigame_success.png',
+        'assets/images/sugar.png',
+        'assets/images/flour.png',
+        if (StoryState.resolveIngredientImage() != null)
+          StoryState.resolveIngredientImage()!,
+      ];
+      for (final asset in assetsToPrecache) {
+        precacheImage(AssetImage(asset), context);
+      }
+    }
+  }
 
   @override
   void dispose() {

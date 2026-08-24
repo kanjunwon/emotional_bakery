@@ -19,6 +19,18 @@ const List<String> eatingCloseupFrames = [
   'assets/images/chaeon_eating_2.png',
 ];
 
+// 채온이가 빵을 먹으면서 감정 온도가 오르는 진행 단계별 GIF(0%->20%->50%->80%).
+// kitchen_screen.dart/game_play_screen.dart 양쪽에서 채온이 스프라이트를 그릴 때, 이
+// 목록에 있는 에셋으로 전환될 땐 PopInImage 크로스페이드 없이 즉시(duration: Duration.zero)
+// 바뀌어야 함 — 자세 차이가 커서(예: 팔이 올라가는 중간 프레임이 흐릿하게 겹쳐 보임)
+// 페이드를 걸면 어색해 보임
+const List<String> chaeonEatingSprites = [
+  'assets/images/chaeon_0_eat.gif',
+  'assets/images/chaeon_20_eat.gif',
+  'assets/images/chaeon_50_eat.gif',
+  'assets/images/chaeon_80_eat.gif',
+];
+
 // chaeonSpriteOverrides 항목 하나. beforeReveal은 말풍선 뜨기 전(GIF 재생 중)에 보여줄 에셋이고,
 // afterReveal은 말풍선이 뜬 순간부터 바꿔줄 에셋. afterReveal이 없으면 그 시점부턴 기본 idle로 폴백.
 // verticalOffsetPx는 그 에셋이 기본 idle 이미지 대비 세로로 어긋나 보일 때 보정하는 값(위로 보정하려면 음수)

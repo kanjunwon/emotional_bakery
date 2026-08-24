@@ -28,10 +28,9 @@ const double kLillianKitchenX = 467;
 const double kLillianKitchenTopY = 213;
 // 채온이가 이 위치 이상 도달하면 이동이 잠기고 kitchen_arrival.json 대사가 자동으로 시작됨
 const double kKitchenDialogueTriggerX = 232;
-// 주방 캐릭터(채온/릴리안) 크기 보정 배수. worldScale이 464 기준(w/874 vs h/464 중 큰 쪽)으로
-// 계산되는데, 빵집(game_play_screen.dart)의 zoom은 402 기준(h/402)이라 같은 "172"를 써도
-// 주방 쪽이 더 작게 렌더링됨. 두 화면에서 캐릭터 최종 픽셀 크기가 같아 보이도록 그 비율만큼 키움
-const double kKitchenCharacterSizeCorrection = 464 / 402;
+// 모바일에 가까운 화면(가로가 길고 세로가 짧은 화면)에서만 채온/릴리안을 추가로
+// 아래로 내리는 양(874x402 기준, rH로 스케일됨). 늘리면 더 아래로, 0이면 원래 위치 그대로
+const double kKitchenMobileCharacterDropRef = 10;
 // 채온이가 좌우로 움직일 수 있는 범위 (배경 밖으로 안 나가게)
 const double kChaeonKitchenMinX = 60;
 const double kChaeonKitchenMaxX = 814;
@@ -60,10 +59,14 @@ const Duration _memoryBlackoutFadeOutDuration = Duration(milliseconds: 300);
 // _memoryFadeHoldDuration + _memoryFadeOutDuration = 300+1000+300ms)과 동일한 총 시간
 const Duration _chapter3DiaryBlackoutHoldDuration = Duration(milliseconds: 1600);
 const Duration _chapter3DiaryIntroHoldDuration = Duration(seconds: 2);
-const Duration _chapter3DiarySuccessAfterHoldDuration = Duration(seconds: 1);
+const Duration _chapter3DiarySuccessAfterHoldDuration = Duration(
+  milliseconds: 1800,
+);
 // 이 값을 조정하면 퍼즐 결과 이미지(chapter3_diary_success_after.png) 노출이 끝나고
-// 암전됐다가 chapter3_after_eat.json 대화가 시작되기까지의 대기 시간이 바뀜
-const Duration _chapter3DiaryEndBlackoutHoldDuration = Duration(seconds: 3);
+// 암전됐다가 chapter3_after_eat.json 대화가 시작되기까지의 대기 시간이 바뀜.
+// 기존 3초는 다른 미니게임들의 암전(400ms~2초)보다 유독 길어서, 같은 파일의 비슷한
+// 패턴인 _memoryBlackoutHoldDuration(챕터1 결과물 이후 암전, 2초)에 맞춤
+const Duration _chapter3DiaryEndBlackoutHoldDuration = Duration(seconds: 2);
 
 // 이 화면이 챕터1 엔딩용인지 챕터2 시작용인지 구분. 배경/캐릭터는 같은 주방을 재사용하고
 // 이동 가능 여부, 처음 로드하는 대사만 다름
@@ -224,7 +227,9 @@ class _KitchenScreenState extends State<KitchenScreen>
               !_hasLoadedAfterFirstGameDialogue) {
             // chapter2_making_bread.json이 끝나면(line_001) 여기로 옴. 암전 잠깐 띄웠다가
             // 재점등 후 salt_bread 팝업을 띄움. 실제 처리는 _startMemoryBlackout에서 함
-            _startMemoryBlackout();
+            _startMemoryBlackout(
+              onComplete: () => setState(() => _showBreadPopup = true),
+            );
           } else if (!_hasLoadedAfterFirstGameDialogue) {
             // chapter2_after_quiz.json이 끝나면(line_021) 여기로 옴. 빵만들기 미니게임 시작.
             // 미니게임 완료(BreadMakingScene.onComplete) -> chapter2_making_bread.json 로드까지는
@@ -318,11 +323,21 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
   }
 
-  // chapter2_making_bread.json 끝나면 화면을 페이드인으로 암전시켰다가, 잠깐 유지 후
-  // 페이드아웃으로 다시 밝아지면서 salt_bread 팝업을 띄움. 유지 시간은 _memoryBlackoutHoldDuration
-  // 임시값, 나중에 실제 연출 보면서 조정 예정. game_play_screen.dart의
-  // _transitionToMemoryFlashback과 동일한 페이드 패턴
-  void _startMemoryBlackout() {
+  // 빵만들기 미니게임이 끝나면 화면을 페이드인으로 암전시켰다가, 잠깐 유지 후
+  // 페이드아웃으로 다시 밝아지면서 완성된 빵 팝업을 띄움. 챕터2(salt_bread)/챕터3
+  // (onion_bread) 둘 다 이 암전을 공유해서 쓰고, 암전이 끝난 뒤 어떤 팝업을 띄울지는
+  // onComplete 콜백으로 호출부가 정함. onFullyBlack은 화면이 완전히 까매진 순간(페이드인
+  // 완료, hold 시작 직전)에 호출되는데, 이때 뒤에 깔린 위젯을 갈아끼우면(예: 미니게임 ->
+  // 주방) 화면이 새까만 채라 전환이 안 보이고 자연스러움. onComplete도 마찬가지로 hold가
+  // 끝나고 페이드아웃이 "시작되기 직전"(아직 화면은 새까만 상태)에 호출해서 팝업을 미리
+  // 띄워두면, 페이드아웃될 때 주방이 아니라 팝업이 서서히 드러남(주방이 잠깐 보였다가
+  // 팝업이 뜨는 끊김 방지). 유지 시간은 _memoryBlackoutHoldDuration 임시값, 나중에
+  // 실제 연출 보면서 조정 예정. game_play_screen.dart의 _transitionToMemoryFlashback과
+  // 동일한 페이드 패턴
+  void _startMemoryBlackout({
+    VoidCallback? onFullyBlack,
+    required VoidCallback onComplete,
+  }) {
     setState(() {
       _showMemoryBlackout = true;
       _memoryBlackoutOpacity = 0.0;
@@ -333,15 +348,14 @@ class _KitchenScreenState extends State<KitchenScreen>
     });
     _memoryBlackoutTimer = Timer(_memoryBlackoutFadeInDuration, () {
       if (!mounted) return;
+      onFullyBlack?.call();
       _memoryBlackoutTimer = Timer(_memoryBlackoutHoldDuration, () {
         if (!mounted) return;
+        onComplete();
         setState(() => _memoryBlackoutOpacity = 0.0);
         _memoryBlackoutTimer = Timer(_memoryBlackoutFadeOutDuration, () {
           if (!mounted) return;
-          setState(() {
-            _showMemoryBlackout = false;
-            _showBreadPopup = true;
-          });
+          setState(() => _showMemoryBlackout = false);
         });
       });
     });
@@ -358,6 +372,14 @@ class _KitchenScreenState extends State<KitchenScreen>
         _showChapter3DiaryBlackout = false;
         _showChapter3DiaryIntro = true;
       });
+      // DiaryPuzzleScene은 자기가 마운트되는 시점(=이 인트로가 끝나는 시점)에야 자체
+      // didChangeDependencies에서 프리캐싱을 시작하는데, diary_puzzle_bg.png가 약 8MB로
+      // 퍼즐 조각 이미지(장당 100~140KB, 60~80배 작음)보다 디코딩이 훨씬 오래 걸려서
+      // 조각들이 먼저 뜨고 배경이 뒤늦게 뜨는 것처럼 보였음. 인트로가 떠 있는 동안(2초)
+      // 미리 디코딩을 시작해두면, 퍼즐 화면으로 넘어갈 때는 이미 캐시돼 있어서 한 번에
+      // 뜸(precacheImage는 이미 캐시된 이미지를 다시 불러도 그냥 즉시 반환되므로,
+      // DiaryPuzzleScene 쪽 프리캐싱 호출과 중복돼도 문제 없음)
+      _precacheChapter3DiaryPuzzleAssets();
       _chapter3DiaryIntroTimer = Timer(_chapter3DiaryIntroHoldDuration, () {
         if (!mounted) return;
         setState(() {
@@ -366,6 +388,27 @@ class _KitchenScreenState extends State<KitchenScreen>
         });
       });
     });
+  }
+
+  // DiaryPuzzleScene(diary_puzzle_scene.dart)이 쓰는 이미지들을 여기서 미리 한 번 더
+  // 프리캐싱. 목록은 diary_puzzle_scene.dart의 assetsToPrecache와 동일하게 맞춰둠(그
+  // 파일이 바뀌면 여기도 같이 바꿔줘야 함)
+  void _precacheChapter3DiaryPuzzleAssets() {
+    const List<String> assetsToPrecache = [
+      'assets/images/diary_puzzle_bg.png',
+      'assets/images/diary_puzzle_completed_bg.png',
+      'assets/images/diary_puzzle_completed.png',
+      'assets/images/minigame_success.png',
+      'assets/images/diary_puzzle_piece_1.png',
+      'assets/images/diary_puzzle_piece_2.png',
+      'assets/images/diary_puzzle_piece_3.png',
+      'assets/images/diary_puzzle_piece_4.png',
+      'assets/images/diary_puzzle_piece_5.png',
+      'assets/images/diary_puzzle_piece_6.png',
+    ];
+    for (final asset in assetsToPrecache) {
+      precacheImage(AssetImage(asset), context);
+    }
   }
 
   // DiaryPuzzleScene.onComplete에서 호출됨: 완성 결과 이미지 -> 암전 ->
@@ -541,19 +584,29 @@ class _KitchenScreenState extends State<KitchenScreen>
     return 'assets/images/lillian_idle.gif';
   }
 
-  // 채온이 대사 노드에 expression이 있으면(예: chapter3_after_first_game.json의 빵 먹는
-  // GIF) 그 에셋을, 없으면 null을 반환. null이면 호출부의 기존 삼항연산자 체인을
-  // 그대로 타서 원래대로(_showChaeonEating 등 플래그 기반) 표시됨
+  // 채온이 스프라이트 오버라이드 우선순위: chaeonExpression(발화자 무관, 예:
+  // chapter3_after_eat.json line_002 이후 chaeon_50.gif로 고정) > 노드 발화자가
+  // 채온이일 때의 expression(예: chapter3_after_first_game.json의 빵 먹는 GIF).
+  // game_play_screen.dart의 _resolveChaeonExpressionSprite와 동일한 우선순위 규칙.
+  // 아무것도 없으면 null을 반환하고, 호출부의 기존 삼항연산자 체인을 그대로 타서
+  // 원래대로(_showChaeonEating 등 플래그 기반) 표시됨
   String? _resolveChaeonExpressionSprite(String? sceneNodeId) {
     final DialogueNode? node =
         _sceneController.sceneDialogue?.nodes[sceneNodeId];
-    if (node?.speaker != 'chaeon') return null;
-    return node?.expression?.asset;
+    if (node == null) return null;
+    if (node.chaeonExpression != null) return node.chaeonExpression!.asset;
+    if (node.speaker != 'chaeon') return null;
+    return node.expression?.asset;
   }
 
-  // 채온이 스프라이트 위젯. expression이 있을 때만 PopInImage로 부드럽게 전환하고,
-  // 그 외(걷기/정지 등 기본 상태)는 즉시 바뀌는 Image.asset을 씀. 걷기는 dpad에 바로
-  // 반응해야 자연스러워서, 표정 전환에만 페이드를 걸고 걷기 전환은 그대로 즉시 바뀌게 함
+  // 채온이 스프라이트 위젯. 릴리안(_resolveLillianSprite, 항상 PopInImage로 그림)과
+  // 달리 예전엔 "expression이 있을 때만 PopInImage, 없으면 그냥 Image.asset"으로 위젯
+  // 타입 자체가 바뀌었었음. Flutter는 위젯 타입이 바뀌면 이전 PopInImage를 버리고
+  // 새로 만들기 때문에, chaeon_20_eat처럼 expression으로 처음 들어가는 순간 크로스페이드
+  // 없이 뚝 튀어 나타나는 문제가 있었음(릴리안은 항상 같은 PopInImage 인스턴스가
+  // 유지되니까 문제 없었음). 그래서 이제 채온이도 항상 PopInImage 하나로 그리되,
+  // duration으로 구간을 구분함: expression으로 들어가거나 나갈 때(표정 전환)는 페이드,
+  // 걷기/정지 전환(기본 상태끼리)은 dpad에 바로 반응해야 자연스러워서 즉시(0ms) 전환됨
   Widget _buildChaeonSprite({
     required String? sceneNodeId,
     required double size,
@@ -584,15 +637,22 @@ class _KitchenScreenState extends State<KitchenScreen>
     final String? expressionSprite = _resolveChaeonExpressionSprite(
       sceneNodeId,
     );
-    if (expressionSprite != null) {
-      return PopInImage(
-        imagePath: expressionSprite,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-      );
-    }
-    return Image.asset(defaultSprite, width: size, height: size, fit: BoxFit.contain);
+    final String finalChaeonSprite = expressionSprite ?? defaultSprite;
+    return PopInImage(
+      imagePath: finalChaeonSprite,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      // 120ms는 팔을 내린/올린 자세처럼 포즈 차이가 큰 표정 사이에서 크로스페이드가
+      // 눈에 띄게 느적거려 보여서(팔이 흐릿하게 걸쳐 있다가 올라가는 것처럼 보임) 50ms로
+      // 줄임. widgets.chaeonEatingSprites(빵 먹는 진행 단계 GIF)로 바뀔 때는 그마저도
+      // 어색해서 아예 즉시(0ms) 전환되도록 예외 처리함
+      duration: widgets.chaeonEatingSprites.contains(finalChaeonSprite)
+          ? Duration.zero
+          : expressionSprite != null
+          ? const Duration(milliseconds: 50)
+          : Duration.zero,
+    );
   }
 
   // 뒤로가기 버튼: 타이핑 중이면 텍스트 다 보여주고, 아니면 이전 대사로 되돌아감
@@ -635,11 +695,28 @@ class _KitchenScreenState extends State<KitchenScreen>
     double wX(double px) => worldOffsetX + px * worldScale;
     double wY(double px) => worldOffsetY + px * worldScale;
     double wSize(double px) => px * worldScale;
-    // 채온/릴리안 전용 크기: 빵집과 최종 픽셀 크기가 같아 보이도록 kKitchenCharacterSizeCorrection만큼
-    // 추가로 키움. top은 그대로 두면 커진 만큼 발이 바닥 아래로 파고들어 보이므로, 늘어난 높이의
-    // 절반만큼 위로 당겨서 발 위치(세로 중심 기준)가 원래 자리에 맞도록 보정함
-    final double characterSize = wSize(172) * kKitchenCharacterSizeCorrection;
-    final double characterTopShift = (characterSize - wSize(172)) / 2;
+    // 채온/릴리안 전용 크기: 배경(kitchen_main.png)을 채우는 worldScale(가로/세로 중 큰 쪽
+    // 기준 cover)이 아니라, game_play_screen.dart(빵집)와 동일하게 화면 높이에만 비례하는
+    // rH를 그대로 씀. worldScale을 쓰면 화면 비율에 따라 가로 기준으로 걸릴 때(예: 가로로
+    // 넓은 모바일 화면) 캐릭터 크기가 세로 변화에 반응하지 않아 빵집과 다르게 보이는 문제가
+    // 있었음. kChaeonKitchenTopY/kLillianKitchenTopY는 캐릭터가 wSize(172) 크기로 그려질
+    // 때를 기준으로 맞춰둔 발(바닥) 위치라서, characterSize가 그보다 커지거나 작아진 만큼
+    // top을 위/아래로 당겨야 발이 바닥에 그대로 붙어 보임. 차이의 "절반"만 당기면 발이 계속
+    // 뜨거나 파고들어 보이므로(세로 중심만 맞고 발 위치는 안 맞음), 차이 전체를 당겨야 함
+    final double characterSize = rH(172);
+    final double characterTopShift = characterSize - wSize(172);
+    // 모바일에 가까운 화면(가로가 길고 세로가 짧은 화면, worldScale이 w/874로 걸리는
+    // 경우 — 배경 위쪽이 잘리는 와이드한 화면. 실제 모바일 가로모드 대부분 여기 해당)
+    // 에서만 채온/릴리안을 살짝 더 아래로 내림. worldScale이 h/464로 걸리는 화면(일반
+    // 데스크톱 16:9 창 등)은 기존 위치 그대로 유지. 숫자를 늘리면 더 아래로, 줄이면 덜
+    // 내려감(kKitchenMobileCharacterDropRef는 874x402 기준 rH로 스케일되는 값)
+    final bool isMobileLikeAspect = (w / 874) > (h / 464);
+    final double mobileCharacterDrop = isMobileLikeAspect
+        ? rH(kKitchenMobileCharacterDropRef)
+        : 0;
+    // top 계산에 쓰는 최종 보정값. mobileCharacterDrop만큼 덜 끌어올려서 그만큼 아래로 내려감
+    final double characterVerticalOffset =
+        characterTopShift - mobileCharacterDrop;
 
     final DialogueGraph? sceneDialogue = _sceneController.sceneDialogue;
     final String? sceneNodeId = _sceneController.sceneNodeId;
@@ -653,11 +730,12 @@ class _KitchenScreenState extends State<KitchenScreen>
     final double chaeonCenterX = wX(_chaeonX) + characterSize / 2;
     final double lillianCenterX = wX(kLillianKitchenX) + characterSize / 2;
     // 말풍선 앵커: 각 캐릭터가 실제로 서있는 kitchen_main.png 좌표(wY) 기준.
-    // 캐릭터 렌더링 top과 동일하게 characterTopShift만큼 위로 보정해야 커진 스프라이트
-    // 머리 위치랑 어긋나지 않음
-    final double chaeonSpriteTopY = wY(kChaeonKitchenTopY) - characterTopShift;
+    // 캐릭터 렌더링 top과 동일하게 characterVerticalOffset만큼 위로 보정해야 커진
+    // 스프라이트 머리 위치랑 어긋나지 않음
+    final double chaeonSpriteTopY =
+        wY(kChaeonKitchenTopY) - characterVerticalOffset;
     final double lillianSpriteTopY =
-        wY(kLillianKitchenTopY) - characterTopShift;
+        wY(kLillianKitchenTopY) - characterVerticalOffset;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -683,7 +761,7 @@ class _KitchenScreenState extends State<KitchenScreen>
             Positioned(
               key: const ValueKey('kitchen_lillian'),
               left: wX(kLillianKitchenX),
-              top: wY(kLillianKitchenTopY) - characterTopShift,
+              top: wY(kLillianKitchenTopY) - characterVerticalOffset,
               child: PopInImage(
                 imagePath: _resolveLillianSprite(sceneNodeId),
                 width: characterSize,
@@ -709,7 +787,7 @@ class _KitchenScreenState extends State<KitchenScreen>
                         ? (_stairsUpAnimation?.value.dy ?? kChaeonKitchenTopY)
                         : kChaeonKitchenTopY,
                   ) -
-                  characterTopShift,
+                  characterVerticalOffset,
               child: Transform.flip(
                 flipX: _isChaeonFacingLeft,
                 child: _buildChaeonSprite(
@@ -961,17 +1039,18 @@ class _KitchenScreenState extends State<KitchenScreen>
                             // (1119x285)이랑 팝업 비율이 많이 달라서 테두리가 가로/세로로
                             // 다르게 늘어나 깨져 보임. DialogueBoxFrame이랑 동일하게
                             // centerSlice(9-slice)로 그려서 모서리 두께를 유지함
-                            Container(
+                            SizedBox(
                               width: rW(570),
                               height: rH(300),
-                              decoration: const BoxDecoration(
-                                image: DecorationImage(
-                                  image: AssetImage(
-                                    'assets/images/tutorial_dialogue_box.png',
-                                  ),
-                                  fit: BoxFit.fill,
-                                  centerSlice: tutorialDialogueBoxCenterSlice,
-                                ),
+                              // widgets.ScaledNineSliceImage로 그리면 화면 배율이 달라져도
+                              // 테두리 두께가 다른 UI 요소들과 똑같이 같이 얇아지거나
+                              // 두꺼워짐(기존 DecorationImage+centerSlice는 테두리가 항상
+                              // 원본 픽셀 크기로 고정되는 문제가 있었음)
+                              child: ScaledNineSliceImage(
+                                imagePath: 'assets/images/tutorial_dialogue_box.png',
+                                sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+                                scaleX: rW(1),
+                                scaleY: rH(1),
                               ),
                             ),
                             if (StoryState.resolveIngredientImage() != null)
@@ -1033,17 +1112,18 @@ class _KitchenScreenState extends State<KitchenScreen>
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            Container(
+                            SizedBox(
                               width: rW(570),
                               height: rH(300),
-                              decoration: const BoxDecoration(
-                                image: DecorationImage(
-                                  image: AssetImage(
-                                    'assets/images/tutorial_dialogue_box.png',
-                                  ),
-                                  fit: BoxFit.fill,
-                                  centerSlice: tutorialDialogueBoxCenterSlice,
-                                ),
+                              // widgets.ScaledNineSliceImage로 그리면 화면 배율이 달라져도
+                              // 테두리 두께가 다른 UI 요소들과 똑같이 같이 얇아지거나
+                              // 두꺼워짐(기존 DecorationImage+centerSlice는 테두리가 항상
+                              // 원본 픽셀 크기로 고정되는 문제가 있었음)
+                              child: ScaledNineSliceImage(
+                                imagePath: 'assets/images/tutorial_dialogue_box.png',
+                                sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+                                scaleX: rW(1),
+                                scaleY: rH(1),
                               ),
                             ),
                             Image.asset(
@@ -1078,23 +1158,6 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
-            // 9-6층: chapter2_making_bread.json 끝나고 salt_bread 팝업 뜨기 전 잠깐 띄우는
-            // 암전. game_play_screen.dart의 memory_fade_overlay(20층)와 동일한
-            // AnimatedOpacity 페이드인/아웃 패턴
-            if (_showMemoryBlackout)
-              Positioned.fill(
-                key: const ValueKey('memory_blackout'),
-                child: IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: _memoryBlackoutOpacity,
-                    duration: _memoryBlackoutOpacity == 1.0
-                        ? _memoryBlackoutFadeInDuration
-                        : _memoryBlackoutFadeOutDuration,
-                    child: Container(color: Colors.black),
-                  ),
-                ),
-              ),
-
             // 9-7층: 챕터3 첫 번째 미니게임. chapter3_before_game.json이 끝나면 뜨고, 최상단에서
             // 화면을 전부 덮음. 챕터2 BreadMakingScene을 forcedCompletedDoughAsset 없이 그대로
             // 재사용해서, 미니게임 안 완성 반죽 이미지도 챕터2랑 동일하게 재료 조합에 따라
@@ -1111,10 +1174,15 @@ class _KitchenScreenState extends State<KitchenScreen>
                     milliseconds: 1800,
                   ),
                   onComplete: () {
-                    setState(() {
-                      _showChapter3BreadMakingGame = false;
-                      _showChapter3BreadPopup = true;
-                    });
+                    // 성공 화면 위로 바로 암전이 덮이도록, 미니게임은 화면이 완전히
+                    // 까매진 뒤(onFullyBlack)에야 끔. 그래야 미니게임 -> 주방 화면 전환이
+                    // 암전에 가려져서 안 보임
+                    _startMemoryBlackout(
+                      onFullyBlack: () =>
+                          setState(() => _showChapter3BreadMakingGame = false),
+                      onComplete: () =>
+                          setState(() => _showChapter3BreadPopup = true),
+                    );
                   },
                 ),
               ),
@@ -1143,17 +1211,18 @@ class _KitchenScreenState extends State<KitchenScreen>
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            Container(
+                            SizedBox(
                               width: rW(570),
                               height: rH(300),
-                              decoration: const BoxDecoration(
-                                image: DecorationImage(
-                                  image: AssetImage(
-                                    'assets/images/tutorial_dialogue_box.png',
-                                  ),
-                                  fit: BoxFit.fill,
-                                  centerSlice: tutorialDialogueBoxCenterSlice,
-                                ),
+                              // widgets.ScaledNineSliceImage로 그리면 화면 배율이 달라져도
+                              // 테두리 두께가 다른 UI 요소들과 똑같이 같이 얇아지거나
+                              // 두꺼워짐(기존 DecorationImage+centerSlice는 테두리가 항상
+                              // 원본 픽셀 크기로 고정되는 문제가 있었음)
+                              child: ScaledNineSliceImage(
+                                imagePath: 'assets/images/tutorial_dialogue_box.png',
+                                sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+                                scaleX: rW(1),
+                                scaleY: rH(1),
                               ),
                             ),
                             Image.asset(
@@ -1166,6 +1235,25 @@ class _KitchenScreenState extends State<KitchenScreen>
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ),
+
+            // 9-8-1층: 빵만들기 미니게임 성공 화면 -> 완성된 빵(salt_bread/onion_bread) 팝업
+            // 사이에 잠깐 띄우는 암전. 9-3/9-7층(빵만들기 미니게임)보다 위에 그려야 성공
+            // 화면 위로 바로 암전이 덮이고, 화면이 주방으로 바뀐 뒤에야 어두워지는 것처럼
+            // 보이지 않음. game_play_screen.dart의 memory_fade_overlay(20층)와 동일한
+            // AnimatedOpacity 페이드인/아웃 패턴
+            if (_showMemoryBlackout)
+              Positioned.fill(
+                key: const ValueKey('memory_blackout'),
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _memoryBlackoutOpacity,
+                    duration: _memoryBlackoutOpacity == 1.0
+                        ? _memoryBlackoutFadeInDuration
+                        : _memoryBlackoutFadeOutDuration,
+                    child: Container(color: Colors.black),
                   ),
                 ),
               ),
