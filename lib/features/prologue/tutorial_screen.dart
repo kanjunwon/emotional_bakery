@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'dart:async'; // 연속 이동 (화살표 꾹 누르기)
 import '../chapter1/game_play_screen.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
+    show ReentryChapter;
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 
@@ -105,11 +107,14 @@ class TutorialScreen extends StatefulWidget {
   // 이땐 빵집 문으로 다시 들어갈 때 새 GamePlayScreen을 만들지 않고 pop해서, 아래 깔려있는
   // 기존 GamePlayScreen(진행 중이던 대사/이동 상태 그대로 보존)으로 돌아감
   final bool returnToExistingGame;
-  // true면 챕터3 채온이 방에서 나와 골목길을 거쳐 온 경우라는 뜻. 이땐 빵집 문으로 들어갈 때
-  // GamePlayScreen을 skipChapter1Events 모드로 켜서 push함 (챕터1 이벤트 다 건너뛰고 계단으로 직행)
-  final bool chapter3Reentry;
-  // 챕터3 재진입 시 방/이전 화면에서 이어받아 온도계에 표시할 시작 온도.
-  // chapter3Reentry일 때만 온도계 자체가 노출되므로 그 외에는 쓰이지 않음
+  // none이 아니면 챕터3/4 채온이 방에서 나와 골목길을 거쳐 온 경우라는 뜻. 이땐 빵집 문으로
+  // 들어갈 때 GamePlayScreen을 skipChapter1Events 모드로 켜서 push함
+  // (챕터1 이벤트 다 건너뛰고 계단으로 직행). 원래는 chapter3Reentry라는 bool이었는데,
+  // 챕터4 재진입도 같은 흐름을 타면서 "어느 챕터로 돌아온 건지"까지 구분해야 해서
+  // ReentryChapter enum으로 바꿈 (chapter3_door.json 트리거가 챕터4에서 안 새어나가게 하려고)
+  final ReentryChapter reentryChapter;
+  // 챕터3/4 재진입 시 방/이전 화면에서 이어받아 온도계에 표시할 시작 온도.
+  // reentryChapter가 none이 아닐 때만 온도계 자체가 노출되므로 그 외에는 쓰이지 않음
   final int initialTemperature;
   const TutorialScreen({
     super.key,
@@ -117,7 +122,7 @@ class TutorialScreen extends StatefulWidget {
     this.initialPlayerX = 445,
     this.initialFacingLeft = false,
     this.returnToExistingGame = false,
-    this.chapter3Reentry = false,
+    this.reentryChapter = ReentryChapter.none,
     this.initialTemperature = 3,
   });
 
@@ -212,8 +217,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         flipX: _isLookingLeft, // true일 때 이미지 반전
                         child: Image.asset(
                           // 오른쪽 에셋 2개만 가지고 walk와 idle을 스위칭함.
-                          // 챕터3 재진입(chapter3Reentry)일 때는 20% 상태 에셋을 씀
-                          widget.chapter3Reentry
+                          // 챕터3/4 재진입(reentryChapter != none)일 때는 20% 상태 에셋을 씀
+                          widget.reentryChapter != ReentryChapter.none
                               ? (_currentAction == 'walk'
                                     ? 'assets/images/chaeon_20_normal_walk.gif'
                                     : 'assets/images/chaeon_20_normal.gif')
@@ -231,9 +236,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 ),
               ),
 
-              // 1-1층: 온도계/뒤로가기/설정 버튼. 챕터3 재진입(chapter3Reentry)일 때만 노출.
+              // 1-1층: 온도계/뒤로가기/설정 버튼. 챕터3/4 재진입(reentryChapter != none)일 때만 노출.
               // 원래 프롤로그 튜토리얼(첫 플레이)에서는 온도/대사 진행 상태 자체가 없어서 의미가 없음
-              if (widget.chapter3Reentry) ...[
+              if (widget.reentryChapter != ReentryChapter.none) ...[
                 widgets.buildThermometer(
                   key: 'tutorial_thermometer',
                   rW: rW,
@@ -457,8 +462,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
                                     width: renderedW * (45 / 650),
                                     height: renderedH * (45 / 343),
                                     child: GestureDetector(
-                                      onTap: () =>
-                                          setState(() => _isSettingOpen = false),
+                                      onTap: () => setState(
+                                        () => _isSettingOpen = false,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -509,7 +515,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       context,
                       fadeThroughBlackRoute(
                         GamePlayScreen(
-                          skipChapter1Events: widget.chapter3Reentry,
+                          skipChapter1Events:
+                              widget.reentryChapter != ReentryChapter.none,
+                          reentryChapter: widget.reentryChapter,
                           initialTemperature: widget.initialTemperature,
                         ),
                       ),

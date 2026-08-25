@@ -39,6 +39,8 @@ flutter:
     - assets/lines/chapter1/
     - assets/lines/chapter2/
     - assets/lines/chapter3/
+    - assets/lines/chapter4/
+    - assets/lines/chapter5/
 
   fonts:
     - family: SCDream

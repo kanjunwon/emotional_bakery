@@ -11,6 +11,7 @@ import 'package:emotional_bakery/core/models/interaction_model.dart';
 import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 import 'package:emotional_bakery/core/services/story_state.dart';
+import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter2/bread_making_scene.dart';
 import 'package:emotional_bakery/features/chapter2/clock_minigame_scene.dart';
@@ -18,6 +19,7 @@ import 'package:emotional_bakery/features/chapter3/diary_puzzle_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
+import 'package:emotional_bakery/features/chapter4/chapter4_cutscene_data.dart';
 import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
@@ -77,6 +79,9 @@ enum KitchenScreenMode {
   chapter2Start,
   // 챕터3 시작: 걷기 없이 화면 들어오자마자 바로 chapter3_chaeon_room_after.json 대사가 시작됨
   chapter3Start,
+  // 챕터4 시작: chapter3Start랑 동일하게 dpad로 걸어가서 트리거 지점(kKitchenDialogueTriggerX)에
+  // 도달하면 chapter4_before_cutscene.json이 자동 시작됨
+  chapter4Start,
 }
 
 class KitchenScreen extends StatefulWidget {
@@ -119,6 +124,11 @@ class _KitchenScreenState extends State<KitchenScreen>
   // kitchen_arrival.json(챕터1)이나 chapter2_ingredient_quiz.json(챕터2)이 끝나면 true.
   // 지금은 안내 문구만 있는 임시 화면으로 대체함
   bool _showChapterEndPlaceholder = false;
+  // 챕터4 모드에서 chapter4_before_cutscene.json 끝나면 뜨는 오프닝 컷씬(과거 회상).
+  // 프롤로그의 DialogueOverlay를 data/onComplete만 다르게 넘겨서 그대로 재사용함
+  bool _showChapter4Cutscene = false;
+  // 챕터4 모드에서 오프닝 컷씬 끝나고 chapter4_after_past.json을 이미 이어붙였는지
+  bool _hasLoadedChapter4AfterPast = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
@@ -276,6 +286,20 @@ class _KitchenScreenState extends State<KitchenScreen>
             // (참고: 이제 이 분기는 빵만들기 미니게임도, chapter3_after_first_game.json도 아니라
             // 일기장 퍼즐 시퀀스 끝에 로드되는 chapter3_after_eat.json이 끝나면 옴)
             // chapter3_before_game.json이 끝나면(line_029, "네!") 여기로 옴. 임시 종료 화면 표시
+            setState(() => _showChapterEndPlaceholder = true);
+          }
+          return;
+        }
+        // 챕터4 모드는 chapter4_before_cutscene.json -> 오프닝 컷씬(과거 회상) ->
+        // chapter4_after_past.json 순으로 자동 이어붙이고(chapter2Start/chapter3Start랑
+        // 동일한 체이닝 패턴), 그 다음 배드엔딩 분기는 아직 없어서 끝나면 임시 안내 화면을 띄움.
+        // 컷씬 -> chapter4_after_past.json 로드는 DialogueOverlay onComplete 쪽에서 처리함
+        if (widget.mode == KitchenScreenMode.chapter4Start) {
+          if (!_hasLoadedChapter4AfterPast) {
+            setState(() => _showChapter4Cutscene = true);
+          } else {
+            // chapter4_after_past.json이 끝나면(choice_001 두 분기 다 next: null) 여기로 옴.
+            // 배드엔딩 분기가 아직 없어서 임시 안내 화면 표시
             setState(() => _showChapterEndPlaceholder = true);
           }
           return;
@@ -513,10 +537,13 @@ class _KitchenScreenState extends State<KitchenScreen>
         _movementLocked = true;
         _chaeonState = 'idle';
       });
-      // 챕터3 모드는 kitchen_arrival.json 대신 chapter3_chaeon_room_after.json을 로드함
+      // 챕터3 모드는 kitchen_arrival.json 대신 chapter3_chaeon_room_after.json을,
+      // 챕터4 모드는 chapter4_before_cutscene.json을 로드함
       _sceneController.loadDialogue(
         widget.mode == KitchenScreenMode.chapter3Start
             ? 'assets/lines/chapter3/chapter3_chaeon_room_after.json'
+            : widget.mode == KitchenScreenMode.chapter4Start
+            ? 'assets/lines/chapter4/chapter4_before_cutscene.json'
             : 'assets/lines/chapter1/kitchen_arrival.json',
       );
     }
@@ -624,7 +651,9 @@ class _KitchenScreenState extends State<KitchenScreen>
         // 챕터3 주방(kitchen_main)에서는 idle 기본값을 chaeon_20.gif로,
         // 걷는 중/계단 올라가는 중엔 chaeon_apron_20.gif로 씀
         // (계단 내려가는 쪽은 game_play_screen.dart에서 chaeon_20_normal_walk.gif)
-        : widget.mode == KitchenScreenMode.chapter3Start
+        // 챕터4는 전용 스프라이트가 아직 없어서 챕터3 것 그대로 재사용함
+        : (widget.mode == KitchenScreenMode.chapter3Start ||
+                  widget.mode == KitchenScreenMode.chapter4Start)
         ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
               ? 'assets/images/chaeon_apron_20.gif'
               : 'assets/images/chaeon_20.gif')
@@ -1315,6 +1344,25 @@ class _KitchenScreenState extends State<KitchenScreen>
                 child: Container(color: Colors.black),
               ),
 
+            // 9-14층: 챕터4 오프닝 컷씬(과거 회상). chapter4_before_cutscene.json 끝나면 뜨고,
+            // 최상단에서 화면을 전부 덮음. 프롤로그(GamePlayScreen)에서 쓰던 DialogueOverlay를
+            // game 없이 순수 Flutter 위젯으로만 띄우고, data/onComplete만 챕터4용으로 넘김.
+            // 끝나면(onComplete) chapter4_after_past.json으로 이어붙임(onDialogueEnd에서 이어받음)
+            if (_showChapter4Cutscene)
+              Positioned.fill(
+                key: const ValueKey('chapter4_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4CutsceneData,
+                  onComplete: () {
+                    setState(() => _showChapter4Cutscene = false);
+                    _hasLoadedChapter4AfterPast = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter4/chapter4_after_past.json',
+                    );
+                  },
+                ),
+              ),
+
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라
             // 지금은 암전 + 중앙 안내 문구만 있는 자리표시자로 둠. 탭하면 챕터 선택창으로 이동.
             // 챕터1 모드면 "챕터 1 종료", 챕터2 모드면 "챕터 2 종료" 문구로 나뉨
@@ -1335,7 +1383,11 @@ class _KitchenScreenState extends State<KitchenScreen>
                                 ? '챕터 1 종료'
                                 : widget.mode == KitchenScreenMode.chapter2Start
                                 ? '챕터 2 종료'
-                                : '챕터3 미니게임 준비 중',
+                                : widget.mode == KitchenScreenMode.chapter3Start
+                                ? '챕터3 미니게임 준비 중'
+                                // 컷씬(DialogueOverlay)은 이제 떴다 갔으니, 그 다음 이야기가
+                                // 아직 준비 안 됐다는 문구로 바꿈
+                                : '챕터4 계속 준비 중',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: rW(28),

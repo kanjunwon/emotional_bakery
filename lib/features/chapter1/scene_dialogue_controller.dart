@@ -138,7 +138,8 @@ class SceneDialogueController extends ChangeNotifier {
       final DialogueExpression? autoAdvanceExpression =
           (node.expression != null && node.expression!.autoAdvance)
           ? node.expression
-          : (node.chaeonExpression != null && node.chaeonExpression!.autoAdvance)
+          : (node.chaeonExpression != null &&
+                node.chaeonExpression!.autoAdvance)
           ? node.chaeonExpression
           : null;
       if (delayGifAsset != null) {

@@ -10,10 +10,16 @@ import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/models/interaction_model.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
+    show ReentryChapter;
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
+
+// 이 화면이 챕터3용인지 챕터4용인지 구분. 배경(room_bg.png)/좌표는 완전히 같은 걸 재사용하고,
+// 진입 시 자동 재생되는 대사 json이랑 문 클릭 시 넘어가는 재진입 챕터 값만 다름
+enum ChaeonRoomMode { chapter3, chapter4 }
 
 // room_bg.png 실측 좌표 기준 (874x456 캔버스)
 // 채온이가 방 안에 서있는 위치
@@ -37,10 +43,16 @@ const double kRoomDoorHeight = 250;
 // tutorial_screen.dart의 빵집 문 isNearDoor 체크랑 동일한 패턴. 임시 값, 문 위치 확정되면 같이 조정 필요
 const double kRoomDoorNearMinX = 620;
 const double kRoomDoorNearMaxX = 700;
+
 class ChaeonRoomScreen extends StatefulWidget {
-  const ChaeonRoomScreen({super.key, this.initialTemperature = 3});
+  const ChaeonRoomScreen({
+    super.key,
+    this.initialTemperature = 3,
+    this.mode = ChaeonRoomMode.chapter3,
+  });
 
   final int initialTemperature;
+  final ChaeonRoomMode mode;
 
   @override
   State<ChaeonRoomScreen> createState() => _ChaeonRoomScreenState();
@@ -79,8 +91,11 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
       initialTemperature: widget.initialTemperature,
     );
     _sceneController.addListener(_onSceneControllerChanged);
+    // 챕터4 모드면 chapter4_start_room.json, 아니면 기존 챕터3 대사를 그대로 로드
     _sceneController.loadDialogue(
-      'assets/lines/chapter3/chapter3_chaeon_room.json',
+      widget.mode == ChaeonRoomMode.chapter4
+          ? 'assets/lines/chapter4/chapter4_start_room.json'
+          : 'assets/lines/chapter3/chapter3_chaeon_room.json',
     );
     // 배경 오브젝트 클릭 정보(chapter3_room.json) 로드
     InteractionLoader.loadStageObjects('room_bg.png').then((objects) {
@@ -134,14 +149,17 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
       return;
     }
     // TutorialScreen 기본값(골목길 맨 왼쪽에서 시작)을 그대로 써서 진입.
-    // chapter3Reentry 켜서 빵집 문 클릭 시 skipChapter1Events 모드로 이어지게 함.
-    // initialStep만 2로 넘겨서 조작법 안내 문구(0/1단계)는 건너뜀 (챕터3 재진입이라 이미 다 아는 내용)
+    // reentryChapter 켜서 빵집 문 클릭 시 skipChapter1Events 모드로 이어지게 함.
+    // initialStep만 2로 넘겨서 조작법 안내 문구(0/1단계)는 건너뜀 (재진입이라 이미 다 아는 내용)
+    // 방 모드(mode)에 맞는 챕터로 넘겨줘야 골목길->빵집에서 챕터3 문 대사가 챕터4에 안 새어나감
     Navigator.push(
       context,
       fadeThroughBlackRoute(
         TutorialScreen(
           initialStep: 2,
-          chapter3Reentry: true,
+          reentryChapter: widget.mode == ChaeonRoomMode.chapter4
+              ? ReentryChapter.chapter4
+              : ReentryChapter.chapter3,
           initialTemperature: _sceneController.temperature,
         ),
       ),
@@ -177,14 +195,7 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     double wX(double px) => worldOffsetX + px * worldScale;
     double wY(double px) => worldOffsetY + px * worldScale;
     double wSize(double px) => px * worldScale;
-    // 채온이 전용 크기: 배경(room_bg.png)을 채우는 worldScale이 아니라 game_play_screen.dart
-    // (빵집)와 동일하게 화면 높이에만 비례하는 rH를 그대로 씀. worldScale을 쓰면 화면 비율에
-    // 따라 가로 기준으로 걸릴 때(가로가 넓은 화면) 빵집보다 채온이가 더 크게 보이는 문제가
-    // 있었음(kitchen_screen.dart에서 고친 것과 동일한 문제). kChaeonRoomTopY는 캐릭터가
-    // wSize(172) 크기로 그려질 때를 기준으로 맞춰둔 발(바닥) 위치라서, characterSize가
-    // 그보다 커지거나 작아진 만큼 top을 위/아래로 당겨야 발이 바닥에 그대로 붙어 보임.
-    // 차이의 "절반"만 당기면 발이 계속 뜨거나 파고들어 보이므로(세로 중심만 맞고 발
-    // 위치는 안 맞음), 차이 전체를 당겨야 함
+    // 챕터3 재진입 상태면 kitchen_screen.dart에서 계단 트리거 체크를 켜서
     final double characterSize = rH(172);
     final double characterTopShift = characterSize - wSize(172);
 

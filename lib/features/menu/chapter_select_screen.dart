@@ -161,8 +161,9 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            const KitchenScreen(mode: KitchenScreenMode.chapter2Start),
+                        builder: (context) => const KitchenScreen(
+                          mode: KitchenScreenMode.chapter2Start,
+                        ),
                       ),
                     );
                   },
@@ -196,7 +197,26 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   ),
                 ),
                 SizedBox(height: rH(4)),
-                _buildDevUnimplementedButton("DEV: 챕터4 바로가기", "챕터4 아직 미구현", rW),
+                // 챕터4도 챕터3이랑 동일하게 채온이 방 화면부터 시작. mode만 chapter4로 넘겨줌
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChaeonRoomScreen(
+                          mode: ChaeonRoomMode.chapter4,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    "DEV: 챕터4 바로가기",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                      fontSize: rW(10),
+                    ),
+                  ),
+                ),
                 SizedBox(height: rH(4)),
                 _buildDevUnimplementedButton("DEV: 챕터5 바로가기", "챕터5 아직 미구현", rW),
               ],
@@ -258,7 +278,10 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
       },
       child: Text(
         label,
-        style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: rW(10)),
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.3),
+          fontSize: rW(10),
+        ),
       ),
     );
   }

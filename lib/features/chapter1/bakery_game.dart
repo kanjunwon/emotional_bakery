@@ -6,17 +6,23 @@ import 'package:emotional_bakery/features/chapter1/chaeon.dart';
 import 'package:emotional_bakery/features/chapter1/components/interactive_zone.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
 
-// 계단(주방 입구) 트리거 x좌표. game_play_screen.dart의 계단 하강 애니메이션 시작 좌표
-// (_stairsTopPoint.dx)와 반드시 같은 값이어야 함. 다르면 트리거 시점의 실제 위치와
-// 하강 애니메이션 시작 위치가 어긋나서, 채온이가 순간적으로 뒤로(왼쪽으로) 튕기는 것처럼 보임
+// 챕터1 빵집에서 계단 근처에 도달했을 때, 주방으로 내려가는 연출 트리거 좌표
 const double kitchenStairsTriggerX = 1680;
 
 // 챕터3 재진입 모드(skipChapter1Events) 전용 트리거. 계단 가는 길목에 chapter3_door.json
 // 대사 한 번 끼워넣는 지점. 임시값, 실제로는 이보다 좀 더 뒤쪽이어야 함 - 화면 보면서 조정 예정
 const double kChapter3DoorTriggerX = 650;
 
+// 어느 챕터로 재진입해서 빵집을 다시 쓰는 건지 구분하는 용도. skipChapter1Events는 챕터
+// 상관없이 공통으로 켜지는 플래그인데, chapter3_door.json 트리거처럼 특정 챕터에서만 발동해야
+// 하는 로직은 이 enum으로 따로 갈라줘야 함. 나중에 챕터5 이후로 재진입 지점이 더 생기면 여기에 추가
+enum ReentryChapter { none, chapter3, chapter4 }
+
 class BakeryGame extends FlameGame {
-  BakeryGame({this.skipChapter1Events = false}) {
+  BakeryGame({
+    this.skipChapter1Events = false,
+    this.reentryChapter = ReentryChapter.none,
+  }) {
     // 챕터3 빵집 재진입 모드: 가이드 대사(x=650)/릴리안 등장(x=1305) 트리거를 처음부터
     // "이미 발동됨" 상태로 시작해서 무효화하고, 계단 트리거만 살아있게 함
     if (skipChapter1Events) {
@@ -28,6 +34,9 @@ class BakeryGame extends FlameGame {
 
   // true면 챕터3에서 빵집에 다시 들어온 경우. 챕터1 최초 플레이 흐름과 구분하는 용도
   final bool skipChapter1Events;
+  // chapter3_door.json 트리거처럼 챕터별로 갈라야 하는 로직 전용. skipChapter1Events가 true여도
+  // 이게 chapter3가 아니면(예: chapter4) chapter3 문 대사는 안 뜸
+  final ReentryChapter reentryChapter;
 
   Chaeon? chaeon;
   final double mapWidth = 1852; // 배경 이미지 가로 길이
@@ -194,7 +203,10 @@ class BakeryGame extends FlameGame {
 
     // skipChapter1Events 모드 전용: 계단 가는 길목에서 chapter3_door.json 대사 한 번 트리거.
     // 일반 챕터1 최초 플레이 경로(skipChapter1Events=false)에서는 절대 발동 안 함
+    // reentryChapter가 chapter3일 때만 발동. 챕터4 재진입(reentryChapter.chapter4)에서는
+    // chapter3 문 대사가 튀어나오면 안 되니까 여기서 걸러줌
     if (skipChapter1Events &&
+        reentryChapter == ReentryChapter.chapter3 &&
         chaeon != null &&
         !_hasTriggeredChapter3Door &&
         chaeon!.isMounted &&

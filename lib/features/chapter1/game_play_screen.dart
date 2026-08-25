@@ -42,6 +42,9 @@ class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
   // 챕터3 재진입 모드: true면 가이드 대사/table.json/first_bread.json 단계를 전부 건너뛰고,
   final bool skipChapter1Events;
+  // 어느 챕터로 재진입한 건지. skipChapter1Events는 챕터 상관없이 공통으로 켜지지만,
+  // chapter3_door.json 트리거처럼 챕터별로 갈라야 하는 로직은 이 값으로 구분함(BakeryGame에 그대로 전달)
+  final ReentryChapter reentryChapter;
   // 챕터3 재진입 시 방/골목길에서 이어받아 온도계에 표시할 시작 온도.
   // chaeon_room_screen.dart처럼 이전 화면의 _sceneController.temperature를 그대로 넘겨받음
   final int initialTemperature;
@@ -49,6 +52,7 @@ class GamePlayScreen extends StatefulWidget {
     super.key,
     this.isPrologue = false,
     this.skipChapter1Events = false,
+    this.reentryChapter = ReentryChapter.none,
     this.initialTemperature = 3,
   });
 
@@ -129,7 +133,10 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   void initState() {
     super.initState();
 
-    _game = BakeryGame(skipChapter1Events: widget.skipChapter1Events);
+    _game = BakeryGame(
+      skipChapter1Events: widget.skipChapter1Events,
+      reentryChapter: widget.reentryChapter,
+    );
     // 챕터3 재진입 모드면, 릴리안-채온 첫 만남 대사/회상 컷씬/빵 먹는 대사 단계를 전부 건너뜀
     if (widget.skipChapter1Events) {
       _dialoguePhase = DialoguePhase.kitchenApproach;
@@ -328,9 +335,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
               // 마을(튜토리얼)에서 빵집 문으로 다시 들어오면 새 GamePlayScreen을 만들지 않고
               // pop해서 지금 이 화면(대사/이동 진행 상태 그대로)으로 돌아오게 함
               returnToExistingGame: true,
-              // 챕터3 재진입 상태면 마을에서도 채온이가 20% 평상복 스프라이트로 나오게
-              // chapter3Reentry를 그대로 넘겨줌 (안 넘기면 기본값 false라 항상 챕터1 스프라이트로 나왔음)
-              chapter3Reentry: widget.skipChapter1Events,
+              // 챕터3/4 재진입 상태면 마을에서도 채온이가 20% 평상복 스프라이트로 나오게
+              // reentryChapter를 그대로 넘겨줌 (안 넘기면 기본값 none이라 항상 챕터1 스프라이트로 나왔음)
+              reentryChapter: widget.reentryChapter,
               // 온도계 값도 이어받아서 마을에서 표시되는 온도가 끊기지 않게 함
               initialTemperature: _sceneController.temperature,
             ),
@@ -503,8 +510,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     }
     // 현재 노드에 chaeonExpression이 있으면(예: table.json의 line_004a2_laugh/line_004a3)
     // 아래 단계별 기본 로직보다 우선해서 그걸 보여줌
-    final String? chaeonExpressionAsset =
-        _sceneController.sceneDialogue?.nodes[sceneNodeId]?.chaeonExpression?.asset;
+    final String? chaeonExpressionAsset = _sceneController
+        .sceneDialogue
+        ?.nodes[sceneNodeId]
+        ?.chaeonExpression
+        ?.asset;
     if (chaeonExpressionAsset != null) {
       // widgets.chaeonEatingSprites(빵 먹는 진행 단계 GIF, 0%->20%->50%->80%)로 바뀔 땐
       // 자세 차이가 커서 크로스페이드가 어색해 보이므로 페이드 없이 즉시 전환함
@@ -712,9 +722,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         fadeThroughBlackRoute(
           KitchenScreen(
             initialTemperature: _sceneController.temperature,
-            mode: widget.skipChapter1Events
-                ? KitchenScreenMode.chapter3Start
-                : KitchenScreenMode.chapter1End,
+            // 재진입 챕터별로 주방 진입 모드가 갈림. reentryChapter가 none이면 챕터1 최초 진입
+            mode: switch (widget.reentryChapter) {
+              ReentryChapter.chapter4 => KitchenScreenMode.chapter4Start,
+              ReentryChapter.chapter3 => KitchenScreenMode.chapter3Start,
+              ReentryChapter.none => KitchenScreenMode.chapter1End,
+            },
           ),
         ),
       );
@@ -826,7 +839,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       String chaeonSpriteAsset,
       double chaeonSpriteVerticalOffsetPx,
       bool isChaeonSpriteExpression,
-    ) = _resolveChaeonSprite(sceneNodeId);
+    ) = _resolveChaeonSprite(
+      sceneNodeId,
+    );
     final DialogueNode? currentSceneNode =
         (sceneDialogue != null && sceneNodeId != null)
         ? sceneDialogue.nodes[sceneNodeId]
@@ -974,7 +989,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                     String lillianSpriteAsset,
                     bool shouldApplyLillianFacingFlip,
                     bool isLillianSpriteExpression,
-                  ) = _resolveLillianSprite(sceneNodeId);
+                  ) = _resolveLillianSprite(
+                    sceneNodeId,
+                  );
                   return Positioned(
                     key: const ValueKey('lillian'),
                     left: renderLillianX,

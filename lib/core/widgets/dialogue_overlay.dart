@@ -4,9 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart';
 
 class DialogueOverlay extends StatefulWidget {
-  final BakeryGame game;
+  // Flame 오버레이로 쓸 때만 넘어옴(프롤로그 경로). 클래스 내부에서 실제로 참조하는 곳은
+  // 없어서 nullable로 바꿔도 별도 가드 없이 안전함. 순수 Flutter 위젯으로 쓸 때는 안 넘기면 됨
+  final BakeryGame? game;
+  // null이면 기존 _prologueData를 그대로 재생. 값이 있으면(예: 챕터4 컷씬) 그 데이터로 재생함
+  final List<Map<String, String>>? data;
+  // null이면 기존처럼 마지막 탭에서 Navigator.pop(context, true) 호출. 값이 있으면 그 콜백을 대신 호출함
+  final VoidCallback? onComplete;
 
-  const DialogueOverlay({super.key, required this.game});
+  const DialogueOverlay({super.key, this.game, this.data, this.onComplete});
 
   @override
   State<DialogueOverlay> createState() => _DialogueOverlayState();
@@ -37,11 +43,11 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
       "image": "prolog_6.png",
     },
     {
-      "text": "미소는 기쁨의 감정 중 하나, 소녀는 감정을 되찾아야했고 그 방법을 찾으려고 결심했습니다.",
+      "text": "미소는 기쁨의 감정 중 하나, 소녀는 감정을 되찾아야했고 그 방법을 찾으려고 결심했어요",
       "image": "prolog_6.png",
     },
     {
-      "text": "수소문 끝에 채온은 감정을 굽는다는 빵집의 존재를 알게 되며 그 곳을 찾아나섰습니다.",
+      "text": "수소문 끝에 채온은 감정을 굽는다는 빵집의 존재를 알게 되며 그 곳을 찾아나섰어요.",
       "image": "prolog_7.png",
     },
     {
@@ -57,15 +63,22 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
     double rW(double px) => (px / 874) * w;
     double rH(double px) => (px / 402) * h;
 
-    final currentData = _prologueData[_currentIndex];
+    // data가 없으면(프롤로그 경로) 기존 _prologueData 그대로 씀
+    final List<Map<String, String>> activeData = widget.data ?? _prologueData;
+    final currentData = activeData[_currentIndex];
 
     return GestureDetector(
       onTap: () {
         setState(() {
           // 마지막 대사인 경우 오버레이를 닫고 인게임 진입
-          if (_currentIndex >= _prologueData.length - 1) {
-            // 챕터 선택 스크린으로 결과값 true, 게임 화면 닫고 복귀
-            Navigator.pop(context, true);
+          if (_currentIndex >= activeData.length - 1) {
+            // onComplete가 있으면(챕터4 컷씬 등 재사용 경로) 그걸 호출하고,
+            // 없으면 기존처럼 챕터 선택 스크린으로 결과값 true, 게임 화면 닫고 복귀
+            if (widget.onComplete != null) {
+              widget.onComplete!();
+            } else {
+              Navigator.pop(context, true);
+            }
           } else {
             _currentIndex++;
           }
