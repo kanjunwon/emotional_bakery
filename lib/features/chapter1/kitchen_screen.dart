@@ -20,6 +20,7 @@ import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dar
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/chapter4/chapter4_cutscene_data.dart';
+import 'package:emotional_bakery/features/chapter4/chapter4_bad_ending_data.dart';
 import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
@@ -129,6 +130,12 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showChapter4Cutscene = false;
   // 챕터4 모드에서 오프닝 컷씬 끝나고 chapter4_after_past.json을 이미 이어붙였는지
   bool _hasLoadedChapter4AfterPast = false;
+  // chapter4_after_past.json의 choice_001에서 "아뇨... 싫어요."(line_015b1)를 골라서
+  // 끝난 경우에만 뜨는 배드엔딩 컷씬. 오프닝 컷씬(_showChapter4Cutscene)이랑 동일한
+  // DialogueOverlay 재사용 패턴
+  bool _showChapter4BadEndingCutscene = false;
+  // 배드엔딩 컷씬까지 다 본 상태인지. true면 챕터 종료 임시 화면 문구를 "배드엔딩"으로 바꿈
+  bool _isChapter4BadEnding = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
@@ -292,14 +299,18 @@ class _KitchenScreenState extends State<KitchenScreen>
         }
         // 챕터4 모드는 chapter4_before_cutscene.json -> 오프닝 컷씬(과거 회상) ->
         // chapter4_after_past.json 순으로 자동 이어붙이고(chapter2Start/chapter3Start랑
-        // 동일한 체이닝 패턴), 그 다음 배드엔딩 분기는 아직 없어서 끝나면 임시 안내 화면을 띄움.
-        // 컷씬 -> chapter4_after_past.json 로드는 DialogueOverlay onComplete 쪽에서 처리함
+        // 동일한 체이닝 패턴), 그 다음 choice_001에서 고른 분기에 따라 배드엔딩 컷씬 또는
+        // 임시 안내 화면으로 갈라짐. 컷씬 -> chapter4_after_past.json 로드는
+        // DialogueOverlay onComplete 쪽에서 처리함
         if (widget.mode == KitchenScreenMode.chapter4Start) {
           if (!_hasLoadedChapter4AfterPast) {
             setState(() => _showChapter4Cutscene = true);
+          } else if (_sceneController.lastLineNode?.id == 'line_015b1') {
+            // choice_001에서 "아뇨... 싫어요."를 골라 line_015b1로 끝난 경우만 배드엔딩 컷씬 표시
+            setState(() => _showChapter4BadEndingCutscene = true);
           } else {
-            // chapter4_after_past.json이 끝나면(choice_001 두 분기 다 next: null) 여기로 옴.
-            // 배드엔딩 분기가 아직 없어서 임시 안내 화면 표시
+            // choice_001에서 "...알겠어요."를 골라 line_015a1로 끝난 경우.
+            // 정상 엔딩 분기가 아직 없어서 임시 안내 화면 표시
             setState(() => _showChapterEndPlaceholder = true);
           }
           return;
@@ -1363,6 +1374,25 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
+            // 9-15층: 챕터4 배드엔딩 컷씬. chapter4_after_past.json의 choice_001에서
+            // "아뇨... 싫어요."를 골라 line_015b1로 대화가 끝난 경우에만 뜨고, 최상단에서
+            // 화면을 전부 덮음. 오프닝 컷씬(9-14층)이랑 동일하게 DialogueOverlay 재사용.
+            // 끝나면(onComplete) 챕터 종료 임시 화면을 "배드엔딩" 문구로 표시함
+            if (_showChapter4BadEndingCutscene)
+              Positioned.fill(
+                key: const ValueKey('chapter4_bad_ending_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4BadEndingData,
+                  onComplete: () {
+                    setState(() {
+                      _showChapter4BadEndingCutscene = false;
+                      _isChapter4BadEnding = true;
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
+                ),
+              ),
+
             // 10층: 챕터 종료/진행 임시 화면. 나중에 진짜 종료 연출/다음 챕터 연결로 교체할 예정이라
             // 지금은 암전 + 중앙 안내 문구만 있는 자리표시자로 둠. 탭하면 챕터 선택창으로 이동.
             // 챕터1 모드면 "챕터 1 종료", 챕터2 모드면 "챕터 2 종료" 문구로 나뉨
@@ -1379,7 +1409,9 @@ class _KitchenScreenState extends State<KitchenScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.mode == KitchenScreenMode.chapter1End
+                            _isChapter4BadEnding
+                                ? '배드엔딩'
+                                : widget.mode == KitchenScreenMode.chapter1End
                                 ? '챕터 1 종료'
                                 : widget.mode == KitchenScreenMode.chapter2Start
                                 ? '챕터 2 종료'

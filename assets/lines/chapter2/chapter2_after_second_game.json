@@ -23,7 +23,7 @@
     "line_004": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "그 설레고 따뜻한 감정이... 조금 느껴지는 것 같아요.",
+      "text": "그 설레고 따뜻한 감정이... 조금 느껴지는 거 같아요.",
       "next": "line_005"
     },
     "line_005": {
@@ -75,7 +75,7 @@
     "line_012": {
       "type": "line",
       "speaker": "lillian",
-      "text": "엇! 오늘은 이정도면 충분한 거 같아요.",
+      "text": "엇! 오늘은 이 정도면 충분한 거 같아요.",
       "expression": "assets/images/lillian_surprise.png",
       "next": "line_013"
     },
@@ -88,7 +88,7 @@
     "line_014": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "아... 그럼 오늘은 이만 돌아가볼게요.",
+      "text": "아... 그럼 오늘은 이만 돌아가 볼게요.",
       "next": "line_015"
     },
     "line_015": {
