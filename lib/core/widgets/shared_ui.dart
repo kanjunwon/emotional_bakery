@@ -9,21 +9,28 @@ import 'package:flutter/material.dart';
 const Duration _fadeThroughBlackFadeOut = Duration(milliseconds: 150);
 const Duration _fadeThroughBlackHold = Duration(milliseconds: 800);
 const Duration _fadeThroughBlackFadeIn = Duration(milliseconds: 300);
-final Duration _fadeThroughBlackTotal =
-    _fadeThroughBlackFadeOut + _fadeThroughBlackHold + _fadeThroughBlackFadeIn;
 
-PageRouteBuilder fadeThroughBlackRoute(Widget page) {
-  final double fadeOutEnd =
-      _fadeThroughBlackFadeOut.inMilliseconds /
-      _fadeThroughBlackTotal.inMilliseconds;
+// fadeOutDuration/holdDuration/fadeInDuration을 안 넘기면 기존 기본값(150/800/300ms)
+// 그대로 씀. 특정 전환만 암전을 더 길게 주고 싶을 때 이 셋만 넘기면 됨(다른 호출부는
+// 안 건드려도 기존 그대로 동작함)
+PageRouteBuilder fadeThroughBlackRoute(
+  Widget page, {
+  Duration? fadeOutDuration,
+  Duration? holdDuration,
+  Duration? fadeInDuration,
+}) {
+  final Duration fadeOut = fadeOutDuration ?? _fadeThroughBlackFadeOut;
+  final Duration hold = holdDuration ?? _fadeThroughBlackHold;
+  final Duration fadeIn = fadeInDuration ?? _fadeThroughBlackFadeIn;
+  final Duration total = fadeOut + hold + fadeIn;
+  final double fadeOutEnd = fadeOut.inMilliseconds / total.inMilliseconds;
   final double holdEnd =
-      (_fadeThroughBlackFadeOut + _fadeThroughBlackHold).inMilliseconds /
-      _fadeThroughBlackTotal.inMilliseconds;
+      (fadeOut + hold).inMilliseconds / total.inMilliseconds;
 
   // 페이지 전환 시, 화면이 검은색으로 페이드아웃 -> 잠시 유지 -> 페이드인 되도록 하는 커스텀 트랜지션
   return PageRouteBuilder(
-    transitionDuration: _fadeThroughBlackTotal,
-    reverseTransitionDuration: _fadeThroughBlackTotal,
+    transitionDuration: total,
+    reverseTransitionDuration: total,
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final double v = animation.value;

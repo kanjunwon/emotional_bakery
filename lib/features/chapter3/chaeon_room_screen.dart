@@ -33,6 +33,12 @@ const double kChaeonRoomMaxX = 700;
 const double kChaeonRoomSpeed = 225;
 const Duration _moveTickInterval = Duration(milliseconds: 40);
 
+// enterFromDoor(kitchen_screen.dart 챕터4 퇴장 연출)일 때 채온이가 걸어 들어오기
+// 시작하는 위치. 캔버스(874) 밖이라 화면 오른쪽에서 걸어 들어오는 것처럼 보임
+const double kChaeonRoomEnterStartX = 920;
+// enterFromDoor일 때 멈추는 위치. 기존 서있는 위치(kChaeonRoomX)보다 오른쪽으로 조정
+const double kChaeonRoomEnterStopX = 400;
+
 // 문 클릭 영역. 임시 위치, 실제 화면 보면서 조정 필요
 const double kRoomDoorX = 750;
 const double kRoomDoorTopY = 60;
@@ -49,10 +55,14 @@ class ChaeonRoomScreen extends StatefulWidget {
     super.key,
     this.initialTemperature = 3,
     this.mode = ChaeonRoomMode.chapter3,
+    this.enterFromDoor = false,
   });
 
   final int initialTemperature;
   final ChaeonRoomMode mode;
+  // true면 진입 대사 없이, 채온이가 문 쪽(화면 오른쪽)에서 걸어 들어와 원래 서있는
+  // 위치(kChaeonRoomX)에 멈추는 연출부터 시작함(kitchen_screen.dart 챕터4 퇴장 연출용)
+  final bool enterFromDoor;
 
   @override
   State<ChaeonRoomScreen> createState() => _ChaeonRoomScreenState();
@@ -91,15 +101,44 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
       initialTemperature: widget.initialTemperature,
     );
     _sceneController.addListener(_onSceneControllerChanged);
-    // 챕터4 모드면 chapter4_start_room.json, 아니면 기존 챕터3 대사를 그대로 로드
-    _sceneController.loadDialogue(
-      widget.mode == ChaeonRoomMode.chapter4
-          ? 'assets/lines/chapter4/chapter4_start_room.json'
-          : 'assets/lines/chapter3/chapter3_chaeon_room.json',
-    );
+    if (widget.enterFromDoor) {
+      // 문에서 걸어 들어오는 연출: 진입 대사 없이 바로 걸어 들어오는 애니메이션부터 시작하고,
+      // 다 걸어 들어오면 그때 dpad/문이 뜨게 함(_dialogueFinished를 그대로 재사용)
+      _chaeonX = kChaeonRoomEnterStartX;
+      _startEnterWalk();
+    } else {
+      // 챕터4 모드면 chapter4_start_room.json, 아니면 기존 챕터3 대사를 그대로 로드
+      _sceneController.loadDialogue(
+        widget.mode == ChaeonRoomMode.chapter4
+            ? 'assets/lines/chapter4/chapter4_start_room.json'
+            : 'assets/lines/chapter3/chapter3_chaeon_room.json',
+      );
+    }
     // 배경 오브젝트 클릭 정보(chapter3_room.json) 로드
     InteractionLoader.loadStageObjects('room_bg.png').then((objects) {
       if (mounted) setState(() => _interactionObjects = objects);
+    });
+  }
+
+  // enterFromDoor일 때 kChaeonRoomEnterStartX(화면 오른쪽 밖)에서 kChaeonRoomEnterStopX까지
+  // 왼쪽으로 자동으로 걸어오는 애니메이션. kitchen_screen.dart의 _startChapter4ExitWalk이랑
+  // 동일한 패턴(플레이어 입력 없이 Timer로 좌표만 직접 움직임)
+  void _startEnterWalk() {
+    _moveTimer?.cancel();
+    setState(() {
+      _chaeonState = 'walk';
+      _isChaeonFacingLeft = true;
+    });
+    _moveTimer = Timer.periodic(_moveTickInterval, (timer) {
+      setState(() => _chaeonX -= 9.0);
+      if (_chaeonX <= kChaeonRoomEnterStopX) {
+        timer.cancel();
+        setState(() {
+          _chaeonX = kChaeonRoomEnterStopX;
+          _chaeonState = 'idle';
+          _dialogueFinished = true;
+        });
+      }
     });
   }
 

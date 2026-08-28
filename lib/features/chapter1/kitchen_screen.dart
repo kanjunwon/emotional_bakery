@@ -15,12 +15,15 @@ import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter2/bread_making_scene.dart';
 import 'package:emotional_bakery/features/chapter2/clock_minigame_scene.dart';
+import 'package:emotional_bakery/features/chapter3/chaeon_room_screen.dart';
 import 'package:emotional_bakery/features/chapter3/diary_puzzle_scene.dart';
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
 import 'package:emotional_bakery/features/chapter4/chapter4_cutscene_data.dart';
 import 'package:emotional_bakery/features/chapter4/chapter4_bad_ending_data.dart';
+import 'package:emotional_bakery/features/chapter4/chapter4_making_bread_cutscene_data.dart';
+import 'package:emotional_bakery/features/chapter4/letter_scene.dart';
 import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
@@ -120,6 +123,9 @@ class _KitchenScreenState extends State<KitchenScreen>
   late final AnimationController _stairsUpController;
   Animation<Offset>? _stairsUpAnimation;
   bool _isChaeonAscendingStairs = false;
+  // true면 계단 오르기 애니메이션이 끝났을 때 Navigator.pop 대신 암전 후
+  // 채온이 방(ChaeonRoomScreen)으로 넘어감(chapter4_after_making.json 끝난 뒤 퇴장 연출)
+  bool _pendingChapter4RoomExit = false;
 
   bool _isSettingOpen = false;
   // kitchen_arrival.json(챕터1)이나 chapter2_ingredient_quiz.json(챕터2)이 끝나면 true.
@@ -136,6 +142,18 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showChapter4BadEndingCutscene = false;
   // 배드엔딩 컷씬까지 다 본 상태인지. true면 챕터 종료 임시 화면 문구를 "배드엔딩"으로 바꿈
   bool _isChapter4BadEnding = false;
+  // chapter4_after_past.json의 choice_001에서 "...알겠어요."(line_015a1)를 골라서
+  // 끝난 경우, chapter4_making_bread.json을 이미 이어붙였는지
+  bool _hasLoadedChapter4MakingBread = false;
+  // chapter4_making_bread.json이 끝나면(line_014, "그럼...") 뜨는 편지 컷씬
+  bool _showChapter4Letter = false;
+  // 편지 컷씬(LetterScene)이 끝나고 chapter4_after_letter.json을 이미 이어붙였는지
+  bool _hasLoadedChapter4AfterLetter = false;
+  // chapter4_after_letter.json이 끝나면(line_003) 뜨는 빵만들기 컷씬(과거 회상 컷씬이랑
+  // 동일하게 DialogueOverlay 재사용)
+  bool _showChapter4MakingBreadCutscene = false;
+  // 빵만들기 컷씬이 끝나고 chapter4_after_making.json을 이미 이어붙였는지
+  bool _hasLoadedChapter4AfterMaking = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
@@ -213,7 +231,24 @@ class _KitchenScreenState extends State<KitchenScreen>
           });
     _stairsUpController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
-        Navigator.pop(context);
+        if (_pendingChapter4RoomExit) {
+          Navigator.push(
+            context,
+            fadeThroughBlackRoute(
+              const ChaeonRoomScreen(
+                mode: ChaeonRoomMode.chapter4,
+                enterFromDoor: true,
+              ),
+              // 계단 다 올라간 뒤 방으로 넘어가는 연출이라 다른 화면 전환보다 암전을
+              // 조금 더 길게 줌
+              fadeOutDuration: const Duration(milliseconds: 400),
+              holdDuration: const Duration(milliseconds: 1200),
+              fadeInDuration: const Duration(milliseconds: 500),
+            ),
+          );
+        } else {
+          Navigator.pop(context);
+        }
       }
     });
     // 챕터2는 걷기 없이 바로 대사부터 시작하니까, 이동을 처음부터 잠그고 릴리안 근처에
@@ -300,7 +335,7 @@ class _KitchenScreenState extends State<KitchenScreen>
         // 챕터4 모드는 chapter4_before_cutscene.json -> 오프닝 컷씬(과거 회상) ->
         // chapter4_after_past.json 순으로 자동 이어붙이고(chapter2Start/chapter3Start랑
         // 동일한 체이닝 패턴), 그 다음 choice_001에서 고른 분기에 따라 배드엔딩 컷씬 또는
-        // 임시 안내 화면으로 갈라짐. 컷씬 -> chapter4_after_past.json 로드는
+        // chapter4_making_bread.json으로 갈라짐. 컷씬 -> chapter4_after_past.json 로드는
         // DialogueOverlay onComplete 쪽에서 처리함
         if (widget.mode == KitchenScreenMode.chapter4Start) {
           if (!_hasLoadedChapter4AfterPast) {
@@ -308,10 +343,23 @@ class _KitchenScreenState extends State<KitchenScreen>
           } else if (_sceneController.lastLineNode?.id == 'line_015b1') {
             // choice_001에서 "아뇨... 싫어요."를 골라 line_015b1로 끝난 경우만 배드엔딩 컷씬 표시
             setState(() => _showChapter4BadEndingCutscene = true);
-          } else {
+          } else if (!_hasLoadedChapter4MakingBread) {
             // choice_001에서 "...알겠어요."를 골라 line_015a1로 끝난 경우.
-            // 정상 엔딩 분기가 아직 없어서 임시 안내 화면 표시
-            setState(() => _showChapterEndPlaceholder = true);
+            // chapter4_making_bread.json으로 이어붙임
+            _hasLoadedChapter4MakingBread = true;
+            _sceneController.loadDialogue(
+              'assets/lines/chapter4/chapter4_making_bread.json',
+            );
+          } else if (!_hasLoadedChapter4AfterLetter) {
+            // chapter4_making_bread.json이 끝나면(line_014, "그럼...") 여기로 옴. 편지 컷씬 표시
+            setState(() => _showChapter4Letter = true);
+          } else if (!_hasLoadedChapter4AfterMaking) {
+            // chapter4_after_letter.json이 끝나면(line_003) 여기로 옴. 빵만들기 컷씬 표시
+            setState(() => _showChapter4MakingBreadCutscene = true);
+          } else {
+            // chapter4_after_making.json이 끝나면(line_003) 여기로 옴. 채온이가 왼쪽으로
+            // 걸어서 나가고 -> 암전 -> 채온이 방으로 넘어감
+            _startChapter4ExitWalk();
           }
           return;
         }
@@ -579,7 +627,9 @@ class _KitchenScreenState extends State<KitchenScreen>
   }
 
   // 내려올 때(game_play_screen.dart의 _triggerChaeonStairsDescent)와 동일한 패턴으로,
-  // _stairsAscentStart에서 _stairsAscentEnd로 이동하는 애니메이션을 재생. 끝나면 화면을 pop함
+  // _stairsAscentStart에서 _stairsAscentEnd로 이동하는 애니메이션을 재생. 끝나면 보통은
+  // 화면을 pop하는데, _pendingChapter4RoomExit이면 대신 채온이 방으로 넘어감(위 상태
+  // 리스너 참고)
   void _triggerChaeonStairsAscent() {
     _stairsUpAnimation =
         Tween<Offset>(begin: _stairsAscentStart, end: _stairsAscentEnd).animate(
@@ -587,6 +637,31 @@ class _KitchenScreenState extends State<KitchenScreen>
         );
     setState(() => _isChaeonAscendingStairs = true);
     _stairsUpController.forward(from: 0);
+  }
+
+  // chapter4_after_making.json 끝나고 나오는 스크립트 연출: 플레이어 입력 없이 채온이가
+  // 자동으로 왼쪽 계단 위치(kChaeonKitchenMinX)까지 걸어간 다음, 계단 올라가기 애니메이션
+  // (_triggerChaeonStairsAscent, dpad로 계단까지 걸어갔을 때랑 동일한 연출)을 그대로
+  // 재생함. 다 올라가면 _pendingChapter4RoomExit 덕분에 pop 대신 암전 후 채온이 방으로 넘어감
+  void _startChapter4ExitWalk() {
+    _moveTimer?.cancel();
+    setState(() {
+      _movementLocked = true;
+      _chaeonState = 'walk';
+      _isChaeonFacingLeft = true;
+    });
+    _moveTimer = Timer.periodic(_moveTickInterval, (timer) {
+      setState(() => _chaeonX -= 9.0);
+      if (_chaeonX <= kChaeonKitchenMinX) {
+        timer.cancel();
+        setState(() {
+          _chaeonX = kChaeonKitchenMinX;
+          _chaeonState = 'idle';
+          _pendingChapter4RoomExit = true;
+        });
+        _triggerChaeonStairsAscent();
+      }
+    });
   }
 
   void _startMoving(int direction) {
@@ -1389,6 +1464,40 @@ class _KitchenScreenState extends State<KitchenScreen>
                       _isChapter4BadEnding = true;
                       _showChapterEndPlaceholder = true;
                     });
+                  },
+                ),
+              ),
+
+            // 9-16층: 챕터4 편지 컷씬. chapter4_making_bread.json이 끝나면(line_014) 뜨고,
+            // 최상단에서 화면을 전부 덮음. 끝나면(onComplete) chapter4_after_letter.json으로 이어붙임
+            if (_showChapter4Letter)
+              Positioned.fill(
+                key: const ValueKey('chapter4_letter'),
+                child: LetterScene(
+                  onComplete: () {
+                    setState(() => _showChapter4Letter = false);
+                    _hasLoadedChapter4AfterLetter = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter4/chapter4_after_letter.json',
+                    );
+                  },
+                ),
+              ),
+
+            // 9-17층: 챕터4 빵만들기 컷씬. chapter4_after_letter.json이 끝나면(line_003) 뜨고,
+            // 최상단에서 화면을 전부 덮음. 오프닝 컷씬(9-14층)이랑 동일하게 DialogueOverlay 재사용.
+            // 끝나면(onComplete) chapter4_after_making.json으로 이어붙임
+            if (_showChapter4MakingBreadCutscene)
+              Positioned.fill(
+                key: const ValueKey('chapter4_making_bread_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4MakingBreadCutsceneData,
+                  onComplete: () {
+                    setState(() => _showChapter4MakingBreadCutscene = false);
+                    _hasLoadedChapter4AfterMaking = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter4/chapter4_after_making.json',
+                    );
                   },
                 ),
               ),

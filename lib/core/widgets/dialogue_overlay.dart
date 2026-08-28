@@ -109,7 +109,18 @@ class _DialogueOverlayState extends State<DialogueOverlay> {
               right: 0,
               child: Container(
                 height: rH(80),
-                color: Colors.black.withOpacity(0.6), // 대사창 가독성을 위한 반투명 박스
+                // 대사창 가독성을 위한 반투명 박스. 위쪽은 완전 투명, 아래쪽은 완전
+                // 불투명 검정으로 자연스럽게 이어지도록 그라데이션 처리함
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.0),
+                      Colors.black.withOpacity(1.0),
+                    ],
+                  ),
+                ),
                 padding: EdgeInsets.symmetric(
                   horizontal: rW(50),
                   vertical: rH(20),
