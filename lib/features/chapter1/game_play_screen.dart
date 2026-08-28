@@ -34,9 +34,16 @@ const Duration _memoryFadeOutDuration = Duration(milliseconds: 300);
 const Offset _stairsTopPoint = Offset(1680, 172);
 // 릴리안이 계단을 올라오기 시작하는(화면 밖) 지점
 const Offset _stairsOffscreenPoint = Offset(1800, 180);
-// 채온이가 계단을 내려가 화면 밖으로 사라지는 지점
-const Offset _chaeonStairsDescentEnd = Offset(1920, 232);
+// 채온이가 계단을 내려가 화면 밖으로 사라지는 지점. 시작 y를 180으로 바꾸면서 대각선
+// 각도가 예전보다 완만해져서, x를 오른쪽으로 더 밀어서 각도를 다시 맞춤(y는 그대로)
+const Offset _chaeonStairsDescentEnd = Offset(1960, 232);
 const Duration _stairsDescentDuration = Duration(milliseconds: 700);
+// 채온이 하강 애니메이션이 시작하는 y좌표. _stairsTopPoint.dy(172)를 그대로 쓰면 평소
+// 걷는 위치(bottom: rH(50) 기준, top으로 환산하면 rH(180))보다 rH(8)만큼 위에서 시작해버려서
+// 하강 시작 순간 살짝 위로 튀어 보임. 릴리안은 평소에도 top: rH(172) 기준이라 172가 맞지만,
+// 채온이는 평소 바닥선 기준이 달라서 따로 값을 둠
+const double _chaeonStairsDescentStartY = 180;
+const double _chaeonWalkFloorBottomOffset = 50; // "bottom: rH(50)" 채온이 바닥선 기준값
 
 class GamePlayScreen extends StatefulWidget {
   final bool isPrologue;
@@ -435,6 +442,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in chapter3ReentryAssets) {
         precacheImage(AssetImage(asset), context);
       }
+      // 챕터4 재진입 모드는 같은 자리에서 20% 대신 50% 평상복 스프라이트를 씀
+      const List<String> chapter4ReentryAssets = [
+        'assets/images/chaeon_50_normal.gif',
+        'assets/images/chaeon_50_normal_walk.gif',
+      ];
+      for (final asset in chapter4ReentryAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -487,23 +502,33 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
   (String, double, bool) _resolveChaeonSprite(String? sceneNodeId) {
     // 계단 하강 중엔 그 시점 _chaeonState(walk/idle)와 무관하게 항상 한 스프라이트로 고정.
-    // 챕터1은 apron_idle.gif, 챕터3 재진입 모드는 chaeon_20_normal_walk.gif
+    // 챕터1은 apron_idle.gif, 챕터3 재진입 모드는 chaeon_20_normal_walk.gif,
+    // 챕터4 재진입 모드는 chaeon_50_normal_walk.gif
     if (_isChaeonDescendingStairs) {
       return (
-        widget.skipChapter1Events
+        widget.reentryChapter == ReentryChapter.chapter4
+            ? 'assets/images/chaeon_50_normal_walk.gif'
+            : widget.skipChapter1Events
             ? 'assets/images/chaeon_20_normal_walk.gif'
             : 'assets/images/chaeon_apron_idle.gif',
         0,
         false,
       );
     }
-    // 챕터3 재진입 모드는 kitchenApproach 단계로 시작해도 아직 앞치마 입기 전(지하 내려가기 전)
-    // 상태라서, 아래 kitchenApproach 앞치마 분기보다 먼저 여기서 20% 평상복 스프라이트로 처리함
+    // 챕터3/4 재진입 모드는 kitchenApproach 단계로 시작해도 아직 앞치마 입기 전(지하 내려가기 전)
+    // 상태라서, 아래 kitchenApproach 앞치마 분기보다 먼저 여기서 평상복 스프라이트로 처리함.
+    // 챕터4는 50%, 나머지(챕터3)는 20% 상태 에셋
     if (widget.skipChapter1Events) {
+      final bool isChapter4Reentry =
+          widget.reentryChapter == ReentryChapter.chapter4;
       return (
         _chaeonState == 'walk'
-            ? 'assets/images/chaeon_20_normal_walk.gif'
-            : 'assets/images/chaeon_20_normal.gif',
+            ? (isChapter4Reentry
+                  ? 'assets/images/chaeon_50_normal_walk.gif'
+                  : 'assets/images/chaeon_20_normal_walk.gif')
+            : (isChapter4Reentry
+                  ? 'assets/images/chaeon_50_normal.gif'
+                  : 'assets/images/chaeon_20_normal.gif'),
         0,
         false,
       );
@@ -683,14 +708,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     _lillianStairsController.forward(from: 0);
   }
 
-  // 채온이가 계단 근처에 도달하면 조작을 잠그고, 계단 꼭대기(_stairsTopPoint)에서
-  // 화면 밖(계단 아래, _chaeonStairsDescentEnd)으로 내려가는 하강 애니메이션을 재생
+  // 채온이가 계단 근처에 도달하면 조작을 잠그고, 계단 꼭대기(_stairsTopPoint.dx,
+  // _chaeonStairsDescentStartY)에서 화면 밖(계단 아래, _chaeonStairsDescentEnd)으로
+  // 내려가는 하강 애니메이션을 재생. y는 _stairsTopPoint.dy(릴리안용)가 아니라
+  // _chaeonStairsDescentStartY를 써야 평소 걷던 위치에서 이어져서 시작함
   void _triggerChaeonStairsDescent() {
     _chaeonStairsDescentAnimation =
         TweenSequence<Offset>([
           TweenSequenceItem(
             tween: Tween<Offset>(
-              begin: _stairsTopPoint,
+              begin: Offset(_stairsTopPoint.dx, _chaeonStairsDescentStartY),
               end: _chaeonStairsDescentEnd,
             ),
             weight: 1,
@@ -950,7 +977,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                 Positioned(
                   key: const ValueKey('chaeon'),
                   left: renderChaeonX,
-                  bottom: rH(50), // 튜토리얼 채온이와 동일한 바닥선 기준
+                  bottom: rH(
+                    _chaeonWalkFloorBottomOffset,
+                  ), // 튜토리얼 채온이와 동일한 바닥선 기준
                   child: Transform.translate(
                     // 스프라이트별 세로 위치 보정값(chaeonSpriteVerticalOffsetPx)만큼 더해줌
                     offset: Offset(

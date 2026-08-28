@@ -235,9 +235,12 @@ class _KitchenScreenState extends State<KitchenScreen>
           Navigator.push(
             context,
             fadeThroughBlackRoute(
-              const ChaeonRoomScreen(
+              ChaeonRoomScreen(
                 mode: ChaeonRoomMode.chapter4,
                 enterFromDoor: true,
+                // 온도계는 누적형이라 챕터4 방으로 넘어갈 때도 지금까지 쌓인 온도를 그대로 이어받아야 함.
+                // 여기서 안 넘기면 ChaeonRoomScreen 기본값(3)으로 초기화돼버림
+                initialTemperature: _sceneController.temperature,
               ),
               // 계단 다 올라간 뒤 방으로 넘어가는 연출이라 다른 화면 전환보다 암전을
               // 조금 더 길게 줌
@@ -737,12 +740,15 @@ class _KitchenScreenState extends State<KitchenScreen>
         // 챕터3 주방(kitchen_main)에서는 idle 기본값을 chaeon_20.gif로,
         // 걷는 중/계단 올라가는 중엔 chaeon_apron_20.gif로 씀
         // (계단 내려가는 쪽은 game_play_screen.dart에서 chaeon_20_normal_walk.gif)
-        // 챕터4는 전용 스프라이트가 아직 없어서 챕터3 것 그대로 재사용함
-        : (widget.mode == KitchenScreenMode.chapter3Start ||
-                  widget.mode == KitchenScreenMode.chapter4Start)
+        : widget.mode == KitchenScreenMode.chapter3Start
         ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
               ? 'assets/images/chaeon_apron_20.gif'
               : 'assets/images/chaeon_20.gif')
+        // 챕터4는 감정 온도가 더 오른 상태라 기본 스프라이트를 50% 버전으로 씀
+        : widget.mode == KitchenScreenMode.chapter4Start
+        ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
+              ? 'assets/images/chaeon_apron_50.gif'
+              : 'assets/images/chaeon_50.gif')
         : _isChaeonAscendingStairs || _chaeonState == 'walk'
         ? 'assets/images/chaeon_apron_idle.gif'
         : 'assets/images/chaeon_apron_putting_on.gif';
@@ -781,6 +787,12 @@ class _KitchenScreenState extends State<KitchenScreen>
     // 챕터1 엔딩을 다 봤으니 챕터2 해금. 챕터2 모드(이미 해금된 상태)에서 탭할 땐 안 해도 됨
     if (widget.mode == KitchenScreenMode.chapter1End) {
       ChapterProgress.isChapter2Unlocked = true;
+    } else if (widget.mode == KitchenScreenMode.chapter2Start) {
+      // 챕터2 완전 종료(chapter2_after_second_game.json까지 다 봄)했으니 챕터3 해금
+      ChapterProgress.isChapter3Unlocked = true;
+    } else if (widget.mode == KitchenScreenMode.chapter3Start) {
+      // 챕터3 완전 종료(일기장 퍼즐 시퀀스 끝)했으니 챕터4 해금
+      ChapterProgress.isChapter4Unlocked = true;
     }
     Navigator.pushReplacement(
       context,

@@ -217,8 +217,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
                         flipX: _isLookingLeft, // true일 때 이미지 반전
                         child: Image.asset(
                           // 오른쪽 에셋 2개만 가지고 walk와 idle을 스위칭함.
-                          // 챕터3/4 재진입(reentryChapter != none)일 때는 20% 상태 에셋을 씀
-                          widget.reentryChapter != ReentryChapter.none
+                          // 챕터3 재진입일 때는 20% 상태 에셋, 챕터4 재진입일 때는 50% 상태
+                          // 에셋을 씀
+                          widget.reentryChapter == ReentryChapter.chapter4
+                              ? (_currentAction == 'walk'
+                                    ? 'assets/images/chaeon_50_normal_walk.gif'
+                                    : 'assets/images/chaeon_50_normal.gif')
+                              : widget.reentryChapter != ReentryChapter.none
                               ? (_currentAction == 'walk'
                                     ? 'assets/images/chaeon_20_normal_walk.gif'
                                     : 'assets/images/chaeon_20_normal.gif')

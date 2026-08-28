@@ -8,13 +8,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/models/interaction_model.dart';
+import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
+import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
     show ReentryChapter;
 import 'package:emotional_bakery/features/chapter1/scene_dialogue_controller.dart';
 import 'package:emotional_bakery/features/chapter1/game_play_widgets.dart'
     as widgets;
+import 'package:emotional_bakery/features/chapter4/chapter4_back_to_bakery_data.dart';
+import 'package:emotional_bakery/features/chapter4/chapter4_bad_ending_data.dart';
+import 'package:emotional_bakery/features/chapter4/chapter4_eat_sad_bread_cutscene_data.dart';
+import 'package:emotional_bakery/features/chapter4/chapter4_ending_normal_data.dart';
+import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
 
 // 이 화면이 챕터3용인지 챕터4용인지 구분. 배경(room_bg.png)/좌표는 완전히 같은 걸 재사용하고,
@@ -77,6 +84,25 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
   // 진입 대사가 끝나기 전까진 dpad랑 문 둘 다 숨김
   bool _dialogueFinished = false;
 
+  // enterFromDoor 흐름 전용 체이닝 플래그: chapter4_room_choice.json / 온도 분기(temp_low,
+  // temp_high)를 이미 다 봤는지. kitchen_screen.dart의 _hasLoadedXxx 패턴이랑 동일
+  bool _hasLoadedChapter4RoomChoice = false;
+  bool _hasLoadedChapter4TempBranch = false;
+  // 온도 낮음(1~3) 분기: chapter4_temp_low.json 끝나면 뜨는 배드엔딩 컷씬.
+  // kitchen_screen.dart의 챕터4 배드엔딩 컷씬이랑 동일하게 DialogueOverlay + chapter4BadEndingData 재사용
+  bool _showChapter4BadEndingCutscene = false;
+  bool _isChapter4BadEnding = false;
+  // 온도 높음(4~10) 분기: chapter4_temp_high.json 끝나면 뜨는 슬픔의 빵을 먹는 컷씬.
+  // 배드엔딩 컷씬이랑 동일하게 DialogueOverlay + chapter4EatSadBreadCutsceneData 재사용
+  bool _showChapter4EatSadBreadCutscene = false;
+  // 회상씬 이후 온도 4~7(노말엔딩) 분기: 끝나면 임시 종료 화면으로 이어짐(배드엔딩이랑 동일 패턴)
+  bool _showChapter4EndingNormalCutscene = false;
+  // 회상씬 이후 온도 8~10(챕터5행) 분기: 끝나면 챕터5 잠금 해제하고 바로 챕터 선택창으로 이동
+  bool _showChapter4BackToBakeryCutscene = false;
+  // 배드엔딩/노말엔딩 컷씬이 끝나면 뜨는 임시 종료 화면.
+  // 그 다음 내용이 아직 없어서 kitchen_screen.dart의 "챕터4 계속 준비 중" 자리표시자를 그대로 재사용
+  bool _showChapterEndPlaceholder = false;
+
   bool _isSettingOpen = false;
 
   // 문 근접 판정 실패 안내 문구, 배경 오브젝트 클릭 정보 둘 다 여기 띄움. 탭하면 닫힘
@@ -93,6 +119,30 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     super.initState();
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
+        // enterFromDoor 흐름(챕터4 방 복귀)에서만 room_choice -> 온도 분기 체이닝을 타고,
+        // 그 외(챕터3, 챕터4 오프닝 독백)는 기존처럼 그냥 dpad/문만 열어줌
+        if (widget.enterFromDoor && !_hasLoadedChapter4RoomChoice) {
+          // chapter4_room_choice.json이 끝나면 여기로 옴. 감정 온도로 분기
+          _hasLoadedChapter4RoomChoice = true;
+          _sceneController.loadDialogue(
+            _sceneController.temperature <= 3
+                ? 'assets/lines/chapter4/chapter4_temp_low.json'
+                : 'assets/lines/chapter4/chapter4_temp_high.json',
+          );
+          return;
+        }
+        if (widget.enterFromDoor && !_hasLoadedChapter4TempBranch) {
+          // chapter4_temp_low.json(line_001) 또는 chapter4_temp_high.json(line_002)이
+          // 끝나면 여기로 옴. 온도 분기 사이에 온도가 바뀔 일은 없어서 위와 동일 조건 재사용
+          _hasLoadedChapter4TempBranch = true;
+          if (_sceneController.temperature <= 3) {
+            setState(() => _showChapter4BadEndingCutscene = true);
+          } else {
+            // 온도 높음(4~10) 분기: 슬픔의 빵을 먹는 컷씬 표시
+            setState(() => _showChapter4EatSadBreadCutscene = true);
+          }
+          return;
+        }
         setState(() => _dialogueFinished = true);
       },
       // 이 방엔 릴리안이 없어서 둘 다 안 씀
@@ -122,7 +172,9 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
 
   // enterFromDoor일 때 kChaeonRoomEnterStartX(화면 오른쪽 밖)에서 kChaeonRoomEnterStopX까지
   // 왼쪽으로 자동으로 걸어오는 애니메이션. kitchen_screen.dart의 _startChapter4ExitWalk이랑
-  // 동일한 패턴(플레이어 입력 없이 Timer로 좌표만 직접 움직임)
+  // 동일한 패턴(플레이어 입력 없이 Timer로 좌표만 직접 움직임). 멈추자마자 탭 없이 바로
+  // chapter4_room_choice.json 첫 줄이 뜨고, 끝나면 기존 onDialogueEnd에서
+  // _dialogueFinished = true로 넘겨받아 dpad/문이 뜸
   void _startEnterWalk() {
     _moveTimer?.cancel();
     setState(() {
@@ -136,8 +188,10 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
         setState(() {
           _chaeonX = kChaeonRoomEnterStopX;
           _chaeonState = 'idle';
-          _dialogueFinished = true;
         });
+        _sceneController.loadDialogue(
+          'assets/lines/chapter4/chapter4_room_choice.json',
+        );
       }
     });
   }
@@ -209,6 +263,15 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
     _sceneController.goBackScene();
   }
 
+  // 챕터4 임시 종료 화면 탭하면 챕터 선택창으로 이동. kitchen_screen.dart의
+  // _handleChapterEndTap이랑 동일한 패턴(pushReplacement로 스택 정리)
+  void _handleChapterEndTap() {
+    Navigator.pushReplacement(
+      context,
+      fadeThroughBlackRoute(const ChapterSelectScreen()),
+    );
+  }
+
   // 현재 노드가 채온이 대사고 expression이 있으면 그 이미지를 우선 보여줌
   // (kitchen_screen.dart의 _resolveChaeonExpressionSprite와 동일한 패턴)
   String? _resolveChaeonExpressionSprite(String? sceneNodeId) {
@@ -264,8 +327,9 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
               child: Image.asset('assets/images/room_bg.png', fit: BoxFit.fill),
             ),
 
-            // 2층: 채온이. 챕터3 기본 상태는 chaeon_20_normal(_walk).gif(20% 상태 에셋)를 쓰고,
-            // 현재 대사 노드에 expression이 있으면(채온이 대사일 때만) 그 이미지를 우선 보여줌
+            // 2층: 채온이. 챕터3 기본 상태는 chaeon_20_normal(_walk).gif(20% 상태 에셋), 챕터4는
+            // chaeon_50_normal(_walk).gif(50% 상태 에셋)를 쓰고, 현재 대사 노드에 expression이
+            // 있으면(채온이 대사일 때만) 그 이미지를 우선 보여줌
             Positioned(
               key: const ValueKey('chaeon_room_chaeon'),
               left: wX(_chaeonX),
@@ -276,9 +340,14 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
                   builder: (context) {
                     final String? expressionSprite =
                         _resolveChaeonExpressionSprite(sceneNodeId);
-                    final String defaultSprite = _chaeonState == 'walk'
-                        ? 'assets/images/chaeon_20_normal_walk.gif'
-                        : 'assets/images/chaeon_20_normal.gif';
+                    // 챕터4는 감정 온도가 더 오른 상태라 기본 스프라이트를 50% 버전으로 씀
+                    final String defaultSprite = widget.mode == ChaeonRoomMode.chapter4
+                        ? (_chaeonState == 'walk'
+                              ? 'assets/images/chaeon_50_normal_walk.gif'
+                              : 'assets/images/chaeon_50_normal.gif')
+                        : (_chaeonState == 'walk'
+                              ? 'assets/images/chaeon_20_normal_walk.gif'
+                              : 'assets/images/chaeon_20_normal.gif');
                     // expression이 있을 때만 부드럽게 전환하고, 걷기/정지 전환은 dpad에
                     // 바로 반응해야 자연스러워서 즉시 바뀌는 Image.asset을 씀
                     if (expressionSprite != null) {
@@ -353,7 +422,11 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
                           lillianCenterX: chaeonCenterX,
                           typedCharCount: _sceneController.typedCharCount,
                           chaeonSpriteTopY: chaeonSpriteTopY,
-                          lillianSpriteTopY: chaeonSpriteTopY,
+                          // buildSceneBubble이 화자별로 headGap을 다르게 줘서(채온 10, 릴리안 20)
+                          // 그대로 chaeonSpriteTopY를 넘기면 speaker:lillian인 줄(예:
+                          // chapter4_room_choice.json line_002)만 rH(10)px 더 높이 뜸.
+                          // 이 방엔 실제로는 채온이 하나뿐이라 그 차이만큼 미리 보정해서 넘겨줌
+                          lillianSpriteTopY: chaeonSpriteTopY + rH(10),
                         ),
                     ],
                   ),
@@ -493,6 +566,118 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
                     ),
                   );
                 },
+              ),
+
+            // 10층: 챕터4 배드엔딩 컷씬. chapter4_temp_low.json(line_001)까지 끝났을 때만
+            // 뜨고, 최상단에서 화면을 전부 덮음. kitchen_screen.dart 9-15층이랑 동일하게
+            // DialogueOverlay + chapter4BadEndingData 재사용. 끝나면(onComplete) 임시
+            // 종료 화면을 "배드엔딩" 문구로 표시함
+            if (_showChapter4BadEndingCutscene)
+              Positioned.fill(
+                key: const ValueKey('chaeon_room_chapter4_bad_ending_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4BadEndingData,
+                  onComplete: () {
+                    setState(() {
+                      _showChapter4BadEndingCutscene = false;
+                      _isChapter4BadEnding = true;
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 10-2층: 챕터4 슬픔의 빵을 먹는 컷씬. chapter4_temp_high.json(line_002)까지
+            // 끝났을 때만 뜨고, 최상단에서 화면을 전부 덮음. 배드엔딩 컷씬(10층)이랑
+            // 동일하게 DialogueOverlay 재사용. 끝나면(onComplete) 온도로 한 번 더 분기:
+            // 4~7은 노말엔딩, 8~10은 챕터5행. 이 시점 온도는 이미 4 이상 확정이라 겹칠 일 없음
+            if (_showChapter4EatSadBreadCutscene)
+              Positioned.fill(
+                key: const ValueKey('chaeon_room_chapter4_eat_sad_bread_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4EatSadBreadCutsceneData,
+                  onComplete: () {
+                    setState(() => _showChapter4EatSadBreadCutscene = false);
+                    if (_sceneController.temperature <= 7) {
+                      setState(() => _showChapter4EndingNormalCutscene = true);
+                    } else {
+                      setState(() => _showChapter4BackToBakeryCutscene = true);
+                    }
+                  },
+                ),
+              ),
+
+            // 10-3층: 챕터4 노말엔딩(온도 4~7) 컷씬. 위 회상씬이 끝나고 뜸.
+            // 배드엔딩 컷씬이랑 동일한 패턴. 끝나면(onComplete) 임시 종료 화면 표시
+            if (_showChapter4EndingNormalCutscene)
+              Positioned.fill(
+                key: const ValueKey('chaeon_room_chapter4_ending_normal_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4EndingNormalData,
+                  onComplete: () {
+                    setState(() {
+                      _showChapter4EndingNormalCutscene = false;
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 10-4층: 챕터4 챕터5행(온도 8~10) 컷씬. 위 회상씬이 끝나고 뜸. 끝나면(onComplete)
+            // 임시 종료 화면 없이 바로 챕터5 잠금 해제 + 챕터 선택창 이동까지 처리함
+            if (_showChapter4BackToBakeryCutscene)
+              Positioned.fill(
+                key: const ValueKey('chaeon_room_chapter4_back_to_bakery_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter4BackToBakeryData,
+                  onComplete: () {
+                    ChapterProgress.isChapter5Unlocked = true;
+                    Navigator.pushReplacement(
+                      context,
+                      fadeThroughBlackRoute(const ChapterSelectScreen()),
+                    );
+                  },
+                ),
+              ),
+
+            // 11층: 챕터4 임시 종료 화면. 위 두 컷씬(배드엔딩/슬픔의 빵) 중 하나가 끝나면 뜸.
+            // kitchen_screen.dart의 챕터 종료 자리표시자랑 동일한 구성(암전 + 중앙 안내 문구).
+            // 탭하면 챕터 선택창으로 이동
+            if (_showChapterEndPlaceholder)
+              Positioned.fill(
+                key: const ValueKey('chaeon_room_chapter_end_placeholder'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _handleChapterEndTap,
+                  child: Container(
+                    color: Colors.black.withOpacity(0.85),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _isChapter4BadEnding ? '배드엔딩' : '챕터4 계속 준비 중',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: rW(28),
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SCDream',
+                            ),
+                          ),
+                          SizedBox(height: rH(16)),
+                          Text(
+                            '화면을 탭하면 챕터 선택창으로 이동합니다',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: rW(14),
+                              fontFamily: 'SCDream',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
           ],
         ),

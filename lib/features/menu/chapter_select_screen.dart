@@ -100,7 +100,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   "Chapter 3",
                   "멈춰선 마을",
                   "ch3.png",
-                  false,
+                  ChapterProgress.isChapter3Unlocked, // 챕터2 종료하면 전역으로 해금됨
                   rW,
                   rH,
                 ),
@@ -108,7 +108,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   "Chapter 4",
                   "준비 중인 이야기",
                   "ch4.png",
-                  false,
+                  ChapterProgress.isChapter4Unlocked, // 챕터3 종료하면 전역으로 해금됨
                   rW,
                   rH,
                 ),
@@ -116,7 +116,7 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   "Chapter 5",
                   "준비 중인 이야기",
                   "ch5.png",
-                  false,
+                  ChapterProgress.isChapter5Unlocked, // 챕터4 챕터5행 엔딩 보면 전역으로 해금됨
                   rW,
                   rH,
                 ),
@@ -347,6 +347,21 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                       const KitchenScreen(
                         mode: KitchenScreenMode.chapter2Start,
                       ),
+                    ),
+                  );
+                } else if (title == "Chapter 3") {
+                  // 챕터3도 챕터2랑 동일하게 중간 화면 없이 바로 시작. DEV 바로가기 버튼이랑
+                  // 동일한 진입점(채온이 방 화면)으로 연결함
+                  Navigator.push(
+                    context,
+                    fadeThroughBlackRoute(const ChaeonRoomScreen()),
+                  );
+                } else if (title == "Chapter 4") {
+                  // 챕터4도 챕터3이랑 동일하게 채온이 방 화면부터 시작. mode만 chapter4로 넘겨줌
+                  Navigator.push(
+                    context,
+                    fadeThroughBlackRoute(
+                      const ChaeonRoomScreen(mode: ChaeonRoomMode.chapter4),
                     ),
                   );
                 }

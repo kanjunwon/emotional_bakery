@@ -118,6 +118,7 @@
       "type": "line",
       "speaker": "chaeon",
       "text": "만들기만...",
+      "effect": { "temperature": 1 },      
       "next": "null"
     },
     "line_015b": {

@@ -88,7 +88,7 @@ class _LetterSceneState extends State<LetterScene> {
       fontWeight: FontWeight.w500,
       fontSize: bgScale(_letterFontSizeRef),
       height: 2.02,
-      color: Colors.black,
+      color: const Color(0xFF451805),
     );
 
     // 공개된 줄만큼 위젯을 쌓고, 제일 마지막 줄에만 진행 안내 아이콘을 붙여줌
@@ -112,7 +112,7 @@ class _LetterSceneState extends State<LetterScene> {
                   alignment: PlaceholderAlignment.middle,
                   child: Icon(
                     Icons.arrow_drop_down,
-                    color: Colors.black,
+                    color: const Color(0xFF451805),
                     size: bgScale(_letterIconSizeRef),
                   ),
                 ),
