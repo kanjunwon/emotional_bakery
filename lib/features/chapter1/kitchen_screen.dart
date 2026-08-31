@@ -88,6 +88,8 @@ enum KitchenScreenMode {
   chapter4Start,
   // 챕터5 시작: game_play_screen.dart(빵집)에서 chapter5_start.json 대사 -> 앞치마 착용 ->
   // 계단 하강까지 다 끝난 뒤 도달함. 아직 다음 대사가 없어서 들어오자마자 바로 임시 종료 화면 표시
+  // (업데이트: chapter5_bear.json이 준비돼서 이제 chapter3Start/chapter4Start랑 동일하게
+  // dpad로 걸어가서 트리거 지점 도달 시 자동 시작하는 방식으로 바뀜)
   chapter5Start,
 }
 
@@ -155,8 +157,17 @@ class _KitchenScreenState extends State<KitchenScreen>
   // chapter4_after_letter.json이 끝나면(line_003) 뜨는 빵만들기 컷씬(과거 회상 컷씬이랑
   // 동일하게 DialogueOverlay 재사용)
   bool _showChapter4MakingBreadCutscene = false;
-  // 빵만들기 컷씬이 끝나고 chapter4_after_making.json을 이미 이어붙였는지
+  // 빵만들기 컷씬이 끝나면 뜨는 완성된 빵(croissant) 팝업. 챕터2 _showBreadPopup/챕터3
+  // _showChapter3BreadPopup이랑 동일한 패턴. 탭하면 닫힘
+  bool _showChapter4BreadPopup = false;
+  // 완성된 빵 팝업이 끝나고 chapter4_after_making.json을 이미 이어붙였는지
   bool _hasLoadedChapter4AfterMaking = false;
+  // chapter5_bear.json(line_019)이 끝나면 뜨는 빵만들기 미니게임. 챕터2/3이랑 동일한
+  // BreadMakingScene 재사용, 완성 빵 이미지만 pie.png로 고정함
+  bool _showChapter5BreadMakingGame = false;
+  // 빵만들기 미니게임이 끝나면 뜨는 완성된 빵(pie) 팝업. 챕터2/3/4 팝업이랑 동일한 패턴.
+  // 탭하면 닫히고, 아직 다음 대사가 없어서 임시 종료 화면으로 이어짐
+  bool _showChapter5BreadPopup = false;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
@@ -265,11 +276,8 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
     // 챕터3은 chapter1End랑 동일하게 기본 시작 위치(kChaeonKitchenStartX)에서 dpad로 걸어가서
     // 트리거 지점에 도달해야 대사가 시작됨. 그래서 여기선 따로 잠그지 않음
-    // 챕터5는 아직 다음 대사가 없어서, 들어오자마자 이동 잠그고 바로 임시 종료 화면을 띄움
-    if (widget.mode == KitchenScreenMode.chapter5Start) {
-      _movementLocked = true;
-      _showChapterEndPlaceholder = true;
-    }
+    // 챕터5도 chapter5_bear.json이 준비돼서 이제 chapter3Start/chapter4Start랑 동일하게
+    // dpad로 걸어가서 트리거 지점에 도달하는 방식으로 시작함. 그래서 여기선 안 잠금
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
         // 챕터2 모드는 ready -> ingredient_quiz -> (재료 팝업) -> after_quiz ->
@@ -372,6 +380,13 @@ class _KitchenScreenState extends State<KitchenScreen>
             // 걸어서 나가고 -> 암전 -> 채온이 방으로 넘어감
             _startChapter4ExitWalk();
           }
+          return;
+        }
+        // 챕터5는 chapter5_bear.json(line_019, "자, 그럼 이제 빵을 만들어볼까요?")이 끝나면
+        // 빵만들기 미니게임을 띄움. 미니게임 완료 -> 완성 빵 팝업까지는 미니게임/팝업 쪽
+        // 콜백에서 처리하고, 그 다음엔 아직 대사가 없어서 임시 종료 화면으로 이어짐
+        if (widget.mode == KitchenScreenMode.chapter5Start) {
+          setState(() => _showChapter5BreadMakingGame = true);
           return;
         }
         // kitchen_arrival.json 종료 = 챕터 1 종료 시점.
@@ -608,12 +623,15 @@ class _KitchenScreenState extends State<KitchenScreen>
         _chaeonState = 'idle';
       });
       // 챕터3 모드는 kitchen_arrival.json 대신 chapter3_chaeon_room_after.json을,
-      // 챕터4 모드는 chapter4_before_cutscene.json을 로드함
+      // 챕터4 모드는 chapter4_before_cutscene.json을,
+      // 챕터5 모드는 chapter5_bear.json을 로드함
       _sceneController.loadDialogue(
         widget.mode == KitchenScreenMode.chapter3Start
             ? 'assets/lines/chapter3/chapter3_chaeon_room_after.json'
             : widget.mode == KitchenScreenMode.chapter4Start
             ? 'assets/lines/chapter4/chapter4_before_cutscene.json'
+            : widget.mode == KitchenScreenMode.chapter5Start
+            ? 'assets/lines/chapter5/chapter5_bear.json'
             : 'assets/lines/chapter1/kitchen_arrival.json',
       );
     }
@@ -1506,19 +1524,132 @@ class _KitchenScreenState extends State<KitchenScreen>
 
             // 9-17층: 챕터4 빵만들기 컷씬. chapter4_after_letter.json이 끝나면(line_003) 뜨고,
             // 최상단에서 화면을 전부 덮음. 오프닝 컷씬(9-14층)이랑 동일하게 DialogueOverlay 재사용.
-            // 끝나면(onComplete) chapter4_after_making.json으로 이어붙임
+            // 끝나면(onComplete) 완성된 빵(croissant) 팝업 표시
             if (_showChapter4MakingBreadCutscene)
               Positioned.fill(
                 key: const ValueKey('chapter4_making_bread_cutscene'),
                 child: DialogueOverlay(
                   data: chapter4MakingBreadCutsceneData,
                   onComplete: () {
-                    setState(() => _showChapter4MakingBreadCutscene = false);
+                    setState(() {
+                      _showChapter4MakingBreadCutscene = false;
+                      _showChapter4BreadPopup = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 9-17-1층: 완성된 빵(croissant) 팝업. 챕터2 9-4층(bread_popup_layer)/챕터3
+            // 9-8층이랑 동일한 연출(검은 50% 배경 + tutorial_dialogue_box 570x300 + 이미지
+            // 300x300). 탭하면 닫히고 chapter4_after_making.json으로 이어짐
+            if (_showChapter4BreadPopup)
+              Positioned.fill(
+                key: const ValueKey('chapter4_bread_popup_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _showChapter4BreadPopup = false);
                     _hasLoadedChapter4AfterMaking = true;
                     _sceneController.loadDialogue(
                       'assets/lines/chapter4/chapter4_after_making.json',
                     );
                   },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: Center(
+                      child: SizedBox(
+                        width: rW(570),
+                        height: rH(300),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: rW(570),
+                              height: rH(300),
+                              child: ScaledNineSliceImage(
+                                imagePath: 'assets/images/tutorial_dialogue_box.png',
+                                sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+                                scaleX: rW(1),
+                                scaleY: rH(1),
+                              ),
+                            ),
+                            Image.asset(
+                              'assets/images/croissant.png',
+                              width: rW(300),
+                              height: rH(300),
+                              fit: BoxFit.contain,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 9-19층: 챕터5 빵만들기 미니게임. chapter5_bear.json이 끝나면(line_019) 뜨고,
+            // 최상단에서 화면을 전부 덮음. 챕터3(9-7층)이랑 동일하게 forcedCompletedDoughAsset
+            // 없이 그대로 재사용해서, 미니게임 안 SUCCESS 반죽 이미지는 재료 조합에 따라
+            // StoryState.resolveCompletedDoughImage()로 결정됨. pie.png 고정은 미니게임
+            // 자체가 아니라 미니게임 끝나고 뜨는 9-19-1층 팝업에서만 함. 끝나면(onComplete)
+            // 완성 빵 팝업 표시
+            if (_showChapter5BreadMakingGame)
+              Positioned.fill(
+                key: const ValueKey('chapter5_bread_making_game'),
+                child: BreadMakingScene(
+                  onComplete: () {
+                    setState(() {
+                      _showChapter5BreadMakingGame = false;
+                      _showChapter5BreadPopup = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 9-19-1층: 완성된 빵(pie) 팝업. 챕터2/3/4 팝업이랑 동일한 연출(검은 50% 배경 +
+            // tutorial_dialogue_box 570x300 + 이미지 300x300). 탭하면 닫히고, 아직 다음
+            // 대사가 없어서 임시 종료 화면으로 이어짐
+            if (_showChapter5BreadPopup)
+              Positioned.fill(
+                key: const ValueKey('chapter5_bread_popup_layer'),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() {
+                      _showChapter5BreadPopup = false;
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: Center(
+                      child: SizedBox(
+                        width: rW(570),
+                        height: rH(300),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: rW(570),
+                              height: rH(300),
+                              child: ScaledNineSliceImage(
+                                imagePath: 'assets/images/tutorial_dialogue_box.png',
+                                sourceCenterSlice: tutorialDialogueBoxCenterSlice,
+                                scaleX: rW(1),
+                                scaleY: rH(1),
+                              ),
+                            ),
+                            Image.asset(
+                              'assets/images/pie.png',
+                              width: rW(300),
+                              height: rH(300),
+                              fit: BoxFit.contain,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
