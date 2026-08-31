@@ -1,8 +1,11 @@
 // lib/features/menu/chapter_select_screen.dart
 
+import 'package:flame/flame.dart';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
+import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
+    show ReentryChapter;
 import 'package:emotional_bakery/features/chapter1/game_play_screen.dart';
 import 'package:emotional_bakery/features/chapter1/kitchen_screen.dart';
 import 'package:emotional_bakery/features/chapter3/chaeon_room_screen.dart';
@@ -26,6 +29,11 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
   @override
   void initState() {
     super.initState();
+    // BakeryGame(Flame)이 쓰는 배경/채온이 스프라이트를 미리 데워둠. Flame.images는 앱
+    // 전역에서 공유되는 static 캐시라, 여기서 한 번만 로드해두면 이후 챕터1/3/4/5 중
+    // 어느 경로로 GamePlayScreen에 처음 들어가든 로딩 중 검은 화면이 안 보임
+    Flame.images.load('bakery_bg_main.png');
+    Flame.images.load('chaeon_idle_right.gif');
     // 스크롤 발생 시 하단 바 위치 계산
     _scrollController.addListener(() {
       setState(() {
@@ -218,7 +226,31 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                   ),
                 ),
                 SizedBox(height: rH(4)),
-                _buildDevUnimplementedButton("DEV: 챕터5 바로가기", "챕터5 아직 미구현", rW),
+                // 챕터5는 골목길/방 없이 빵집(GamePlayScreen)에서 바로 시작. skipChapter1Events도
+                // 같이 true로 넘겨야 챕터1 가이드 대사/릴리안 계단 등장 트리거가 안 새어나감
+                // (tutorial_screen.dart가 챕터3/4 진입할 때 derive해주는 값이랑 동일).
+                // 다른 DEV 버튼들이랑 동일하게 fadeThroughBlackRoute 없이 바로 push함
+                // (로딩 지연은 initState의 Flame.images 프리캐싱으로 대응)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const GamePlayScreen(
+                          skipChapter1Events: true,
+                          reentryChapter: ReentryChapter.chapter5,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    "DEV: 챕터5 바로가기",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                      fontSize: rW(10),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -260,31 +292,6 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
     );
   }
 
-  // 아직 화면이 없는 챕터용 임시 개발 버튼. 탭해도 이동 안 하고 스낵바로 미구현 안내만 잠깐 띄움.
-  // 나중에 챕터3/4/5 화면 생기면 이 버튼도 같이 지울 것
-  Widget _buildDevUnimplementedButton(
-    String label,
-    String snackBarMessage,
-    double Function(double) rW,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(snackBarMessage),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      },
-      child: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.3),
-          fontSize: rW(10),
-        ),
-      ),
-    );
-  }
 
   // 챕터 카드 위젯
   Widget _buildChapterCard(

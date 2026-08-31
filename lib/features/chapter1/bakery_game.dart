@@ -13,10 +13,20 @@ const double kitchenStairsTriggerX = 1680;
 // 대사 한 번 끼워넣는 지점. 임시값, 실제로는 이보다 좀 더 뒤쪽이어야 함 - 화면 보면서 조정 예정
 const double kChapter3DoorTriggerX = 650;
 
+// 챕터5 재진입 모드에서 채온이가 서있는 지점. 챕터1에서 채온이가 항상 멈춰서
+// first_meet.json이 시작되던 지점(x=650, game_play_screen.dart의 _triggerLillianWalk
+// 주석 "채온이는 항상 x=650에서 멈추므로" 참고)이랑 동일하게 맞춤. x=1305는
+// onReachPostSceneEnd 트리거라 first_meet.json이 아니라 그 다음 장면(table.json) 지점이었음
+const double kChapter5StartX = 650;
+// 챕터5 재진입 모드에서 릴리안이 서있는 지점. game_play_screen.dart의 _lillianTargetX
+// 기본값(900, 챕터1 첫 만남 때 릴리안이 멈추는 고정 좌표)이랑 동일하게 맞춤. 여기서도
+// 알아야 카메라를 onLoad() 안에서 바로 정확한 위치로 맞출 수 있음(아래 참고)
+const double kChapter5LillianX = 900;
+
 // 어느 챕터로 재진입해서 빵집을 다시 쓰는 건지 구분하는 용도. skipChapter1Events는 챕터
 // 상관없이 공통으로 켜지는 플래그인데, chapter3_door.json 트리거처럼 특정 챕터에서만 발동해야
 // 하는 로직은 이 enum으로 따로 갈라줘야 함. 나중에 챕터5 이후로 재진입 지점이 더 생기면 여기에 추가
-enum ReentryChapter { none, chapter3, chapter4 }
+enum ReentryChapter { none, chapter3, chapter4, chapter5 }
 
 class BakeryGame extends FlameGame {
   BakeryGame({
@@ -49,6 +59,8 @@ class BakeryGame extends FlameGame {
   bool _hasTriggeredStairs = false;
   // skipChapter1Events 모드에서만 쓰는 chapter3_door.json 트리거용 1회성 플래그
   bool _hasTriggeredChapter3Door = false;
+  // 챕터5 전용 1회성 플래그. 챕터3/4처럼 x좌표 트리거가 아니라 씬 로드 직후 바로 발동함
+  bool _hasTriggeredChapter5Start = false;
   // game_play_screen에서 DialoguePhase.kitchenApproach가 됐을 때만 true로 켜줌.
   // 이 플래그가 켜지기 전까진 계단 트리거 체크 자체를 안 해서, chaeon 위치가 이전 단계에서
   // 어쩌다 계단 트리거 좌표를 넘겨버려도 _hasTriggeredStairs가 미리 소모되지 않게 막는 안전장치
@@ -69,6 +81,16 @@ class BakeryGame extends FlameGame {
     _isCameraCatchingUp = true;
   }
 
+  // 현재 focusX(채온 위치, lillianArrivalX 있으면 채온-릴리안 중간점)에 카메라를 렌더링
+  // 지연(lerp) 없이 바로 스냅시키도록 다음 update() 틱에 요청함. onLoad() 시점엔
+  // size(게임 화면 크기)가 아직 0일 수 있어서 그 안에서 직접 카메라 위치를 계산하면
+  // 위험함(실제로 이것 때문에 맵 자체가 안 보이는 버그가 났었음). update()는 매 프레임
+  // size가 유효할 때만 계산하는 게 이미 보장돼있어서 그쪽에서 처리하는 게 안전함
+  bool _pendingCameraSnap = false;
+  void requestCameraSnap() {
+    _pendingCameraSnap = true;
+  }
+
   // 플러터 UI 레이어와 연동하기 위한 콜백 함수 포인터들
   Function(List<String>)? onShowDialogue;
   Function()? onGameUpdate;
@@ -78,6 +100,8 @@ class BakeryGame extends FlameGame {
   Function()? onReachStairs; // 계단 근처 도달 시 (주방으로 내려가는 연출 트리거)
   Function()?
   onReachChapter3Door; // skipChapter1Events 모드에서 chapter3_door.json 트리거 지점 도달 시
+  Function()?
+  onReachChapter5Start; // 챕터5 재진입 모드에서 씬 로드 직후 곧바로(x좌표 무관) 발동
 
   @override
   Future<void> onLoad() async {
@@ -105,13 +129,33 @@ class BakeryGame extends FlameGame {
     world.add(lillian);
     */
 
-    // 채온 레이어
+    // 채온 레이어. await 필수: Chaeon 자신의 onLoad()가 position을 (10, 350)으로 다시
+    // 세팅하는데, 여기서 await 안 하면 그 초기화가 끝나기 전에 아래 챕터5 위치 조정
+    // 코드가 먼저 실행돼서 나중에 Chaeon.onLoad()가 그 값을 덮어써버림
     chaeon = Chaeon(mapWidth: mapWidth);
-    world.add(chaeon!);
+    await world.add(chaeon!);
 
     // 카메라 초기 위치를 맵 왼쪽 끝으로 설정
     camera.viewfinder.anchor = Anchor.centerLeft;
     camera.viewfinder.position = Vector2(0, mapHeight / 2);
+
+    // 챕터5는 골목길 없이 씬 로드되자마자 바로 chapter5_start.json이 재생돼야 해서,
+    // 다른 재진입 챕터처럼 x좌표 트리거를 기다리지 않고 여기서 바로 발동함
+    if (reentryChapter == ReentryChapter.chapter5 &&
+        !_hasTriggeredChapter5Start) {
+      _hasTriggeredChapter5Start = true;
+      // 채온이를 챕터1 첫 만남 지점(kChapter5StartX)에 세워둠. 릴리안도 이 위치 기준으로
+      // 세워야 해서(kChapter5LillianX) 왼쪽 끝 스폰 대신 여기로 옮김
+      chaeon?.position.x = kChapter5StartX;
+      lillianArrivalX = kChapter5LillianX;
+      // 카메라는 위에서 일단 맵 왼쪽 끝으로 세팅했는데, requestCameraSnap으로 다음
+      // update() 틱에 바로 정확한 위치로 스냅되게 요청함(그 프레임까지만 왼쪽 끝이
+      // 잠깐 그려짐 - onLoad() 안에서 직접 스냅하면 size가 아직 0이라 위험함)
+      requestCameraSnap();
+      isMovementBlocked = true;
+      movePlayer(0);
+      onReachChapter5Start?.call();
+    }
   }
 
   @override
@@ -144,7 +188,12 @@ class BakeryGame extends FlameGame {
       );
 
       double newLeftEdge;
-      if (lillianArrivalX != null || _isCameraCatchingUp) {
+      if (_pendingCameraSnap) {
+        // requestCameraSnap()으로 요청된 즉시 스냅. size가 이제는 확실히 유효한
+        // update() 안이라 안전하게 계산 가능함
+        newLeftEdge = targetLeftEdge;
+        _pendingCameraSnap = false;
+      } else if (lillianArrivalX != null || _isCameraCatchingUp) {
         // 릴리안 등장 중이거나, 포커스가 갑자기 바뀌어 따라잡는 중이면 서서히 이동
         double currentLeftEdge = camera.viewfinder.position.x;
         double t = (_cameraPanSpeed * dt).clamp(0.0, 1.0);

@@ -86,6 +86,9 @@ enum KitchenScreenMode {
   // 챕터4 시작: chapter3Start랑 동일하게 dpad로 걸어가서 트리거 지점(kKitchenDialogueTriggerX)에
   // 도달하면 chapter4_before_cutscene.json이 자동 시작됨
   chapter4Start,
+  // 챕터5 시작: game_play_screen.dart(빵집)에서 chapter5_start.json 대사 -> 앞치마 착용 ->
+  // 계단 하강까지 다 끝난 뒤 도달함. 아직 다음 대사가 없어서 들어오자마자 바로 임시 종료 화면 표시
+  chapter5Start,
 }
 
 class KitchenScreen extends StatefulWidget {
@@ -262,6 +265,11 @@ class _KitchenScreenState extends State<KitchenScreen>
     }
     // 챕터3은 chapter1End랑 동일하게 기본 시작 위치(kChaeonKitchenStartX)에서 dpad로 걸어가서
     // 트리거 지점에 도달해야 대사가 시작됨. 그래서 여기선 따로 잠그지 않음
+    // 챕터5는 아직 다음 대사가 없어서, 들어오자마자 이동 잠그고 바로 임시 종료 화면을 띄움
+    if (widget.mode == KitchenScreenMode.chapter5Start) {
+      _movementLocked = true;
+      _showChapterEndPlaceholder = true;
+    }
     _sceneController = SceneDialogueController(
       onDialogueEnd: () {
         // 챕터2 모드는 ready -> ingredient_quiz -> (재료 팝업) -> after_quiz ->
@@ -1538,6 +1546,8 @@ class _KitchenScreenState extends State<KitchenScreen>
                                 ? '챕터 2 종료'
                                 : widget.mode == KitchenScreenMode.chapter3Start
                                 ? '챕터3 미니게임 준비 중'
+                                : widget.mode == KitchenScreenMode.chapter5Start
+                                ? '챕터5 계속 준비 중'
                                 // 컷씬(DialogueOverlay)은 이제 떴다 갔으니, 그 다음 이야기가
                                 // 아직 준비 안 됐다는 문구로 바꿈
                                 : '챕터4 계속 준비 중',

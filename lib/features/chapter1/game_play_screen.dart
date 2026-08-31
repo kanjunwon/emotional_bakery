@@ -83,6 +83,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // table.json 먹는 클로즈업을 한 번이라도 지나갔는지. true가 되면 회상 컷씬으로 넘어갈 때까지
   // 빵 접시를 다시 그리지 않고, 채온이도 빵 든 정지 이미지로 표시
   bool _hasEatenBread = false;
+  // 챕터5 전용: chapter5_start.json이 끝나서 그 자리에서 앞치마로 갈아입었는지.
+  // 다른 재진입 챕터(챕터3/4)는 이 화면에서 계속 평상복이라 안 씀
+  bool _hasChangedToChapter5Apron = false;
 
   // 릴리안 상태 및 자동 걷기 애니메이션 변수
   late AnimationController _lillianController;
@@ -148,8 +151,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     if (widget.skipChapter1Events) {
       _dialoguePhase = DialoguePhase.kitchenApproach;
       // showDpad가 skip 모드에서는 _isFreeWalkPhase만 보고 판단하니까, 처음부터 걸을 수 있는
-      // 상태로 시작해야 dpad가 바로 보임
-      _isFreeWalkPhase = true;
+      // 상태로 시작해야 dpad가 바로 보임. 챕터5는 예외: onReachChapter5Start가 발동하기
+      // 전까지 잠깐(배경/채온이 로딩되는 동안) dpad가 노출됐다 사라지는 게 보여서,
+      // chapter5_start.json 로드 전까진 false로 시작해야 함(onReachChapter5Start에서 처리)
+      if (widget.reentryChapter != ReentryChapter.chapter5) {
+        _isFreeWalkPhase = true;
+      }
     }
 
     _sceneController = SceneDialogueController(
@@ -191,6 +198,21 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             _game.isMovementBlocked = false;
             // dpad도 다시 보여줘야 계단까지 계속 걸어갈 수 있음
             setState(() => _isFreeWalkPhase = true);
+            // 챕터5는 chapter5_start.json이 끝나는 시점도 여기로 옴. 릴리안 숨기고
+            // 그 자리에서 앞치마로 갈아입힘(컷씬 없음). _hasChangedToChapter5Apron 가드로
+            // chapter3_door.json 등 다른 kitchenApproach 대사에서는 안 타게 막음
+            if (widget.reentryChapter == ReentryChapter.chapter5 &&
+                !_hasChangedToChapter5Apron) {
+              setState(() {
+                _hasChangedToChapter5Apron = true;
+                _isLillianVisible = false;
+              });
+              // 챕터1의 firstMeet/firstBread 케이스랑 동일한 패턴: lillianArrivalX만
+              // null로 두면 다음 프레임에 카메라가 채온이 위치로 순간이동(번쩍)해버려서,
+              // startCameraCatchUp으로 부드럽게 따라잡도록 함
+              _game.lillianArrivalX = null;
+              _game.startCameraCatchUp();
+            }
             break;
           case DialoguePhase.none:
           case DialoguePhase.memoryFlashback:
@@ -255,6 +277,26 @@ class _GamePlayScreenState extends State<GamePlayScreen>
           setState(() => _isFreeWalkPhase = false);
           _sceneController.loadDialogue(
             'assets/lines/chapter3/chapter3_door.json',
+          );
+        }
+      });
+    };
+
+    // 챕터5는 씬 로드 직후 곧바로 발동(BakeryGame.onLoad 참고). 릴리안이 대사에 나오니까
+    // 걷기 연출 없이 바로 보이는 위치에 세워둠. _lillianTargetX 기본값(900.0)이 챕터1
+    // 첫 만남 때(_triggerLillianWalk) 릴리안이 멈추는 고정 좌표라 따로 안 바꾸고 그대로 씀.
+    // _lillianController는 안 건드림(위 currentLillianX 계산부 주석 참고)
+    _game.onReachChapter5Start = () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _isFreeWalkPhase = false;
+            _isLillianVisible = true;
+          });
+          // 카메라 위치/스냅은 bakery_game.dart의 onLoad()에서 이미 동기적으로
+          // 처리했어서(lillianArrivalX 세팅 + requestCameraSnap) 여기선 안 건드림
+          _sceneController.loadDialogue(
+            'assets/lines/chapter5/chapter5_start.json',
           );
         }
       });
@@ -450,6 +492,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in chapter4ReentryAssets) {
         precacheImage(AssetImage(asset), context);
       }
+      // _resolveLillianSprite 기본값(idle/walk)도 프리캐싱. 챕터1은 릴리안이 걸어오는
+      // 연출 동안 디코딩 시간이 가려졌는데, 챕터5는 씬 로드되자마자 바로 idle로 등장해서
+      // 프리캐싱이 안 돼있으면 채온이보다 1초 정도 늦게 나타나는 게 눈에 띄었음
+      const List<String> lillianDefaultAssets = [
+        'assets/images/lillian_idle.gif',
+        'assets/images/lillian_walk.gif',
+      ];
+      for (final asset in lillianDefaultAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -501,12 +553,19 @@ class _GamePlayScreenState extends State<GamePlayScreen>
   // 그 외 단계(table.json 등)면 기존처럼 _hasEatenBread/이동 상태로 결정
   // override가 있는 노드는 bubbleRevealed(말풍선이 떴는지) 기준으로 beforeReveal/afterReveal 중 골라줌
   (String, double, bool) _resolveChaeonSprite(String? sceneNodeId) {
+    // 챕터5는 chapter5_start.json이 끝나면 그 자리에서 앞치마로 갈아입어야 해서, 갈아입은
+    // 뒤로는 다른 재진입 챕터(챕터3/4, 이 화면에선 계속 평상복)랑 다르게 취급해야 함
+    final bool isChapter5WithApron =
+        widget.reentryChapter == ReentryChapter.chapter5 &&
+        _hasChangedToChapter5Apron;
     // 계단 하강 중엔 그 시점 _chaeonState(walk/idle)와 무관하게 항상 한 스프라이트로 고정.
     // 챕터1은 apron_idle.gif, 챕터3 재진입 모드는 chaeon_20_normal_walk.gif,
     // 챕터4 재진입 모드는 chaeon_50_normal_walk.gif
     if (_isChaeonDescendingStairs) {
       return (
-        widget.reentryChapter == ReentryChapter.chapter4
+        isChapter5WithApron
+            ? 'assets/images/chaeon_apron_idle.gif'
+            : widget.reentryChapter == ReentryChapter.chapter4
             ? 'assets/images/chaeon_50_normal_walk.gif'
             : widget.skipChapter1Events
             ? 'assets/images/chaeon_20_normal_walk.gif'
@@ -517,8 +576,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     }
     // 챕터3/4 재진입 모드는 kitchenApproach 단계로 시작해도 아직 앞치마 입기 전(지하 내려가기 전)
     // 상태라서, 아래 kitchenApproach 앞치마 분기보다 먼저 여기서 평상복 스프라이트로 처리함.
-    // 챕터4는 50%, 나머지(챕터3)는 20% 상태 에셋
-    if (widget.skipChapter1Events) {
+    // 챕터4는 50%, 나머지(챕터3)는 20% 상태 에셋. 챕터5는 앞치마로 갈아입은 뒤엔 여길 건너뛰고
+    // 아래 kitchenApproach 앞치마 분기로 흘러가게 함
+    if (widget.skipChapter1Events && !isChapter5WithApron) {
       final bool isChapter4Reentry =
           widget.reentryChapter == ReentryChapter.chapter4;
       return (
@@ -751,6 +811,7 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             initialTemperature: _sceneController.temperature,
             // 재진입 챕터별로 주방 진입 모드가 갈림. reentryChapter가 none이면 챕터1 최초 진입
             mode: switch (widget.reentryChapter) {
+              ReentryChapter.chapter5 => KitchenScreenMode.chapter5Start,
               ReentryChapter.chapter4 => KitchenScreenMode.chapter4Start,
               ReentryChapter.chapter3 => KitchenScreenMode.chapter3Start,
               ReentryChapter.none => KitchenScreenMode.chapter1End,
@@ -840,7 +901,15 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     // 릴리안 렌더링 좌표 계산
     double currentLillianX;
     double lillianTopValue;
-    if (_isLillianSecondEntranceActive && _lillianStairsAnimation != null) {
+    if (widget.reentryChapter == ReentryChapter.chapter5) {
+      // 챕터5는 _lillianController를 아예 안 건드림. 그 컨트롤러엔 이미 챕터1
+      // _triggerLillianWalk() 완료 시 first_meet.json을 로드하는 상태 리스너가 걸려있어서,
+      // value를 강제로 1.0으로 바꾸면 AnimationStatus.completed로 인식돼 그 리스너가
+      // 같이 발동해버림(실제로 이 버그 때문에 chapter5_start.json이 first_meet.json으로
+      // 덮어써졌었음). 그래서 컨트롤러 대신 도착 좌표(_lillianTargetX)를 바로 씀
+      currentLillianX = _lillianTargetX;
+      lillianTopValue = rH(172);
+    } else if (_isLillianSecondEntranceActive && _lillianStairsAnimation != null) {
       final Offset pos = _lillianStairsAnimation!.value;
       currentLillianX = pos.dx;
       lillianTopValue = rH(pos.dy);
