@@ -476,6 +476,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
       for (final asset in apronAssets) {
         precacheImage(AssetImage(asset), context);
       }
+      // 챕터5는 앞치마 갈아입은 뒤로 idle이면 chaeon_80.gif, 걷는 중이면 chaeon_apron_80.gif를 쓰니까 둘 다 프리캐싱
+      const List<String> chapter5ApronAssets = [
+        'assets/images/chaeon_80.gif',
+        'assets/images/chaeon_apron_80.gif',
+      ];
+      for (final asset in chapter5ApronAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
       // 챕터3 재진입 모드(skipChapter1Events)에서 지하 내려가기 전까지 쓰는 20% 평상복 스프라이트도 프리캐싱
       const List<String> chapter3ReentryAssets = [
         'assets/images/chaeon_20_normal.gif',
@@ -490,6 +498,14 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         'assets/images/chaeon_50_normal_walk.gif',
       ];
       for (final asset in chapter4ReentryAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
+      // 챕터5 재진입 모드는 대사 끝나기 전(앞치마 입기 전)까지 80% 평상복 스프라이트를 씀
+      const List<String> chapter5ReentryAssets = [
+        'assets/images/chaeon_80_normal.gif',
+        'assets/images/chaeon_80_normal_walk.gif',
+      ];
+      for (final asset in chapter5ReentryAssets) {
         precacheImage(AssetImage(asset), context);
       }
       // _resolveLillianSprite 기본값(idle/walk)도 프리캐싱. 챕터1은 릴리안이 걸어오는
@@ -563,8 +579,9 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     // 챕터4 재진입 모드는 chaeon_50_normal_walk.gif
     if (_isChaeonDescendingStairs) {
       return (
+        // 챕터5는 80% 앞치마 에셋 하나만 씀 (idle/walk 구분 없음)
         isChapter5WithApron
-            ? 'assets/images/chaeon_apron_idle.gif'
+            ? 'assets/images/chaeon_apron_80.gif'
             : widget.reentryChapter == ReentryChapter.chapter4
             ? 'assets/images/chaeon_50_normal_walk.gif'
             : widget.skipChapter1Events
@@ -581,6 +598,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     if (widget.skipChapter1Events && !isChapter5WithApron) {
       final bool isChapter4Reentry =
           widget.reentryChapter == ReentryChapter.chapter4;
+      // 챕터5는 chapter5_start.json 대사 끝나기 전(앞치마 갈아입기 전)까지 80% 평상복 에셋을 씀
+      if (widget.reentryChapter == ReentryChapter.chapter5) {
+        return (
+          _chaeonState == 'walk'
+              ? 'assets/images/chaeon_80_normal_walk.gif'
+              : 'assets/images/chaeon_80_normal.gif',
+          0,
+          false,
+        );
+      }
       return (
         _chaeonState == 'walk'
             ? (isChapter4Reentry
@@ -627,6 +654,16 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         );
       }
       return ('assets/images/chaeon_idle_right.gif', 0, false);
+    }
+    // 챕터5는 앞치마로 갈아입은 뒤로 idle이면 chaeon_80.gif, 걷는 중이면 chaeon_apron_80.gif
+    if (isChapter5WithApron) {
+      return (
+        _chaeonState == 'walk'
+            ? 'assets/images/chaeon_apron_80.gif'
+            : 'assets/images/chaeon_80.gif',
+        0,
+        false,
+      );
     }
     // 앞치마 착용 후 주방으로 내려가는 연출 단계(kitchenApproach)에서는, walk 상태면 apron_idle.gif
     // TODO: 나중에 앞치마 입고 걷는 walk 전용 에셋 나오면 _chaeonState 보고 분기하도록 교체할 예정

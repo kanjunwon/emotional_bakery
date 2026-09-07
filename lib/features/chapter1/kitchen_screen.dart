@@ -775,6 +775,11 @@ class _KitchenScreenState extends State<KitchenScreen>
         ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
               ? 'assets/images/chaeon_apron_50.gif'
               : 'assets/images/chaeon_50.gif')
+        // 챕터5는 감정 온도가 더 오른 상태라 기본 스프라이트를 80% 버전으로 씀
+        : widget.mode == KitchenScreenMode.chapter5Start
+        ? (_isChaeonAscendingStairs || _chaeonState == 'walk'
+              ? 'assets/images/chaeon_apron_80.gif'
+              : 'assets/images/chaeon_80.gif')
         : _isChaeonAscendingStairs || _chaeonState == 'walk'
         ? 'assets/images/chaeon_apron_idle.gif'
         : 'assets/images/chaeon_apron_putting_on.gif';
