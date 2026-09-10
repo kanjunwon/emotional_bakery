@@ -24,6 +24,7 @@ import 'package:emotional_bakery/features/chapter4/chapter4_cutscene_data.dart';
 import 'package:emotional_bakery/features/chapter4/chapter4_bad_ending_data.dart';
 import 'package:emotional_bakery/features/chapter4/chapter4_making_bread_cutscene_data.dart';
 import 'package:emotional_bakery/features/chapter4/letter_scene.dart';
+import 'package:emotional_bakery/features/chapter5/bear_arm_puzzle_scene.dart';
 import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
@@ -73,6 +74,13 @@ const Duration _chapter3DiarySuccessAfterHoldDuration = Duration(
 // 기존 3초는 다른 미니게임들의 암전(400ms~2초)보다 유독 길어서, 같은 파일의 비슷한
 // 패턴인 _memoryBlackoutHoldDuration(챕터1 결과물 이후 암전, 2초)에 맞춤
 const Duration _chapter3DiaryEndBlackoutHoldDuration = Duration(seconds: 2);
+
+// 챕터5 회상씬(곰인형 팔 붙이기)에서 bear_bg+팔이 뜬 채로 안내창이 뜨기 전까지 잠깐
+// 보여주는 시간
+const Duration _chapter5BearIntroGuideDelay = Duration(seconds: 1);
+// 챕터5 회상씬에서 playground_bg 노출 시간. 챕터3의 _chapter3DiaryIntroHoldDuration(2초)을
+// 재사용했었는데 실제로 켜보니 너무 짧아서 챕터5 전용으로 따로 뺌
+const Duration _chapter5PlaygroundHoldDuration = Duration(seconds: 3);
 
 // 이 화면이 챕터1 엔딩용인지 챕터2 시작용인지 구분. 배경/캐릭터는 같은 주방을 재사용하고
 // 이동 가능 여부, 처음 로드하는 대사만 다름
@@ -166,8 +174,19 @@ class _KitchenScreenState extends State<KitchenScreen>
   // BreadMakingScene 재사용, 완성 빵 이미지만 pie.png로 고정함
   bool _showChapter5BreadMakingGame = false;
   // 빵만들기 미니게임이 끝나면 뜨는 완성된 빵(pie) 팝업. 챕터2/3/4 팝업이랑 동일한 패턴.
-  // 탭하면 닫히고, 아직 다음 대사가 없어서 임시 종료 화면으로 이어짐
+  // 탭하면 닫히고 chapter5_eat.json으로 이어짐
   bool _showChapter5BreadPopup = false;
+  // 완성 빵 팝업이 끝나고 chapter5_eat.json을 이미 이어붙였는지
+  bool _hasLoadedChapter5Eat = false;
+  // chapter5_eat.json이 끝나면(chaeon_80_eat.gif 재생 후) 시작되는 회상씬 앞부분:
+  // 암전 -> playground_bg -> bear_bg+팔 -> 안내창 순으로 이어짐. 퍼즐 자체는
+  // BearArmPuzzleScene이 이어받음
+  bool _showChapter5Playground = false;
+  bool _showChapter5BearIntro = false;
+  bool _showChapter5BearIntroGuide = false;
+  bool _showChapter5BearArmPuzzle = false;
+  Timer? _chapter5PlaygroundTimer;
+  Timer? _chapter5BearIntroGuideTimer;
   // 챕터2 모드에서 chapter2_ready.json 다음 chapter2_ingredient_quiz.json을 이미 이어붙였는지
   bool _hasLoadedIngredientQuiz = false;
   // 챕터3 모드에서 chapter3_chaeon_room_after.json 다음 chapter3_before_game.json을 이미 이어붙였는지
@@ -383,10 +402,15 @@ class _KitchenScreenState extends State<KitchenScreen>
           return;
         }
         // 챕터5는 chapter5_bear.json(line_019, "자, 그럼 이제 빵을 만들어볼까요?")이 끝나면
-        // 빵만들기 미니게임을 띄움. 미니게임 완료 -> 완성 빵 팝업까지는 미니게임/팝업 쪽
-        // 콜백에서 처리하고, 그 다음엔 아직 대사가 없어서 임시 종료 화면으로 이어짐
+        // 빵만들기 미니게임을 띄움. 미니게임 완료 -> 완성 빵 팝업 -> chapter5_eat.json까지는
+        // 미니게임/팝업 쪽 콜백에서 처리하고, chapter5_eat.json이 끝나면(마지막 노드,
+        // chaeon_80_eat.gif 재생 후) 여기로 다시 옴 - 회상씬(곰인형 팔 붙이기) 시작
         if (widget.mode == KitchenScreenMode.chapter5Start) {
-          setState(() => _showChapter5BreadMakingGame = true);
+          if (!_hasLoadedChapter5Eat) {
+            setState(() => _showChapter5BreadMakingGame = true);
+          } else {
+            _startChapter5MemorySequence();
+          }
           return;
         }
         // kitchen_arrival.json 종료 = 챕터 1 종료 시점.
@@ -468,6 +492,33 @@ class _KitchenScreenState extends State<KitchenScreen>
         });
       });
     });
+  }
+
+  // chapter5_eat.json 끝나고 시작되는 회상씬 앞부분: 암전(_startMemoryBlackout 재사용) ->
+  // playground_bg(_chapter5PlaygroundHoldDuration만큼 노출) -> bear_bg+팔로 컷 전환 ->
+  // 안내창 순으로 이어짐. 안내창을 탭하면(렌더링 쪽에서 처리) BearArmPuzzleScene으로 넘어감.
+  // playground_bg는 onFullyBlack(화면이 진짜로 완전히 까매진 순간)에서 켜야 함 - onComplete는
+  // hold가 끝나고 페이드아웃 "시작 직전"이라 아직 까맣긴 하지만, 그 전에 이미 화면이 까만
+  // 채로 유지되는 hold 구간 내내 떠있어야 하는 playground_bg를 그때서야 켜면 너무 늦음
+  void _startChapter5MemorySequence() {
+    _startMemoryBlackout(
+      onFullyBlack: () {
+        setState(() => _showChapter5Playground = true);
+      },
+      onComplete: () {
+        _chapter5PlaygroundTimer = Timer(_chapter5PlaygroundHoldDuration, () {
+          if (!mounted) return;
+          setState(() {
+            _showChapter5Playground = false;
+            _showChapter5BearIntro = true;
+          });
+          _chapter5BearIntroGuideTimer = Timer(_chapter5BearIntroGuideDelay, () {
+            if (!mounted) return;
+            setState(() => _showChapter5BearIntroGuide = true);
+          });
+        });
+      },
+    );
   }
 
   // chapter3_after_first_game.json 끝나면 시작되는 일기장 퍼즐 시퀀스 앞부분: 암전 ->
@@ -594,6 +645,8 @@ class _KitchenScreenState extends State<KitchenScreen>
     _chapter3DiaryIntroTimer?.cancel();
     _chapter3DiarySuccessAfterTimer?.cancel();
     _chapter3DiaryEndBlackoutTimer?.cancel();
+    _chapter5PlaygroundTimer?.cancel();
+    _chapter5BearIntroGuideTimer?.cancel();
     _stairsUpController.dispose();
     _sceneController.removeListener(_onSceneControllerChanged);
     _sceneController.dispose();
@@ -894,6 +947,17 @@ class _KitchenScreenState extends State<KitchenScreen>
         wY(kChaeonKitchenTopY) - characterVerticalOffset;
     final double lillianSpriteTopY =
         wY(kLillianKitchenTopY) - characterVerticalOffset;
+
+    // 챕터5 회상씬(곰인형 팔 붙이기) 전용 좌표계. bear_arm_puzzle_scene.dart의
+    // kBearArmCanvasWidth/kBearArmCanvasHeight(874x507)랑 동일하게 맞춰서, 여기서 보여주는
+    // bear_bg+팔 미리보기가 실제 BearArmPuzzleScene 시작 화면이랑 완전히 똑같이 보이게 함
+    final double chapter5BearScale = w / kBearArmCanvasWidth;
+    final double chapter5BearAnchorY =
+        (h - kBearArmCanvasHeight * chapter5BearScale) / 2;
+    double chapter5BearWX(double refX) => refX * chapter5BearScale;
+    double chapter5BearWY(double refY) =>
+        chapter5BearAnchorY + refY * chapter5BearScale;
+    double chapter5BearWSize(double refSize) => refSize * chapter5BearScale;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1397,6 +1461,100 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
+            // 9-7-1층: 챕터5 회상씬 - bear_bg + 팔(bear_hand.png) 미리보기. _showChapter5Playground
+            // 시점(=암전이 완전히 까매진 onFullyBlack 순간)부터 이미 마운트해둬서(안 보이게
+            // 9-7-2/9-8-1층 밑에 깔림) Image 위젯이 미리 프레임을 그려둔 상태로 대기하게 함.
+            // 챕터3 일기장 인트로(9-9층 주석 참고)랑 동일한 이유·동일한 패턴: 그렇게 안 하면
+            // 자기 차례가 됐을 때(playground_bg가 꺼질 때) 막 마운트되면서 첫 프레임을 그리기까지
+            // 한 프레임 정도 아무것도 안 그려서, 그 사이 밑에 깔린 주방(kitchen_main)이 잠깐
+            // 비쳐 보임. playground_bg(9-7-2층)보다 먼저 그려야(더 아래) playground_bg가
+            // 떠있는 동안은 이 레이어가 가려져 있다가, playground_bg가 꺼지는 순간 이미
+            // 다 그려진 상태로 바로 드러남.
+            // 주의: _showMemoryBlackout을 조건에 넣으면 안 됨 - 이 플래그는 암전이 페이드인
+            // 시작하는(아직 안 까매진, opacity=0인) 순간부터 true라서, 그걸로 미리 그려버리면
+            // 아직 투명한 암전 너머로 이 레이어가 그대로 비쳐 보이는 버그가 남(실제로 났던 버그)
+            if (widget.mode == KitchenScreenMode.chapter5Start &&
+                (_showChapter5Playground || _showChapter5BearIntro))
+              Positioned.fill(
+                key: const ValueKey('chapter5_bear_intro'),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 0,
+                      top: chapter5BearAnchorY,
+                      width: w,
+                      height: chapter5BearWSize(kBearArmCanvasHeight),
+                      child: Image.asset(
+                        'assets/images/bear_bg.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    // 안내창. _chapter5BearIntroGuideDelay만큼 있다가 뜨고, 탭하면 닫히고
+                    // BearArmPuzzleScene으로 넘어감. 다른 튜토리얼/안내창(memory_flashback_scene.dart,
+                    // bread_making_scene.dart)이랑 동일하게 검은 반투명 딤 배경을 안내창 밑에 깔아줌
+                    //
+                    // 딤 레이어를 bear_hand보다 먼저(아래에) 그림. bear_hand는 딤 레이어 다음에
+                    // 그려야 어두워지지 않고 원래 색 그대로 보임 - memory_flashback_scene.dart
+                    // 구름 게임에서 인터랙티브한 마지막 구름을 딤 위에 그리는 거랑 같은 패턴
+                    if (_showChapter5BearIntroGuide)
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _showChapter5BearIntro = false;
+                              _showChapter5BearIntroGuide = false;
+                              _showChapter5BearArmPuzzle = true;
+                            });
+                          },
+                          child: Container(color: Colors.black.withOpacity(0.5)),
+                        ),
+                      ),
+                    Positioned(
+                      left: chapter5BearWX(kBearArmStartX),
+                      top: chapter5BearWY(kBearArmStartY),
+                      width: chapter5BearWSize(kBearArmSize),
+                      height: chapter5BearWSize(kBearArmSize),
+                      child: Image.asset(
+                        'assets/images/bear_hand.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    // 안내 문구는 화면 가로 중앙 정렬(CenteredDialogueBox) - clock_minigame_scene.dart
+                    // 튜토리얼이랑 같은 패턴. bear_hand보다도 위에 그려서 항상 다 보이게 함.
+                    // IgnorePointer로 감싸서 탭이 그대로 밑 딤 레이어(GestureDetector)로 전달되게 함
+                    if (_showChapter5BearIntroGuide)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CenteredDialogueBox(
+                            textWidget: Text(
+                              '곰인형의 팔이 떨어졌어요.\n드래그해서 팔을 붙여주세요',
+                              textAlign: TextAlign.center,
+                              style: dialogueTextStyle(rW),
+                            ),
+                            rW: rW,
+                            rH: rH,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+            // 9-7-2층: 챕터5 회상씬 - playground_bg. _showChapter5Playground가 켜지는 시점(위
+            // 9-7-1층 주석 참고 - 암전이 완전히 까매진 onFullyBlack 순간)부터 마운트해둠.
+            // bear_bg+팔(9-7-1층)보다 나중에(더 위에) 그려서, 이 레이어가 떠있는 동안은 그
+            // 밑에 미리 그려둔 bear_bg+팔을 가려줌
+            if (widget.mode == KitchenScreenMode.chapter5Start &&
+                _showChapter5Playground)
+              Positioned.fill(
+                key: const ValueKey('chapter5_playground'),
+                child: Image.asset(
+                  'assets/images/playground_bg.png',
+                  fit: BoxFit.fitWidth,
+                ),
+              ),
+
             // 9-8-1층: 빵만들기 미니게임 성공 화면 -> 완성된 빵(salt_bread/onion_bread) 팝업
             // 사이에 잠깐 띄우는 암전. 9-3/9-7층(빵만들기 미니게임)보다 위에 그려야 성공
             // 화면 위로 바로 암전이 덮이고, 화면이 주방으로 바뀐 뒤에야 어두워지는 것처럼
@@ -1612,18 +1770,18 @@ class _KitchenScreenState extends State<KitchenScreen>
               ),
 
             // 9-19-1층: 완성된 빵(pie) 팝업. 챕터2/3/4 팝업이랑 동일한 연출(검은 50% 배경 +
-            // tutorial_dialogue_box 570x300 + 이미지 300x300). 탭하면 닫히고, 아직 다음
-            // 대사가 없어서 임시 종료 화면으로 이어짐
+            // tutorial_dialogue_box 570x300 + 이미지 300x300). 탭하면 닫히고 chapter5_eat.json으로 이어짐
             if (_showChapter5BreadPopup)
               Positioned.fill(
                 key: const ValueKey('chapter5_bread_popup_layer'),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    setState(() {
-                      _showChapter5BreadPopup = false;
-                      _showChapterEndPlaceholder = true;
-                    });
+                    setState(() => _showChapter5BreadPopup = false);
+                    _hasLoadedChapter5Eat = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter5/chapter5_eat.json',
+                    );
                   },
                   child: Container(
                     color: Colors.black.withOpacity(0.5),
@@ -1655,6 +1813,23 @@ class _KitchenScreenState extends State<KitchenScreen>
                       ),
                     ),
                   ),
+                ),
+              ),
+
+            // 9-22층: 챕터5 회상씬 - 곰인형 팔 붙이기 미니게임. 안내창 탭하면 뜸.
+            // 끝나면(onComplete) 다음 게임 연결 예정 - 아직 안 정해져서 임시로 "챕터5
+            // 계속 준비 중" 임시 종료 화면으로 이어짐
+            if (_showChapter5BearArmPuzzle)
+              Positioned.fill(
+                key: const ValueKey('chapter5_bear_arm_puzzle'),
+                child: BearArmPuzzleScene(
+                  onComplete: () {
+                    setState(() {
+                      _showChapter5BearArmPuzzle = false;
+                      // TODO: 다음 게임 연결 예정. 지금은 아직 안 정해져서 임시 종료 화면으로 이어짐
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
                 ),
               ),
 
