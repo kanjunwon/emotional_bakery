@@ -30,6 +30,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "채온 씨라면 돌아올 줄 알았어요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_006"
     },
     "line_006": {
@@ -42,6 +43,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "그럼 이제 마지막 빵을 만들어볼까요?",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_008"
     },
     "line_008": {

@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart';
 import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 import 'package:emotional_bakery/features/prologue/tutorial_screen.dart';
@@ -160,7 +161,11 @@ class _GamePlayScreenState extends State<GamePlayScreen>
     }
 
     _sceneController = SceneDialogueController(
-      initialTemperature: widget.initialTemperature,
+      // widget.initialTemperature 대신 전역값을 읽음 - 챕터 경계(ChapterSelectScreen 경유)를
+      // 넘어갈 때도 온도가 안 끊기게 하려면 여기서 위젯 파라미터를 안 쓰고 StoryState를 직접
+      // 봐야 함. widget.initialTemperature는 이제 여기서 안 쓰이지만, 같은 챕터 안에서 화면끼리
+      // 명시적으로 넘겨주던 기존 호출부들이 있어서 파라미터 자체는 그대로 둠(각 호출부 주석 참고)
+      initialTemperature: StoryState.currentTemperature,
       onDialogueEnd: () {
         switch (_dialoguePhase) {
           case DialoguePhase.firstMeet:
@@ -438,10 +443,15 @@ class _GamePlayScreenState extends State<GamePlayScreen>
         );
       }
       // table.json 대사 구간에서 채온이 먹는 GIF를 전체화면 클로즈업으로 보여주므로, 미리 프리캐싱
+      // chaeon_laughing1.gif는 line_004a3/line_004a4의 chaeonExpression으로 새로 추가된
+      // 에셋인데 여기 빠져있었음 - 이 두 노드는 릴리안 expression(surprise/thinking2)도
+      // 같이 바뀌는 지점이라, 실제로는 이 채온이 GIF가 안 캐싱돼서 나던 번쩍임이 릴리안
+      // 표정 전환 탓처럼 보였던 것 같음
       const List<String> tableSceneAssets = [
         'assets/images/bread_plate.png',
         'assets/images/chaeon_laughing.gif',
         'assets/images/chaeon_laughing.png',
+        'assets/images/chaeon_laughing1.gif',
         'assets/images/chaeon_holding_bread.png',
       ];
       for (final asset in tableSceneAssets) {
@@ -1120,10 +1130,12 @@ class _GamePlayScreenState extends State<GamePlayScreen>
             if (_isLillianVisible && !isEatingCloseupActive)
               Builder(
                 builder: (context) {
+                  // 세번째 값(isExpression)은 이제 PopInImage/Image.asset 분기 기준으로
+                  // 안 쓰고 shouldApplyLillianFacingFlip(walk 여부)만 보므로 버림
                   final (
                     String lillianSpriteAsset,
                     bool shouldApplyLillianFacingFlip,
-                    bool isLillianSpriteExpression,
+                    bool _,
                   ) = _resolveLillianSprite(
                     sceneNodeId,
                   );
@@ -1146,7 +1158,18 @@ class _GamePlayScreenState extends State<GamePlayScreen>
                         // 물려받는" 순간 자체는 피할 수 없었음. 그래서 walk<->idle 전환은
                         // 다시 Image.asset으로 즉시 스왑(크로스페이드 위젯 자체를 안 씀)하고,
                         // 실제 표정 변화에만 PopInImage 크로스페이드를 적용함
-                        child: isLillianSpriteExpression
+                        //
+                        // 근데 위 분기를 isLillianSpriteExpression 기준으로 나누면, 대사 중
+                        // expression 없는 노드(idle로 폴백)랑 있는 노드가 번갈아 나올 때마다
+                        // idle(Image.asset) <-> 표정(PopInImage) 사이에서 위젯 타입 자체가
+                        // 계속 바뀌게 됨. 표정으로 들어갈 때마다 PopInImage가 매번 새로
+                        // 만들어지니까 크로스페이드 없이 뚝 튀어 나타나 보였던 거였음(챕터1
+                        // 릴리안 표정 전환 번쩍임의 실제 원인). idle이랑 walk는 flip 여부가
+                        // 갈리는 유일한 지점(shouldApplyLillianFacingFlip이 true인 건 walk뿐)이라
+                        // 위 반전 버그 우려는 walk 쪽만 Image.asset으로 분리해두면 그대로
+                        // 피할 수 있어서, 분기 기준을 walk 여부(!shouldApplyLillianFacingFlip)로
+                        // 바꿔서 idle<->표정 사이는 하나의 PopInImage로 계속 유지되게 함
+                        child: !shouldApplyLillianFacingFlip
                             ? PopInImage(
                                 imagePath: lillianSpriteAsset,
                                 width: lillianDisplaySize,

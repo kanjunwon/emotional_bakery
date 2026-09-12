@@ -65,7 +65,11 @@
     "line_011": {
       "type": "line",
       "speaker": "lillian",
-      "text": "하지만 이대로는 온전한 감정을 찾지 못할 거예요.",
+      "text": [
+        { "text": "하지만 이대로는 " },
+        { "text": " 온전한 감정을", "color": "#FF7100" },
+        { "text": "을 찾지 못할 거예요." }
+      ],
       "next": "line_012"
     },
     "line_012": {

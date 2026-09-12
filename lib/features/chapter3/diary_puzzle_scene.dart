@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 
 // 화면(뷰포트) 기준 874x402 좌표계. bread_making_scene.dart랑 동일한 기준
 const double _uiCanvasWidth = 874;
@@ -136,6 +137,8 @@ class _DiaryPuzzleSceneState extends State<DiaryPuzzleScene> {
   Timer? _zoomTimer;
   Timer? _successTimer;
   bool _imagesPrecached = false;
+  // 게임 시작할 때 뜨는 안내 문구. 탭하면 닫히고 그때부터 조각 드래그가 가능해짐
+  bool _showIntroGuide = true;
 
   // 조각 6개를 다 맞추고 SUCCESS 연출까지 끝나면 호출됨. 다음 화면 전환은 호출부 책임
   @override
@@ -332,6 +335,29 @@ class _DiaryPuzzleSceneState extends State<DiaryPuzzleScene> {
                     width: rW(_successBannerWidth),
                     height: rH(_successBannerHeight),
                     fit: BoxFit.contain,
+                  ),
+                ),
+
+              // 게임 시작 안내 문구. 검은 반투명 딤 배경으로 조각을 가리고 위에 뜸(bear_arm_puzzle_scene.dart의
+              // 곰인형 팔 안내창이랑 동일한 스타일). 이 오버레이가 조각들 위(Stack에서 나중에 그려짐)에
+              // 있는 채로 탭까지 가로채서, 탭하기 전까진 조각 드래그 자체가 안 먹힘
+              if (_showIntroGuide)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _showIntroGuide = false),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: CenteredDialogueBox(
+                        textWidget: Text(
+                          '조각을 드래그해서\n그림을 완성시켜주세요.',
+                          textAlign: TextAlign.center,
+                          style: dialogueTextStyle(rW),
+                        ),
+                        rW: rW,
+                        rH: rH,
+                      ),
+                    ),
                   ),
                 ),
             ],

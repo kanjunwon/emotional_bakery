@@ -10,6 +10,7 @@ import 'package:emotional_bakery/core/models/dialogue_node.dart';
 import 'package:emotional_bakery/core/models/interaction_model.dart';
 import 'package:emotional_bakery/core/services/chapter_progress.dart';
 import 'package:emotional_bakery/core/services/interaction_loader.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/dialogue_overlay.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
@@ -148,7 +149,11 @@ class _ChaeonRoomScreenState extends State<ChaeonRoomScreen> {
       // 이 방엔 릴리안이 없어서 둘 다 안 씀
       onLillianHop: () {},
       onChaeonHop: () {},
-      initialTemperature: widget.initialTemperature,
+      // widget.initialTemperature 대신 전역값을 읽음 - 챕터 경계(ChapterSelectScreen 경유)를
+      // 넘어갈 때도 온도가 안 끊기게 하려면 여기서 위젯 파라미터를 안 쓰고 StoryState를 직접
+      // 봐야 함. widget.initialTemperature는 이제 여기서 안 쓰이지만, 같은 챕터 안에서 화면끼리
+      // 명시적으로 넘겨주던 기존 호출부들이 있어서 파라미터 자체는 그대로 둠(각 호출부 주석 참고)
+      initialTemperature: StoryState.currentTemperature,
     );
     _sceneController.addListener(_onSceneControllerChanged);
     if (widget.enterFromDoor) {

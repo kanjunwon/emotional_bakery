@@ -118,6 +118,10 @@ class SceneDialogueController extends ChangeNotifier {
         temperature = (temperature + node.temperatureEffect)
             .clamp(1, 10)
             .toInt();
+        // 바뀔 때마다 바로 전역에 동기화해둬야, 이 화면이 dispose 안 되고 그냥 Navigator.push로
+        // 다음 화면이 쌓이는 경우(예: GamePlayScreen -> KitchenScreen)에도 다음 화면이 최신
+        // 값을 읽을 수 있음. dispose 시점에만 동기화하면 이런 케이스를 놓침
+        StoryState.currentTemperature = temperature;
         _showTemperatureChange(node.temperatureEffect);
         // 선택지를 한 번이라도 골랐으면 되돌아갈 수 없게 히스토리 초기화
         sceneNodeHistory.clear();
@@ -228,6 +232,8 @@ class SceneDialogueController extends ChangeNotifier {
   void applyTemperatureEffect(int effect) {
     if (effect == 0) return;
     temperature = (temperature + effect).clamp(1, 10).toInt();
+    // 위 _enterSceneNode 쪽이랑 동일한 이유로 바로 전역에 동기화함
+    StoryState.currentTemperature = temperature;
     _showTemperatureChange(effect);
     _notify();
   }

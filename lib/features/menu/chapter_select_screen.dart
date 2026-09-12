@@ -3,6 +3,7 @@
 import 'package:flame/flame.dart';
 import 'package:flutter/material.dart';
 import 'package:emotional_bakery/core/services/chapter_progress.dart';
+import 'package:emotional_bakery/core/services/story_state.dart';
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
 import 'package:emotional_bakery/features/chapter1/bakery_game.dart'
     show ReentryChapter;
@@ -145,6 +146,9 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 // 챕터2 버튼처럼 잠금 체크 없이 바로 들어감. 임시 개발용 코드
                 GestureDetector(
                   onTap: () {
+                    // DEV 버튼은 매번 같은 상태에서 테스트해야 재현이 되니까, 이전 플레이에서
+                    // 남은 온도값을 여기서 기본값(3)으로 리셋하고 들어감
+                    StoryState.currentTemperature = 3;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -166,6 +170,8 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 // 번거로워서 만든 지름길. 화면 구석에 눈에 안 띄게 작게 배치. 나중에 지울 코드
                 GestureDetector(
                   onTap: () {
+                    // 위 챕터1 버튼이랑 동일한 이유로 리셋하고 들어감
+                    StoryState.currentTemperature = 3;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -189,6 +195,8 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 // 챕터3은 채온이 방 화면부터 바로 시작. 다른 DEV 버튼들이랑 동일하게 잠금 체크 없음
                 GestureDetector(
                   onTap: () {
+                    // 위 챕터1/2 버튼이랑 동일한 이유로 리셋하고 들어감
+                    StoryState.currentTemperature = 3;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -208,6 +216,8 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 // 챕터4도 챕터3이랑 동일하게 채온이 방 화면부터 시작. mode만 chapter4로 넘겨줌
                 GestureDetector(
                   onTap: () {
+                    // 위 챕터1/2/3 버튼이랑 동일한 이유로 리셋하고 들어감
+                    StoryState.currentTemperature = 3;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -233,6 +243,8 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                 // (로딩 지연은 initState의 Flame.images 프리캐싱으로 대응)
                 GestureDetector(
                   onTap: () {
+                    // 위 챕터1/2/3/4 버튼이랑 동일한 이유로 리셋하고 들어감
+                    StoryState.currentTemperature = 3;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -369,6 +381,18 @@ class _ChapterSelectScreenState extends State<ChapterSelectScreen> {
                     context,
                     fadeThroughBlackRoute(
                       const ChaeonRoomScreen(mode: ChaeonRoomMode.chapter4),
+                    ),
+                  );
+                } else if (title == "Chapter 5") {
+                  // 챕터5는 골목길/방 없이 빵집(GamePlayScreen)에서 바로 시작. DEV: 챕터5
+                  // 바로가기 버튼이랑 동일한 진입점 + 파라미터로 연결함
+                  Navigator.push(
+                    context,
+                    fadeThroughBlackRoute(
+                      const GamePlayScreen(
+                        skipChapter1Events: true,
+                        reentryChapter: ReentryChapter.chapter5,
+                      ),
                     ),
                   );
                 }

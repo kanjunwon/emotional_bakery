@@ -104,7 +104,7 @@
       "text": "어, 어라... 어... 하하... 하하하!!!!! 안 멈춰요!",
       "effect": { "temperature": -1 },
       "expression": "assets/images/lillian_surprise.png",
-      "chaeonExpression": "assets/images/chaeon_laughing.png",
+      "chaeonExpression": "assets/images/chaeon_laughing1.gif",
       "next": "line_004a4"
     },
     "line_004a4": {
@@ -116,6 +116,7 @@
         { "text": ". 조금씩 먹어야 해요..." }
       ],
       "expression": "assets/images/lillian_thinking2.png",
+      "chaeonExpression": "assets/images/chaeon_laughing1.gif",
       "next": "line_004a5"
     },
     "line_004a5": {

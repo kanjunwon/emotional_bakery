@@ -5,6 +5,7 @@
 // 그대로 따르지만, 조각이 1개뿐이라 SUCCESS 배너/여러 단계 전환 없이 훨씬 단순하게 짬
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:emotional_bakery/core/widgets/shared_ui.dart';
@@ -46,34 +47,42 @@ const Duration kBearZoomInDuration = Duration(milliseconds: 800);
 // 줌인이 다 끝나고(화면 가득 확대된 상태) 유지하는 시간. 끝나면 바느질 안내 문구가 뜸
 const Duration kBearZoomHoldDuration = Duration(seconds: 2);
 
-// 874x507 디자인 캔버스 좌표를 "줌인이 다 끝난(크롭 영역 kBearZoomRect*가 화면을 꽉 채운)
-// 상태"의 화면 좌표로 변환. 아래 build()의 AnimatedBuilder 안 Transform이 진행도 1(줌 홀드
-// 구간)에 도달했을 때랑 정확히 같은 결과가 나오는 계산식 - base scale(w/874)이랑 줌
-// 배율(w/kBearZoomRectWidth 등)을 다 곱하고 나면 base scale이 상쇄돼서 이렇게 단순해짐.
-// bear_stitch_guide_scene.dart가 이 함수를 그대로 가져다 써서 bear_hand 화면 좌표가 두
-// 화면 사이에서 절대 어긋나지 않게 함(각자 따로 공식을 구현하면 나중에 조정하다가 어긋나기
-// 쉬움)
-Offset bearZoomedPosition(double designX, double designY, double w, double h) {
-  return Offset(
-    w * (designX - kBearZoomRectLeft) / kBearZoomRectWidth,
-    h * (designY - kBearZoomRectTop) / kBearZoomRectHeight,
-  );
+// 줌 크롭 영역(kBearZoomRect*)이 화면 안에 항상 전체가 들어오도록(레터박스) 만드는 단일
+// 스케일과 중앙 정렬 오프셋. kitchen_screen.dart 등 다른 화면들이 쓰는 min(가로 배율, 세로
+// 배율) 기반 레터박스 공식이랑 동일함 - 예전엔 가로/세로 배율을 각각 따로(w/kBearZoomRectWidth,
+// h/kBearZoomRectHeight 독립적으로) 썼는데, 이러면 화면 비율이 크롭 비율(290:169)이랑
+// 많이 다를 때(특히 모바일처럼 세로가 긴 화면) 세로만 몇 배씩 더 늘어나면서 bear_hand/
+// bear_bg/바느질 점이 다 찌그러져 보이는 문제가 있었음(PC처럼 크롭 비율에 가까운 화면에서만
+// 우연히 정상으로 보였던 것)
+class BearZoomFit {
+  const BearZoomFit({
+    required this.scale,
+    required this.anchorX,
+    required this.anchorY,
+  });
+
+  final double scale;
+  final double anchorX;
+  final double anchorY;
 }
 
-// bearZoomedPosition이랑 동일한 좌표계에서 크기(너비/높이)를 변환
-Size bearZoomedSize(double designWidth, double designHeight, double w, double h) {
-  return Size(
-    designWidth * w / kBearZoomRectWidth,
-    designHeight * h / kBearZoomRectHeight,
+BearZoomFit bearZoomFit(double w, double h) {
+  final double scale = math.min(
+    w / kBearZoomRectWidth,
+    h / kBearZoomRectHeight,
+  );
+  return BearZoomFit(
+    scale: scale,
+    anchorX: (w - kBearZoomRectWidth * scale) / 2,
+    anchorY: (h - kBearZoomRectHeight * scale) / 2,
   );
 }
 
 class BearArmPuzzleScene extends StatefulWidget {
   const BearArmPuzzleScene({super.key, required this.onComplete});
 
-  // 팔 붙이기 -> 줌인 -> 바느질 안내 -> 바느질 미니게임(BearStitchGuideScene)까지 다 끝나면
-  // 호출됨. 다음 화면 전환은 호출부 책임. 지금은 바느질 미니게임 쪽이 TODO라 실제로는 아직
-  // 호출 안 됨(bear_stitch_guide_scene.dart의 _handlePanEnd 주석 참고)
+  // 팔 붙이기 -> 줌인 -> 바느질 안내 -> 바느질 미니게임(BearStitchGuideScene, SUCCESS
+  // 연출까지 포함) 다 끝나면 호출됨. 다음 화면 전환은 호출부 책임
   final VoidCallback onComplete;
 
   @override
@@ -178,36 +187,15 @@ class _BearArmPuzzleSceneState extends State<BearArmPuzzleScene>
           _armPosition = const Offset(kBearArmStartX, kBearArmStartY);
         }
 
-        // 줌 시작 사각형(화면 전체, 줌 진행도 0일 때)과 목표 사각형(kBearZoomRect*를 화면
-        // 좌표로 옮긴 것, 줌 진행도 1일 때)을 화면 좌표계로 미리 구해둠. wX/wY/wSize가 위에서
-        // 팔 위치 계산에 쓰던 것과 동일한 스케일/anchorY 기준이라 여기서도 그대로 재사용
-        final Rect zoomStartRect = Rect.fromLTWH(0, 0, w, h);
-        final Rect zoomTargetRect = Rect.fromLTWH(
-          wX(kBearZoomRectLeft),
-          wY(kBearZoomRectTop),
-          wSize(kBearZoomRectWidth),
-          wSize(kBearZoomRectHeight),
-        );
+        // 줌 진행도 1(줌 다 끝난 상태)에서 쓸 목표 scale/anchor. bearZoomedPosition/Size랑
+        // 완전히 같은 공식(bearZoomFit)이라 bear_stitch_guide_scene.dart로 넘어갈 때 화면이
+        // 안 튀어 보임
+        final BearZoomFit targetZoomFit = bearZoomFit(w, h);
 
         // 줌 홀드 -> 바느질 안내 -> 바느질 미니게임으로 넘어가는 대사창/캔버스에 쓰는 scale
         // 기준 함수. DialogueBoxFrame/CenteredDialogueBox는 rW 하나만 실제로 씀(가로 기준
         // 통일 관례라 wSize를 그대로 넘겨도 됨)
         double rW(double px) => wSize(px);
-
-        // 바느질 미니게임으로 넘어가면 BearStitchGuideScene이 배경(bear_bg+팔)까지 자체적으로
-        // 다시 그리므로, 여기 있는 줌 Stack은 그 밑에 깔아둘 필요 없이 통째로 교체함
-        if (_showStitchGame) {
-          return Container(
-            color: Colors.black,
-            child: BearStitchGuideScene(
-              onComplete: () {
-                // TODO: 9개 구간 다 완료되면 다음 단계 연결 예정. 지금은 bear_stitch_guide_scene.dart
-                // 쪽에서 이 콜백을 아직 안 불러서 여기까지 도달 안 함
-                if (mounted) widget.onComplete();
-              },
-            ),
-          );
-        }
 
         return Container(
           color: Colors.black,
@@ -216,26 +204,35 @@ class _BearArmPuzzleSceneState extends State<BearArmPuzzleScene>
               AnimatedBuilder(
                 animation: _zoomController,
                 builder: (context, child) {
-                  // 줌 진행도에 맞춰 시작 사각형 -> 목표 사각형으로 보간한 "현재 보이는
-                  // 영역"을 구하고, 그 영역이 화면 전체를 채우도록 확대/이동하는 행렬을 만듦.
-                  // 진행도 0일 때 currentRect가 화면 전체 그대로라 변환 결과가 항등변환이 됨
-                  final Rect currentRect = Rect.lerp(
-                    zoomStartRect,
-                    zoomTargetRect,
-                    Curves.easeInOut.transform(_zoomController.value),
-                  )!;
-                  final double zoomScaleX = w / currentRect.width;
-                  final double zoomScaleY = h / currentRect.height;
-                  // topLeft 기준으로 먼저 확대한 뒤, currentRect의 좌상단이 화면 원점(0,0)에
-                  // 오도록 밀어줌 - 두 변환을 합치면 currentRect가 화면 전체를 꽉 채우게 됨
+                  // 줌 진행도 1(다 끝난 상태)에서 필요한 배율/오프셋을 먼저 고정값으로 구해둠.
+                  // bg/hand는 이미 scale/anchorY로 한 번 배치돼 있어서(wX/wY/wSize) 그 위에
+                  // 상대적으로 얼마나 더 확대(k1)/이동(targetOffsetX/Y)해야 최종 목표 좌표
+                  // (targetZoomFit.anchorX+(x-CL)*targetZoomFit.scale, ...)랑 같은 결과가
+                  // 나오는지 역산한 값 - x*scale*k1+targetOffsetX가 그 식이랑 같아지도록,
+                  // y도 마찬가지로 풀면 이 식이 나옴
+                  final double k1 = targetZoomFit.scale / scale;
+                  final double targetOffsetX =
+                      targetZoomFit.anchorX -
+                      kBearZoomRectLeft * targetZoomFit.scale;
+                  final double targetOffsetY =
+                      targetZoomFit.anchorY -
+                      kBearZoomRectTop * targetZoomFit.scale -
+                      anchorY * k1;
+
+                  // 줌 진행도(0~1)에 맞춰 스케일/오프셋을 "항등변환(0) -> 위에서 구한 목표값(1)"
+                  // 사이로 선형보간함. 가로/세로를 각각 다른 배율로 따로 늘리지 않고 항상 같은
+                  // 배율(relativeScale)로 확대하니까, 화면 비율이 크롭 비율이랑 달라도(모바일
+                  // 세로 화면 등) 찌그러지지 않음
+                  final double curvedT = Curves.easeInOut.transform(
+                    _zoomController.value,
+                  );
+                  final double relativeScale = 1 + (k1 - 1) * curvedT;
+                  final double offsetX = targetOffsetX * curvedT;
+                  final double offsetY = targetOffsetY * curvedT;
                   return Transform.translate(
-                    offset: Offset(
-                      -currentRect.left * zoomScaleX,
-                      -currentRect.top * zoomScaleY,
-                    ),
+                    offset: Offset(offsetX, offsetY),
                     child: Transform.scale(
-                      scaleX: zoomScaleX,
-                      scaleY: zoomScaleY,
+                      scale: relativeScale,
                       alignment: Alignment.topLeft,
                       child: child,
                     ),
@@ -311,6 +308,24 @@ class _BearArmPuzzleSceneState extends State<BearArmPuzzleScene>
                         rH: rW,
                       ),
                     ),
+                  ),
+                ),
+
+              // 바느질 미니게임. 배경(bear_bg+팔) 위에 점/선/바늘만 그리는 투명한 오버레이로
+              // 얹음 - 예전엔 이 시점에 통째로 다른 위젯(배경 포함)으로 교체했는데, 그러면
+              // 위젯 트리가 갈아끼워지면서 위의 AnimatedBuilder+배경 Stack이 dispose됐다가
+              // 다시 마운트되는 그 찰나에 배경 없는 프레임이 한 번 그려져서 화면이 번쩍였음.
+              // 지금처럼 같은 Stack 안에 그냥 추가하면 배경 쪽 위젯(Positioned 두 개, 그 안의
+              // Image.asset들, AnimatedBuilder 전부)이 여기 오는 동안 한 번도 안 바뀌니까
+              // Element/RenderObject가 계속 같은 걸 재사용해서 dispose/재생성 자체가 없음
+              if (_showStitchGame)
+                Positioned.fill(
+                  child: BearStitchGuideScene(
+                    // bear_stitch_guide_scene.dart의 SUCCESS 배너 -> bear_success.png ->
+                    // 암전 마무리 연출까지 다 끝나면 호출됨
+                    onComplete: () {
+                      if (mounted) widget.onComplete();
+                    },
                   ),
                 ),
             ],

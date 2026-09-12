@@ -19,11 +19,13 @@
       "options": [
         {
           "text": "좋아하긴 하는데...",
-          "next": "line_003a"
+          "next": "line_003a",
+          "setVars": { "likesBread": "yes" }
         },
         {
           "text": "좋아하진 않아요.",
-          "next": "line_003b"
+          "next": "line_003b",
+          "setVars": { "likesBread": "no" }
         }
       ]
     },

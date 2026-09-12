@@ -113,7 +113,9 @@
     "line_018": {
       "type": "line",
       "speaker": "chaeon",
-      "text": "슬픔은 저한테 필요한 감정이 아니에요.",
+      "text": [
+        { "text": "슬픔은 저한테 필요한 감정이 아니에요.", "color": "#FF7100" }
+      ],
       "next": "null"
     }
   }

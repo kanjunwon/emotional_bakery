@@ -25,6 +25,8 @@ import 'package:emotional_bakery/features/chapter4/chapter4_bad_ending_data.dart
 import 'package:emotional_bakery/features/chapter4/chapter4_making_bread_cutscene_data.dart';
 import 'package:emotional_bakery/features/chapter4/letter_scene.dart';
 import 'package:emotional_bakery/features/chapter5/bear_arm_puzzle_scene.dart';
+import 'package:emotional_bakery/features/chapter5/chapter5_ending_happy_data.dart';
+import 'package:emotional_bakery/features/chapter5/chapter5_ending_hidden_data.dart';
 import 'package:emotional_bakery/features/menu/chapter_select_screen.dart';
 
 // 채온이가 계단 하강 애니메이션 끝나고 서는 시작 위치 (kitchen_main.png 실측값, 874x464 캔버스 기준)
@@ -178,6 +180,19 @@ class _KitchenScreenState extends State<KitchenScreen>
   bool _showChapter5BreadPopup = false;
   // 완성 빵 팝업이 끝나고 chapter5_eat.json을 이미 이어붙였는지
   bool _hasLoadedChapter5Eat = false;
+  // 곰인형 팔 붙이기+바느질 미니게임(BearArmPuzzleScene)이 끝나고 chapter5_after_eat.json을
+  // 이미 이어붙였는지
+  bool _hasLoadedChapter5AfterEat = false;
+  // chapter5_after_eat.json이 끝나고, StoryState.resolveChapter5EndingType()이 happy일 때
+  // 뜨는 해피엔딩 컷씬. 챕터4 노말엔딩(chaeon_room_screen.dart)이랑 동일하게
+  // DialogueOverlay + chapter5EndingHappyData 재사용
+  bool _showChapter5EndingHappyCutscene = false;
+  // chapter5_after_eat.json이 끝나고, StoryState.resolveChapter5EndingType()이 hidden일 때
+  // chapter5_hidden.json을 이미 이어붙였는지
+  bool _hasLoadedChapter5Hidden = false;
+  // chapter5_hidden.json이 끝나고(line_006) 암전 후 뜨는 히든엔딩 컷씬. 해피엔딩이랑
+  // 동일하게 DialogueOverlay + chapter5EndingHiddenData 재사용
+  bool _showChapter5EndingHiddenCutscene = false;
   // chapter5_eat.json이 끝나면(chaeon_80_eat.gif 재생 후) 시작되는 회상씬 앞부분:
   // 암전 -> playground_bg -> bear_bg+팔 -> 안내창 순으로 이어짐. 퍼즐 자체는
   // BearArmPuzzleScene이 이어받음
@@ -404,12 +419,30 @@ class _KitchenScreenState extends State<KitchenScreen>
         // 챕터5는 chapter5_bear.json(line_019, "자, 그럼 이제 빵을 만들어볼까요?")이 끝나면
         // 빵만들기 미니게임을 띄움. 미니게임 완료 -> 완성 빵 팝업 -> chapter5_eat.json까지는
         // 미니게임/팝업 쪽 콜백에서 처리하고, chapter5_eat.json이 끝나면(마지막 노드,
-        // chaeon_80_eat.gif 재생 후) 여기로 다시 옴 - 회상씬(곰인형 팔 붙이기) 시작
+        // chaeon_80_eat.gif 재생 후) 여기로 다시 옴 - 회상씬(곰인형 팔 붙이기) 시작.
+        // chapter5_after_eat.json은 BearArmPuzzleScene의 onComplete(9-22층)에서 이어붙이고,
+        // 그게 끝나면 다시 여기로 옴 - StoryState.resolveChapter5EndingType()으로 해피엔딩
+        // 컷씬을 보여줄지, 히든엔딩 쪽 chapter5_hidden.json을 이어붙일지 갈림. 챕터5까지 온
+        // 경우 온도는 항상 최고치라 여기선 온도 조건 없이 resolveChapter5EndingType() 결과로만 분기함
         if (widget.mode == KitchenScreenMode.chapter5Start) {
           if (!_hasLoadedChapter5Eat) {
             setState(() => _showChapter5BreadMakingGame = true);
-          } else {
+          } else if (!_hasLoadedChapter5AfterEat) {
             _startChapter5MemorySequence();
+          } else if (StoryState.resolveChapter5EndingType() ==
+              Chapter5EndingType.happy) {
+            setState(() => _showChapter5EndingHappyCutscene = true);
+          } else if (!_hasLoadedChapter5Hidden) {
+            // hidden 분기: chapter2Start/chapter3Start랑 동일한 체이닝 패턴으로
+            // chapter5_hidden.json을 이어붙임
+            _hasLoadedChapter5Hidden = true;
+            _sceneController.loadDialogue(
+              'assets/lines/chapter5/chapter5_hidden.json',
+            );
+          } else {
+            // chapter5_hidden.json이 끝나면(line_006, "그렇다면 엣헴! 제가 도와줄게요.") 여기로
+            // 옴. 암전 후 히든엔딩 컷씬 표시
+            _startChapter5HiddenEndingSequence();
           }
           return;
         }
@@ -420,7 +453,11 @@ class _KitchenScreenState extends State<KitchenScreen>
       // kitchen_arrival.json에는 hop 트리거용 animation 필드가 없어서 둘 다 안 씀
       onLillianHop: () {},
       onChaeonHop: () {},
-      initialTemperature: widget.initialTemperature,
+      // widget.initialTemperature 대신 전역값을 읽음 - 챕터 경계(ChapterSelectScreen 경유)를
+      // 넘어갈 때도 온도가 안 끊기게 하려면 여기서 위젯 파라미터를 안 쓰고 StoryState를 직접
+      // 봐야 함. widget.initialTemperature는 이제 여기서 안 쓰이지만, 같은 챕터 안에서 화면끼리
+      // 명시적으로 넘겨주던 기존 호출부들이 있어서 파라미터 자체는 그대로 둠(각 호출부 주석 참고)
+      initialTemperature: StoryState.currentTemperature,
     );
     _sceneController.addListener(_onSceneControllerChanged);
     // 배경 오브젝트 클릭 정보(chapter_kitchen.json) 로드
@@ -517,6 +554,16 @@ class _KitchenScreenState extends State<KitchenScreen>
             setState(() => _showChapter5BearIntroGuide = true);
           });
         });
+      },
+    );
+  }
+
+  // chapter5_hidden.json 끝나면(line_006) 시작되는 히든엔딩 전환: 암전(_startMemoryBlackout
+  // 재사용, 기본 유지 시간 그대로) -> 히든엔딩 컷씬(_showChapter5EndingHiddenCutscene) 순으로 이어짐
+  void _startChapter5HiddenEndingSequence() {
+    _startMemoryBlackout(
+      onComplete: () {
+        setState(() => _showChapter5EndingHiddenCutscene = true);
       },
     );
   }
@@ -1761,10 +1808,16 @@ class _KitchenScreenState extends State<KitchenScreen>
                 key: const ValueKey('chapter5_bread_making_game'),
                 child: BreadMakingScene(
                   onComplete: () {
-                    setState(() {
-                      _showChapter5BreadMakingGame = false;
-                      _showChapter5BreadPopup = true;
-                    });
+                    // 챕터3(9-7층)이랑 동일한 암전 패턴 - 성공 화면 위로 바로 암전이 덮이도록,
+                    // 미니게임은 화면이 완전히 까매진 뒤(onFullyBlack)에야 끔. 그래야 미니게임
+                    // -> 주방 화면 전환이 암전에 가려져서 안 보임(예전엔 이 암전이 빠져있어서
+                    // 미니게임 성공 화면에서 주방으로 바로 컷 전환되던 버그가 있었음)
+                    _startMemoryBlackout(
+                      onFullyBlack: () =>
+                          setState(() => _showChapter5BreadMakingGame = false),
+                      onComplete: () =>
+                          setState(() => _showChapter5BreadPopup = true),
+                    );
                   },
                 ),
               ),
@@ -1816,17 +1869,55 @@ class _KitchenScreenState extends State<KitchenScreen>
                 ),
               ),
 
-            // 9-22층: 챕터5 회상씬 - 곰인형 팔 붙이기 미니게임. 안내창 탭하면 뜸.
-            // 끝나면(onComplete) 다음 게임 연결 예정 - 아직 안 정해져서 임시로 "챕터5
-            // 계속 준비 중" 임시 종료 화면으로 이어짐
+            // 9-22층: 챕터5 회상씬 - 곰인형 팔 붙이기 미니게임(+바느질 미니게임, SUCCESS
+            // 연출까지 전부 bear_arm_puzzle_scene.dart/bear_stitch_guide_scene.dart 안에서
+            // 끝남). 안내창 탭하면 뜸. 끝나면(onComplete) chapter5_after_eat.json으로 이어짐 -
+            // 그 대화가 끝나면 onDialogueEnd의 chapter5Start 분기(_hasLoadedChapter5AfterEat)로
+            // 다시 옴
             if (_showChapter5BearArmPuzzle)
               Positioned.fill(
                 key: const ValueKey('chapter5_bear_arm_puzzle'),
                 child: BearArmPuzzleScene(
                   onComplete: () {
+                    setState(() => _showChapter5BearArmPuzzle = false);
+                    _hasLoadedChapter5AfterEat = true;
+                    _sceneController.loadDialogue(
+                      'assets/lines/chapter5/chapter5_after_eat.json',
+                    );
+                  },
+                ),
+              ),
+
+            // 9-23층: 챕터5 해피엔딩 컷씬. chapter5_after_eat.json이 끝나고
+            // StoryState.resolveChapter5EndingType()이 happy일 때만 뜸. 챕터4 노말엔딩
+            // (chaeon_room_screen.dart)이랑 동일하게 DialogueOverlay 재사용. 끝나면(onComplete)
+            // 임시 종료 화면 표시(탭하면 챕터 선택창으로) - 아직 챕터5 다음 챕터가 없어서
+            // 챕터4 back_to_bakery처럼 다음 챕터 잠금 해제하는 로직은 없음
+            if (_showChapter5EndingHappyCutscene)
+              Positioned.fill(
+                key: const ValueKey('chapter5_ending_happy_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter5EndingHappyData,
+                  onComplete: () {
                     setState(() {
-                      _showChapter5BearArmPuzzle = false;
-                      // TODO: 다음 게임 연결 예정. 지금은 아직 안 정해져서 임시 종료 화면으로 이어짐
+                      _showChapter5EndingHappyCutscene = false;
+                      _showChapterEndPlaceholder = true;
+                    });
+                  },
+                ),
+              ),
+
+            // 9-24층: 챕터5 히든엔딩 컷씬. chapter5_hidden.json이 끝나고 암전(_startMemoryBlackout)
+            // 이 걷힌 뒤 뜸. 해피엔딩이랑 동일하게 DialogueOverlay 재사용, 끝나면(onComplete)도
+            // 해피엔딩이랑 동일하게 임시 종료 화면으로 넘어감(탭하면 챕터 선택창으로)
+            if (_showChapter5EndingHiddenCutscene)
+              Positioned.fill(
+                key: const ValueKey('chapter5_ending_hidden_cutscene'),
+                child: DialogueOverlay(
+                  data: chapter5EndingHiddenData,
+                  onComplete: () {
+                    setState(() {
+                      _showChapter5EndingHiddenCutscene = false;
                       _showChapterEndPlaceholder = true;
                     });
                   },

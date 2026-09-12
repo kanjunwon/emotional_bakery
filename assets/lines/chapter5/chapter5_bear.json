@@ -36,6 +36,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "곰인형이요? 왠지 궁금해지는데요?",
+      "expression": "assets/images/lillian_thinking3.png",
       "next": "line_007"
     },
     "line_007": {
@@ -66,6 +67,7 @@
       "type": "line",
       "speaker": "lillian",
       "text": "엄마가 직접 만들어 주신 거라면, 채온 씨에게 특별한 거네요.",
+      "expression": "assets/images/lillian_happy.png",
       "next": "line_012"
     },
     "line_012": {

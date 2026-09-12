@@ -7,6 +7,13 @@
 class StoryState {
   static Map<String, dynamic> vars = {};
 
+  // 감정 온도 전역 저장소. 예전엔 SceneDialogueController(initialTemperature)를 위젯
+  // 생성자로만 넘겨받았는데, 챕터 종료 -> ChapterSelectScreen -> 다음 챕터 진입 흐름을
+  // 거칠 때마다 값이 안 넘어가고 항상 기본값(3)으로 리셋되던 문제가 있었음. vars랑 같은
+  // 패턴으로 전역 static에 두고, scene_dialogue_controller.dart에서 temperature가 바뀔
+  // 때마다 여기에 동기화해서 화면이 몇 번을 갈아끼워져도 값이 안 끊기게 함
+  static int currentTemperature = 3;
+
   // chapter2_ingredient_quiz.json의 q1(eat/sleep/play) + q2(game/movie/exercise) +
   // q3(red/yellow/blue) 답변 조합으로 정해지는 마법 재료 이름.
   // line_ingredient_reveal의 {{ingredient}} 자리에 들어감
@@ -139,4 +146,18 @@ class StoryState {
     return _doughImageByIngredientImage[ingredientImage] ??
         _fallbackCompletedDoughImage;
   }
+
+  // 챕터5까지 오면 감정 온도는 항상 8~10으로 확인돼서, 챕터5 엔딩 분기는 온도가 아니라
+  // chapter2_ready.json의 choice_001(빵을 좋아하는지) 답변(likesBread)만으로 결정됨
+  static Chapter5EndingType resolveChapter5EndingType() {
+    // "좋아하진 않아요"(likesBread=no)를 고른 경우만 해피엔딩. 그 외(좋아하긴 하는데...=
+    // 히든엔딩, 또는 챕터5로 바로 진입해서 값 자체가 없는 경우)는 전부 hidden으로 묶어서
+    // 처리함 - 히든엔딩은 아직 안 만들어서 호출부에서 hidden이면 기존 임시 종료 화면으로 감
+    return vars['likesBread'] == 'no'
+        ? Chapter5EndingType.happy
+        : Chapter5EndingType.hidden;
+  }
 }
+
+// 챕터5 엔딩 종류. resolveChapter5EndingType() 참고
+enum Chapter5EndingType { happy, hidden }

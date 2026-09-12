@@ -11,7 +11,7 @@
     "line_002": {
       "type": "line",
       "speaker": "lillian",
-      "text": "흐음~ 그래요?",
+      "text": "흐음~ 그런가요?",
       "expression": "assets/images/lillian_happy.png",
       "next": "line_003"
     },

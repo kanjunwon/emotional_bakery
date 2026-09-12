@@ -11,7 +11,7 @@
     "line_002": {
       "type": "line",
       "speaker": "chaeon",
-      "expression": { "asset": "assets/images/chaeon_50_eat.gif", "durationMs": 2000, "autoAdvance": true },
+      "expression": { "asset": "assets/images/chaeon_50_eat.gif", "durationMs": 1500, "autoAdvance": true },
       "next": "null"
     }
   }
